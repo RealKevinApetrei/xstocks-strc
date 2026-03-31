@@ -43,8 +43,13 @@ export function Nav() {
     <>
       <header className="border-b border-border px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="text-lg font-semibold">
-            x<span className="text-primary">Stocks</span>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            {/* Official Spreads logo mark — polygon paths from master SVG */}
+            <svg width="14" height="18" viewBox="415 379 250 322" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <polygon fill="#1a3520" points="416.8 476.1 525.8 476.4 602 379.7 663.9 380.4 664.2 380.7 662.9 484.1 537.5 484 473 581.2 415.8 580.8 416.8 476.1"/>
+              <polygon fill="#1a3520" points="416.8 605.1 525.8 605.4 591.9 508.8 664.2 508.8 662.9 610.4 537.5 613 483 700.3 415.8 699.9 416.8 605.1"/>
+            </svg>
+            <span className="text-sm font-semibold tracking-widest uppercase text-foreground">Spreads</span>
           </Link>
           <nav className="flex items-center gap-1">
             {navItems.map((item) => (
