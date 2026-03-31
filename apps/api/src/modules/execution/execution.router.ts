@@ -49,6 +49,56 @@ executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => 
   }
 });
 
+// POST /api/execution/withdraw — Withdraw USDC from smart wallet to an external address
+executionRouter.post('/withdraw', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const { amount, to } = req.body as { amount: string; to: string };
+
+  if (!amount || !to) {
+    res.status(400).json({ error: 'Missing amount or destination address' });
+    return;
+  }
+
+  const amountBn = BigInt(amount);
+  if (amountBn <= 0n) {
+    res.status(400).json({ error: 'Amount must be greater than 0' });
+    return;
+  }
+
+  // Check balance
+  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+  const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
+  const balance: bigint = await usdc.balanceOf(smartAccountAddr);
+
+  if (balance < amountBn) {
+    const balFormatted = (Number(balance) / 1e6).toFixed(2);
+    res.status(400).json({ error: `Insufficient balance. Available: $${balFormatted} USDC` });
+    return;
+  }
+
+  try {
+    // ERC20 transfer calldata
+    const iface = new ethers.Interface(['function transfer(address to, uint256 amount) returns (bool)']);
+    const data = iface.encodeFunctionData('transfer', [to, amountBn]);
+
+    const txHash = await smartAccountService.sendBatchUserOp(privyId, [
+      { to: config.usdc, data },
+    ]);
+
+    const receipt = await smartAccountService.waitForReceipt(txHash);
+    if (!receipt.success) {
+      res.status(500).json({ error: 'Withdraw transaction reverted' });
+      return;
+    }
+
+    res.json({ txHash, success: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: `Withdraw failed: ${msg}` });
+  }
+});
+
 // POST /api/execution/unwind — Unwind a position
 executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
@@ -207,6 +257,65 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
   } catch {
     // No position or contracts not deployed yet
     res.json({ address, hasPosition: false, position: null, activeLoop: null, gridStrategy: null, vaultBalance: null });
+  }
+});
+
+// GET /api/execution/market-rate — Live Morpho borrow rate
+executionRouter.get('/market-rate', async (_req: Request, res: Response) => {
+  try {
+    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const morpho = new ethers.Contract(config.morpho, wSTRCABI.length ? [
+      'function market(bytes32 id) external view returns (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee)',
+    ] : [], provider);
+
+    const mkt = await morpho.market(config.morphoMarketId);
+    const totalSupply = BigInt(mkt[0]);
+    const totalBorrow = BigInt(mkt[2]);
+
+    // Utilization = totalBorrow / totalSupply
+    const utilization = totalSupply > 0n
+      ? Number(totalBorrow * 10000n / totalSupply) / 100
+      : 0;
+
+    // Call IRM for exact borrow rate per second
+    if (config.morphoIrm) {
+      const irm = new ethers.Contract(config.morphoIrm, [
+        'function borrowRateView((address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) marketParams, (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee) market) external view returns (uint256)',
+      ], provider);
+
+      const marketParams = await new ethers.Contract(config.morpho, [
+        'function idToMarketParams(bytes32 id) external view returns (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv)',
+      ], provider).idToMarketParams(config.morphoMarketId);
+
+      const ratePerSecond = await irm.borrowRateView(
+        [marketParams[0], marketParams[1], marketParams[2], marketParams[3], marketParams[4]],
+        [mkt[0], mkt[1], mkt[2], mkt[3], mkt[4], mkt[5]],
+      );
+
+      // Convert rate per second to APY: (1 + ratePerSecond / 1e18) ^ (365.25 * 86400) - 1
+      const rateFloat = Number(ratePerSecond) / 1e18;
+      const borrowApy = (Math.pow(1 + rateFloat, 365.25 * 86400) - 1) * 100;
+
+      res.json({
+        borrowApy: Math.round(borrowApy * 100) / 100,
+        utilization: Math.round(utilization * 100) / 100,
+        totalSupply: totalSupply.toString(),
+        totalBorrow: totalBorrow.toString(),
+      });
+      return;
+    }
+
+    // Fallback: estimate from utilization (rough approximation)
+    const estimatedRate = utilization * 0.1; // ~10% at 100% utilization
+    res.json({
+      borrowApy: Math.round(estimatedRate * 100) / 100,
+      utilization: Math.round(utilization * 100) / 100,
+      totalSupply: totalSupply.toString(),
+      totalBorrow: totalBorrow.toString(),
+    });
+  } catch (err) {
+    console.error('[MARKET-RATE] Error:', err instanceof Error ? err.message : err);
+    res.json({ borrowApy: 4.2, utilization: null, totalSupply: null, totalBorrow: null });
   }
 });
 

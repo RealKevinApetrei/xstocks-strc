@@ -4,21 +4,22 @@ import { useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { useMarketRate } from '@/hooks/use-market-rate';
 import { api, ApiError } from '@/lib/api';
 import { LoopStatus } from './loop-status';
 
 const STRC_BASE_APY = 11.5;
-const MORPHO_BORROW_RATE = 4.2;
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
 const MIN_DEPOSIT: Record<number, number> = { 2: 30, 3: 40, 5: 70 };
 
-function netApy(leverage: number) {
-  return (STRC_BASE_APY * leverage - MORPHO_BORROW_RATE * (leverage - 1)).toFixed(1);
+function netApy(leverage: number, borrowRate: number) {
+  return (STRC_BASE_APY * leverage - borrowRate * (leverage - 1)).toFixed(1);
 }
 
 export function LoopForm() {
   const { getAccessToken } = usePrivy();
   const { price: strcPrice } = useStrcxPrice();
+  const { borrowApy } = useMarketRate();
   const [usdcAmount, setUsdcAmount] = useState('');
   const [leverage, setLeverage] = useState<number>(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,7 +144,7 @@ export function LoopForm() {
           </div>
           <div className="flex justify-between text-xs pt-1 border-t border-border/50">
             <span className="text-muted-foreground">Est. net APY</span>
-            <span className="font-mono text-success">+{netApy(leverage)}%</span>
+            <span className="font-mono text-success">+{netApy(leverage, borrowApy)}%</span>
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Min. deposit ({leverage}x)</span>

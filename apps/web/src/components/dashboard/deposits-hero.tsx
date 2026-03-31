@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { cn, formatBigInt } from '@/lib/utils';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { useMarketRate } from '@/hooks/use-market-rate';
 
 const STRC_BASE_APY = 11.5;
-const MORPHO_BORROW_RATE = 4.2;
 
 function useCountUp(target: number, duration = 1800, decimals = 0) {
   const [value, setValue] = useState(0);
@@ -37,6 +37,7 @@ function useCountUp(target: number, duration = 1800, decimals = 0) {
 export function DepositsHero() {
   const { data: positionData, loading } = usePosition();
   const { price: strcPrice, change24h, changePct24h } = useStrcxPrice();
+  const { borrowApy } = useMarketRate();
 
   // Derive real values from position
   const position = positionData?.position;
@@ -48,7 +49,7 @@ export function DepositsHero() {
   const equityUsd = collateralUsd - debtUsd;
   const leverage = hasPosition ? position.effectiveLeverage : 0;
   const netApy = leverage > 0
-    ? STRC_BASE_APY * leverage - MORPHO_BORROW_RATE * (leverage - 1)
+    ? STRC_BASE_APY * leverage - borrowApy * (leverage - 1)
     : 0;
 
   // 24h P&L on equity from price movement

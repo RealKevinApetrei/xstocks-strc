@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { cn, formatBigInt, formatUsd } from '@/lib/utils';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { useMarketRate } from '@/hooks/use-market-rate';
 
-const MORPHO_BORROW_RATE_APY = 4.2;
 const STRC_STAKING_APY = 11.5;
 
 function HealthFactorGauge({ hf }: { hf: number }) {
@@ -68,6 +68,7 @@ function HealthFactorGauge({ hf }: { hf: number }) {
 export function PositionCard() {
   const { data: positionData, loading } = usePosition();
   const { price: strcPrice, stale, source } = useStrcxPrice();
+  const { borrowApy } = useMarketRate();
 
   if (loading) {
     return (
@@ -95,7 +96,7 @@ export function PositionCard() {
   const debtUsd = parseFloat(formatBigInt(p.debtUsdc, 6, 2));
   const equityUsd = collateralUsd - debtUsd;
   const leverage = p.effectiveLeverage;
-  const netYield = (STRC_STAKING_APY * leverage) - (MORPHO_BORROW_RATE_APY * (leverage - 1));
+  const netYield = (STRC_STAKING_APY * leverage) - (borrowApy * (leverage - 1));
 
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-5">
@@ -147,7 +148,7 @@ export function PositionCard() {
       <div className="rounded-md border border-border bg-background p-3 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Morpho Borrow Rate</span>
-          <span className="text-xs font-mono text-destructive/70">-{MORPHO_BORROW_RATE_APY.toFixed(2)}%</span>
+          <span className="text-xs font-mono text-destructive/70">-{borrowApy.toFixed(2)}%</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">STRCx Yield ({leverage.toFixed(0)}x leveraged)</span>
