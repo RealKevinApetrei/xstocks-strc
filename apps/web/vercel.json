@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd ../../packages/shared && npx tsc && cd ../../apps/web && next build",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
+}
