@@ -4,6 +4,13 @@ import { config } from '../../../config';
 import { USDC_DUST } from '@xstocks/shared';
 import MorphoABI from '@xstocks/shared/abis/MorphoBlue.json';
 
+// Singleton provider — avoids creating new HTTP connections on every call
+let _provider: ethers.JsonRpcProvider | null = null;
+function getProvider(): ethers.JsonRpcProvider {
+  if (!_provider) _provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  return _provider;
+}
+
 export interface MorphoPosition {
   collateral: bigint;   // wSTRC collateral (raw, 18 decimals)
   borrowed: bigint;     // USDC debt in assets (6 decimals), rounded up
@@ -75,7 +82,7 @@ export class BorrowExecutor {
    * Borrow shares are converted to assets (rounded UP for safety).
    */
   async getPosition(user: string): Promise<MorphoPosition> {
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const provider = getProvider();
     const morpho = new ethers.Contract(config.morpho, MorphoABI, provider);
 
     const posResult = await morpho.position(config.morphoMarketId, user);
@@ -128,7 +135,7 @@ export class BorrowExecutor {
     currentPosition: MorphoPosition,
     targetHF: number = config.loopTargetHF,
   ): Promise<bigint> {
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const provider = getProvider();
     const oraclePrice = await this.readOraclePrice(provider);
 
     if (oraclePrice === 0n) {

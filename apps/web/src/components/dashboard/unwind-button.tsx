@@ -10,6 +10,7 @@ const UNWIND_OPTIONS = [
   { value: 1, label: '1x (Hold STRC)', description: 'Remove all leverage, keep STRC exposure' },
   { value: 2, label: '2x', description: 'Reduce to 2x leverage' },
   { value: 3, label: '3x', description: 'Reduce to 3x leverage' },
+  { value: 5, label: '5x', description: 'Reduce to 5x leverage' },
 ] as const;
 
 export function UnwindButton({ loopId, currentLeverage }: { loopId: string | null; currentLeverage?: number }) {

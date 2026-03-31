@@ -23,7 +23,7 @@ const ORACLE_ABI = [
   'function getStrcxPrice() external view returns (uint256 price, uint256 timestamp)',
 ];
 
-const HERMES_URL = 'https://hermes.pyth.network';
+
 
 export interface StrcxPrice {
   price: number;
@@ -120,7 +120,7 @@ export class PythPriceService {
 
       // Fetch signed update from Hermes
       const feedId = config.pythPriceFeedId.replace('0x', '');
-      const url = `${HERMES_URL}/v2/updates/price/latest?ids[]=${feedId}`;
+      const url = `${config.pythHermesUrl}/v2/updates/price/latest?ids[]=${feedId}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Hermes: ${response.status}`);
 
@@ -153,7 +153,7 @@ export class PythPriceService {
 
     try {
       const feedId = config.pythPriceFeedId.replace('0x', '');
-      const url = `${HERMES_URL}/v2/updates/price/latest?ids[]=${feedId}`;
+      const url = `${config.pythHermesUrl}/v2/updates/price/latest?ids[]=${feedId}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Hermes: ${response.status}`);
 

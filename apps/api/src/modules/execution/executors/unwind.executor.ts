@@ -183,8 +183,9 @@ export class UnwindExecutor {
       const fill = await cowSwapService.waitForFill(orderUid);
       if (fill.buyAmount <= 0n) throw new Error('CoW returned 0 USDC');
 
-      // 4. Approve USDC + repay
-      const debtToRepay = position.borrowed < fill.buyAmount ? position.borrowed : fill.buyAmount;
+      // 4. Read fresh debt (interest accrued during CoW fill) + repay
+      const freshPos = await borrowExecutor.getPosition(smartAccountAddr);
+      const debtToRepay = freshPos.borrowed < fill.buyAmount ? freshPos.borrowed : fill.buyAmount;
       const rCalls = [
         ...approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: debtToRepay }),
         ...borrowExecutor.buildRepayCalls(debtToRepay, smartAccountAddr),
@@ -218,10 +219,18 @@ export class UnwindExecutor {
     if (position.borrowed === 0n) return position.collateral;
     if (position.healthFactor <= config.unwindMinHF) return 0n;
 
-    const fraction = (1 - config.unwindMinHF / position.healthFactor) * UNWIND_SAFETY_MARGIN;
-    if (fraction <= 0) return 0n;
+    // Pure bigint math to avoid precision loss on large collateral amounts.
+    // fraction = (1 - minHF/HF) * safetyMargin
+    // Scale: multiply by 10000 for 4-decimal precision
+    const SCALE = 10000n;
+    const hfScaled = BigInt(Math.round(position.healthFactor * 10000));
+    const minHfScaled = BigInt(Math.round(config.unwindMinHF * 10000));
+    const safetyScaled = BigInt(Math.round(UNWIND_SAFETY_MARGIN * 10000));
 
-    const amount = BigInt(Math.floor(Number(position.collateral) * fraction));
+    if (hfScaled <= minHfScaled) return 0n;
+
+    // fraction = ((hf - minHF) / hf) * safety = ((hfScaled - minHfScaled) * safetyScaled) / (hfScaled * SCALE)
+    const amount = (position.collateral * (hfScaled - minHfScaled) * safetyScaled) / (hfScaled * SCALE);
     return amount > STRC_DUST ? amount : 0n;
   }
 }

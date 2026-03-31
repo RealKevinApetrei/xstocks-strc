@@ -53,10 +53,16 @@ export class CowSwapService {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         const response = await fetch(url, options);
+        // Retry on 429 (rate limit) and 5xx (server errors)
+        if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+          console.warn(`[CoW] HTTP ${response.status} on attempt ${attempt}, retrying...`);
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+          continue;
+        }
         return response;
       } catch (err) {
         if (attempt === MAX_RETRIES) throw err;
-        console.warn(`[CoW] Fetch attempt ${attempt} failed, retrying in ${RETRY_DELAY_MS}ms...`);
+        console.warn(`[CoW] Network error on attempt ${attempt}, retrying...`);
         await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
       }
     }

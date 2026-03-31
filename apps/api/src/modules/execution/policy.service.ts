@@ -24,9 +24,9 @@ export class PolicyService {
       throw new PolicyViolation(`Leverage cannot exceed ${MAX_LEVERAGE}x`);
     }
 
-    // Check no concurrent active execution
+    // Check no concurrent active execution (FOR UPDATE prevents race condition)
     const { rows } = await query(
-      `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+      `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
       [params.privyId],
     );
     if (rows.length > 0) {
@@ -35,7 +35,7 @@ export class PolicyService {
 
     // Check no active unwind
     const { rows: unwinds } = await query(
-      `SELECT id FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+      `SELECT id FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
       [params.privyId],
     );
     if (unwinds.length > 0) {

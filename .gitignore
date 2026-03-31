@@ -31,3 +31,4 @@ packages/contracts/lib/
 *.log
 coverage/
 .claude/worktrees/
+*.tsbuildinfo
