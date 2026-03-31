@@ -47,7 +47,7 @@ const RANGE_DAYS: Record<TimeRange, number> = {
   'ALL': 365,
 };
 
-export function PerformanceChart() {
+export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const [range, setRange] = useState<TimeRange>('3M');
   const data = useMemo(() => generateSimulatedData(RANGE_DAYS[range]), [range]);
 
@@ -77,7 +77,7 @@ export function PerformanceChart() {
   const strcArea = strcPath + ` L ${toX(data.length - 1)} ${toY(minY)} L ${toX(0)} ${toY(minY)} Z`;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 space-y-5">
+    <div className={cn(embedded ? 'p-6 space-y-5' : 'rounded-lg border border-border bg-card p-6 space-y-5')}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium text-muted-foreground">Backtested Performance</h2>

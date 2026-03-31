@@ -1,7 +1,6 @@
 'use client';
 
 import { BuyTheDipVault } from '@/components/vaults/buy-the-dip-vault';
-import { PerformanceChart } from '@/components/vaults/performance-chart';
 
 export default function StrategyVaults() {
   return (
@@ -15,9 +14,6 @@ export default function StrategyVaults() {
 
       {/* Buy the Dip Vault */}
       <BuyTheDipVault />
-
-      {/* Historical Performance */}
-      <PerformanceChart />
     </div>
   );
 }
