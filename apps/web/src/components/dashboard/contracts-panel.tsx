@@ -13,12 +13,14 @@ const CONTRACTS = [
 
 const MARKET_ID = process.env.NEXT_PUBLIC_MORPHO_MARKET_ID ?? '';
 
-export function ContractsPanel() {
+export function ContractsPanel({ embedded = false }: { embedded?: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-6 space-y-4">
-      <h2 className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
-        Info
-      </h2>
+    <div className={embedded ? 'space-y-4' : 'rounded-lg border border-border bg-card p-6 space-y-4'}>
+      {!embedded && (
+        <h2 className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
+          Info
+        </h2>
+      )}
 
       <p className="text-xs text-muted-foreground leading-relaxed">
         Deposit USDC to get leveraged exposure to STRC dividends. Your deposit is looped through Morpho Blue — wrapped into wSTRC, supplied as collateral, USDC borrowed against it, swapped back to STRC, and repeated to reach your target leverage. All execution is automated and non-custodial.

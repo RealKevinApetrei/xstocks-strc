@@ -5,6 +5,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { PerformanceChart } from '@/components/vaults/performance-chart';
+import { ContractsPanel } from '@/components/dashboard/contracts-panel';
 
 const statusColors: Record<string, string> = {
   COMPLETED: 'text-success bg-success/10 border-success/20',
@@ -14,7 +15,7 @@ const statusColors: Record<string, string> = {
   PENDING: 'text-muted-foreground bg-muted/50 border-border',
 };
 
-type Tab = 'history' | 'performance';
+type Tab = 'history' | 'performance' | 'info';
 
 interface LoopRecord {
   id: string;
@@ -54,7 +55,7 @@ export function LoopHistory() {
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex border-b border-border px-6 pt-4">
-        {([['history', 'Loop History'], ['performance', 'Performance']] as const).map(([value, label]) => (
+        {([['history', 'Loop History'], ['performance', 'Performance'], ['info', 'Info']] as const).map(([value, label]) => (
           <button
             key={value}
             onClick={() => setTab(value)}
@@ -120,8 +121,12 @@ export function LoopHistory() {
             </div>
           )}
         </div>
-      ) : (
+      ) : tab === 'performance' ? (
         <PerformanceChart embedded />
+      ) : (
+        <div className="p-6">
+          <ContractsPanel embedded />
+        </div>
       )}
     </div>
   );

@@ -5,7 +5,6 @@ import { LoopForm } from '@/components/dashboard/loop-form';
 import { UnwindButton } from '@/components/dashboard/unwind-button';
 import { LoopHistory } from '@/components/dashboard/loop-history';
 import { DepositsHero } from '@/components/dashboard/deposits-hero';
-import { ContractsPanel } from '@/components/dashboard/contracts-panel';
 import { usePosition } from '@/hooks/use-position';
 import { useMarketRate } from '@/hooks/use-market-rate';
 
@@ -75,8 +74,6 @@ export default function Dashboard() {
       </div>
 
       <LoopHistory />
-
-      <ContractsPanel />
     </div>
   );
 }
