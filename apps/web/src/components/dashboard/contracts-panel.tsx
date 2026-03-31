@@ -17,7 +17,7 @@ export function ContractsPanel() {
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-4">
       <h2 className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
-        Smart Contracts
+        Info
       </h2>
 
       <div className="space-y-2">
