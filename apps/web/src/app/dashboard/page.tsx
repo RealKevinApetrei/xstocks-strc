@@ -54,7 +54,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <PositionCard />
-          <UnwindButton loopId={position?.activeLoop?.id ?? null} />
+          <UnwindButton
+            loopId={position?.activeLoop?.id ?? null}
+            currentLeverage={position?.position?.effectiveLeverage}
+          />
         </div>
         <LoopForm />
       </div>

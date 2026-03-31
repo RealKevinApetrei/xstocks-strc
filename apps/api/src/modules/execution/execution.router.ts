@@ -53,8 +53,19 @@ executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => 
 executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
   const { loopExecutionId } = req.body as StartUnwindRequest;
+  const targetLeverage = (req.body as any).targetLeverage ?? 0;
 
-  // Check loop exists
+  try {
+    await policyService.validateUnwind({ privyId, targetLeverage });
+  } catch (err) {
+    if (err instanceof PolicyViolation) {
+      res.status(err.message.includes('in progress') ? 409 : 400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  // Verify loop belongs to user
   const { rows: [loop] } = await query(
     `SELECT id, status FROM loop_executions WHERE id = $1 AND privy_id = $2`,
     [loopExecutionId, privyId],
@@ -64,17 +75,7 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
     return;
   }
 
-  // Check no active unwind
-  const { rows: activeUnwinds } = await query(
-    `SELECT id FROM unwind_executions WHERE loop_execution_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
-    [loopExecutionId],
-  );
-  if (activeUnwinds.length > 0) {
-    res.status(409).json({ error: 'Unwind already in progress' });
-    return;
-  }
-
-  const unwindId = await unwindExecutor.startUnwind({ privyId, loopExecutionId });
+  const unwindId = await unwindExecutor.startUnwind({ privyId, loopExecutionId, targetLeverage });
 
   res.status(201).json({
     id: unwindId,
