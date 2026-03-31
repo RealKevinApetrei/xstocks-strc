@@ -1,6 +1,10 @@
-import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS } from '@xstocks/shared';
+import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, MIN_DEPOSIT_USDC } from '@xstocks/shared';
+import { ethers } from 'ethers';
 import { config } from '../../config';
 import { query } from '../../db/pool';
+import { smartAccountService } from './smart-account.service';
+
+const ERC20_BALANCE_ABI = ['function balanceOf(address) view returns (uint256)'];
 
 export class PolicyService {
   /**
@@ -15,13 +19,33 @@ export class PolicyService {
       throw new PolicyViolation('USDC amount must be greater than 0');
     }
     if (params.usdcAmount > BigInt(config.maxSingleLoopUsdc)) {
-      throw new PolicyViolation('Amount exceeds maximum single loop size');
+      const maxFormatted = (Number(config.maxSingleLoopUsdc) / 1e6).toFixed(0);
+      throw new PolicyViolation(`Amount exceeds maximum of $${maxFormatted}`);
     }
     if (!(LEVERAGE_OPTIONS as readonly number[]).includes(params.targetLeverage)) {
       throw new PolicyViolation(`Leverage must be one of: ${LEVERAGE_OPTIONS.join(', ')}x`);
     }
     if (params.targetLeverage > MAX_LEVERAGE) {
       throw new PolicyViolation(`Leverage cannot exceed ${MAX_LEVERAGE}x`);
+    }
+
+    // Check minimum deposit for CoW swap minimums
+    const minDeposit = MIN_DEPOSIT_USDC[params.targetLeverage];
+    if (minDeposit && params.usdcAmount < minDeposit) {
+      const minFormatted = (Number(minDeposit) / 1e6).toFixed(0);
+      throw new PolicyViolation(`Minimum deposit for ${params.targetLeverage}x leverage is $${minFormatted} (CoW Protocol requires $10 minimum per swap)`);
+    }
+
+    // Check USDC balance in smart account
+    const smartAccountAddr = await smartAccountService.getSmartAccountAddress(params.privyId);
+    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const usdc = new ethers.Contract(config.usdc, ERC20_BALANCE_ABI, provider);
+    const balance: bigint = await usdc.balanceOf(smartAccountAddr);
+
+    if (balance < params.usdcAmount) {
+      const balFormatted = (Number(balance) / 1e6).toFixed(2);
+      const reqFormatted = (Number(params.usdcAmount) / 1e6).toFixed(2);
+      throw new PolicyViolation(`Insufficient USDC balance. You have $${balFormatted} but need $${reqFormatted}. Deposit USDC to your wallet first.`);
     }
 
     // Check no concurrent active execution (FOR UPDATE prevents race condition)

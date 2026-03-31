@@ -10,6 +10,7 @@ import { LoopStatus } from './loop-status';
 const STRC_BASE_APY = 11.5;
 const MORPHO_BORROW_RATE = 4.2;
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
+const MIN_DEPOSIT: Record<number, number> = { 2: 30, 3: 40, 5: 70 };
 
 function netApy(leverage: number) {
   return (STRC_BASE_APY * leverage - MORPHO_BORROW_RATE * (leverage - 1)).toFixed(1);
@@ -31,8 +32,10 @@ export function LoopForm() {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
+      // Convert human-readable USDC to 6-decimal on-chain format
+      const usdcRaw = BigInt(Math.round(parseFloat(usdcAmount) * 1e6)).toString();
       const result = await api.startLoop(token, {
-        strcAmount: usdcAmount,
+        strcAmount: usdcRaw,
         targetLeverage: leverage,
         maxSlippageBps: 0, // CoW RFQ — no slippage
       });
@@ -137,6 +140,14 @@ export function LoopForm() {
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Est. debt</span>
             <span className="font-mono">{formatUsd(debtUsdc)} USDC</span>
+          </div>
+          <div className="flex justify-between text-xs pt-1 border-t border-border/50">
+            <span className="text-muted-foreground">Est. net APY</span>
+            <span className="font-mono text-success">+{netApy(leverage)}%</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Min. deposit ({leverage}x)</span>
+            <span className="font-mono">${MIN_DEPOSIT[leverage]}</span>
           </div>
         </div>
       )}
