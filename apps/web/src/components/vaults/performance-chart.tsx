@@ -103,42 +103,47 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const aaveReturn = ((lastPoint.aaveUsdcYield - 100) / 100) * 100;
   const outperformance = strcReturn - aaveReturn;
 
-  // Chart dimensions
+  // Convert to % returns (starts at 0%)
+  const strcPcts = data.map(d => ((d.strcLoopYield - 100) / 100) * 100);
+  const aavePcts = data.map(d => ((d.aaveUsdcYield - 100) / 100) * 100);
+
   const width = 800;
-  const height = 240;
-  const padding = { top: 16, right: 20, bottom: 36, left: 52 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
+  const height = 260;
+  const pad = { top: 20, right: 20, bottom: 40, left: 52 };
+  const chartW = width - pad.left - pad.right;
+  const chartH = height - pad.top - pad.bottom;
 
-  const allValues = data.flatMap(d => [d.strcLoopYield, d.aaveUsdcYield]);
-  const minY = Math.min(...allValues) * 0.995;
-  const maxY = Math.max(...allValues) * 1.005;
+  const allPcts = [...strcPcts, ...aavePcts];
+  const domainMin = Math.min(...allPcts) - 1;
+  const domainMax = Math.max(...allPcts) + 1;
 
-  const toX = (i: number) => padding.left + (i / (data.length - 1)) * chartW;
-  const toY = (v: number) => padding.top + chartH - ((v - minY) / (maxY - minY)) * chartH;
+  const toX = (i: number) => pad.left + (i / (data.length - 1)) * chartW;
+  const toY = (v: number) => pad.top + chartH - ((v - domainMin) / (domainMax - domainMin)) * chartH;
 
-  const strcPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.strcLoopYield)}`).join(' ');
-  const aavePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.aaveUsdcYield)}`).join(' ');
-  const strcArea = strcPath + ` L ${toX(data.length - 1)} ${padding.top + chartH} L ${toX(0)} ${padding.top + chartH} Z`;
+  const strcPath = strcPcts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
+  const aavePath = aavePcts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
 
-  const xLabelCount = range === '1M' ? 5 : 6;
-  const xLabelIndices = Array.from({ length: xLabelCount }, (_, i) =>
-    Math.round((i / (xLabelCount - 1)) * (data.length - 1))
-  );
-
-  const yTicks = Array.from({ length: 4 }, (_, i) => minY + (maxY - minY) * (i / 3));
+  const rangeStep = Math.ceil((domainMax - domainMin) / 4);
+  const yStart = Math.floor(domainMin / rangeStep) * rangeStep;
+  const yTicks = Array.from({ length: 7 }, (_, i) => yStart + i * rangeStep).filter(v => v >= domainMin && v <= domainMax);
+  const xIndices = Array.from({ length: 5 }, (_, i) => Math.round((i / 4) * (data.length - 1)));
 
   return (
-    <div className={cn(embedded ? 'p-6 space-y-5' : 'rounded-lg border border-border bg-card p-6 space-y-5')}>
+    <div className={cn(embedded ? 'p-6 space-y-4' : 'rounded-lg border border-border bg-card p-6 space-y-4')}>
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground">Performance</h2>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            STRCx 3x Loop vs Aave USDC Lending (current: {aaveCurrentApy.toFixed(1)}% APY)
-            {currentPrice > 0 && (
-              <span className="ml-2 text-foreground">STRC: {formatUsd(currentPrice)}</span>
-            )}
-          </p>
+        <div className="flex items-center gap-4 text-xs font-mono">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block w-4 h-px bg-foreground" />
+            STRC {LEVERAGE}× Loop
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block w-4 h-px bg-muted-foreground/40" style={{ backgroundImage: 'repeating-linear-gradient(90deg,#9ca3af,#9ca3af 3px,transparent 3px,transparent 6px)' }} />
+            Aave USDC ({aaveCurrentApy.toFixed(1)}%)
+          </div>
+          {currentPrice > 0 && (
+            <span className="text-foreground font-medium">STRC {formatUsd(currentPrice)}</span>
+          )}
         </div>
         <div className="flex gap-1">
           {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((r) => (
@@ -146,10 +151,10 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
               key={r}
               onClick={() => setRange(r)}
               className={cn(
-                'px-2.5 py-1 rounded text-[10px] font-mono font-medium transition-colors',
+                'px-2.5 py-1 rounded-md text-[10px] font-mono font-medium transition-colors border',
                 range === r
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:text-foreground',
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/30',
               )}
             >
               {r}
@@ -158,81 +163,50 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
         </div>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">STRC 3x Loop</div>
-          <div className={cn('text-lg font-mono font-semibold', strcReturn >= 0 ? 'text-primary' : 'text-destructive')}>
-            {strcReturn >= 0 ? '+' : ''}{strcReturn.toFixed(1)}%
-          </div>
-          <div className="text-[10px] text-muted-foreground font-mono">{formatUsd(lastPoint.strcLoopYield)} from $100</div>
-        </div>
-        <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">Aave USDC (benchmark)</div>
-          <div className="text-lg font-mono font-semibold text-muted-foreground">+{aaveReturn.toFixed(1)}%</div>
-          <div className="text-[10px] text-muted-foreground font-mono">{formatUsd(lastPoint.aaveUsdcYield)} from $100</div>
-        </div>
-        <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">Outperformance</div>
-          <div className={cn('text-lg font-mono font-semibold', outperformance > 0 ? 'text-success' : 'text-destructive')}>
-            {outperformance > 0 ? '+' : ''}{outperformance.toFixed(1)}%
-          </div>
-          <div className="text-[10px] text-muted-foreground font-mono">vs Aave</div>
-        </div>
-      </div>
-
-      {/* SVG Chart */}
-      <div className="w-full overflow-hidden rounded-md border border-border bg-background p-2">
+      {/* SVG chart */}
+      <div className="w-full overflow-hidden">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" style={{ display: 'block' }}>
-          <defs>
-            <linearGradient id="strcGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity="0.12" />
-              <stop offset="100%" stopColor="rgb(59, 130, 246)" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          {yTicks.map((val, i) => (
-            <g key={`y-${i}`}>
-              <line x1={padding.left} y1={toY(val)} x2={width - padding.right} y2={toY(val)} stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
-              <text x={padding.left - 8} y={toY(val) + 4} textAnchor="end" fill="rgba(161,161,170,0.6)" fontSize="10" fontFamily="monospace">
-                ${val.toFixed(0)}
+          {yTicks.map((v) => (
+            <g key={v}>
+              <line x1={pad.left} y1={toY(v)} x2={width - pad.right} y2={toY(v)} stroke="rgba(0,0,0,0.07)" strokeWidth="1" />
+              <text x={pad.left - 8} y={toY(v) + 4} textAnchor="end" fill="#9ca3af" fontSize="10" fontFamily="'IBM Plex Mono',monospace">
+                {v >= 0 ? '+' : ''}{v}%
               </text>
             </g>
           ))}
-
-          {xLabelIndices.map((idx) => (
-            <g key={`x-${idx}`}>
-              <line x1={toX(idx)} y1={padding.top} x2={toX(idx)} y2={padding.top + chartH} stroke="rgba(255,255,255,0.04)" strokeDasharray="3,3" />
-              <text x={toX(idx)} y={padding.top + chartH + 20} textAnchor="middle" fill="rgba(161,161,170,0.6)" fontSize="10" fontFamily="monospace">
-                {formatDateLabel(data[idx].date, range)}
-              </text>
-            </g>
+          {xIndices.map((idx) => (
+            <text key={idx} x={toX(idx)} y={pad.top + chartH + 24} textAnchor="middle" fill="#9ca3af" fontSize="10" fontFamily="'IBM Plex Mono',monospace">
+              {formatDateLabel(data[idx].date, range)}
+            </text>
           ))}
-
-          <path d={strcArea} fill="url(#strcGradient)" />
-          <path d={aavePath} fill="none" stroke="rgba(161,161,170,0.35)" strokeWidth="1.5" strokeDasharray="5,4" />
-          <path d={strcPath} fill="none" stroke="rgb(59, 130, 246)" strokeWidth="2" />
-          <circle cx={toX(data.length - 1)} cy={toY(lastPoint.strcLoopYield)} r="3" fill="rgb(59, 130, 246)" />
-          <circle cx={toX(data.length - 1)} cy={toY(lastPoint.aaveUsdcYield)} r="2.5" fill="rgba(161,161,170,0.5)" />
+          <path d={aavePath} fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2" strokeDasharray="4,3" />
+          <path d={strcPath} fill="none" stroke="#0a0a0a" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx={toX(data.length - 1)} cy={toY(strcPcts[strcPcts.length - 1])} r="3" fill="#0a0a0a" />
         </svg>
       </div>
 
-      <div className="flex items-center gap-6 text-[10px] text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded-full bg-primary" />
-          <span>STRC 3x Loop</span>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border">
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-0.5">STRC {LEVERAGE}× Loop</div>
+          <div className={cn('text-sm font-mono font-semibold', strcReturn >= 0 ? 'text-success' : 'text-destructive')}>
+            {strcReturn >= 0 ? '+' : ''}{strcReturn.toFixed(1)}%
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded-full bg-muted-foreground/40" style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgb(39,39,42) 3px, rgb(39,39,42) 6px)' }} />
-          <span>Aave USDC</span>
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-0.5">Aave USDC</div>
+          <div className="text-sm font-mono font-semibold text-muted-foreground">+{aaveReturn.toFixed(1)}%</div>
         </div>
-        <div className="text-[9px] font-mono text-muted-foreground/50 ml-auto">
-          Pyth Network + DeFi Llama
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-0.5">Outperformance</div>
+          <div className={cn('text-sm font-mono font-semibold', outperformance > 0 ? 'text-success' : 'text-destructive')}>
+            {outperformance > 0 ? '+' : ''}{outperformance.toFixed(1)}%
+          </div>
         </div>
       </div>
 
-      <p className="text-[9px] text-muted-foreground leading-relaxed">
-        Real STRC price data from Pyth Network. Aave USDC rates from DeFi Llama. Loop returns model {LEVERAGE}x leveraged STRC yield minus Morpho borrow costs.
+      <p className="text-[9px] text-muted-foreground">
+        Pyth Network · DeFi Llama · {LEVERAGE}× STRC loop at {STRC_BASE_APY}% yield minus Morpho borrow costs. Past performance does not guarantee future results.
       </p>
     </div>
   );
