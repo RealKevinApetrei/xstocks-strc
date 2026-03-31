@@ -8,15 +8,23 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-// Use either a static verification key (from Privy Dashboard) or JWKS URL
-// Static key avoids network requests — works even when JWKS endpoint is unreachable
 async function getVerificationKey() {
-  const staticKey = process.env.PRIVY_VERIFICATION_KEY;
+  let staticKey = process.env.PRIVY_VERIFICATION_KEY;
+
   if (staticKey) {
-    // Static SPKI public key from Privy Dashboard
+    // Handle literal \n in env var (Railway may not convert them)
+    staticKey = staticKey.replace(/\\n/g, '\n');
+
+    // If the key doesn't have PEM headers, wrap it
+    if (!staticKey.includes('-----BEGIN')) {
+      staticKey = `-----BEGIN PUBLIC KEY-----\n${staticKey}\n-----END PUBLIC KEY-----`;
+    }
+
+    console.log('[AUTH] Using static PRIVY_VERIFICATION_KEY');
     return importSPKI(staticKey, 'ES256');
   }
-  // Fallback to JWKS (requires network access to auth.privy.io)
+
+  console.log('[AUTH] No static key — falling back to JWKS (requires network)');
   return createRemoteJWKSet(
     new URL(`https://auth.privy.io/api/v1/apps/${config.privyAppId}/.well-known/jwks.json`),
   );
@@ -51,7 +59,6 @@ export async function privyAuth(
     (req as AuthenticatedRequest).user = { privyId: userId };
     next();
   } catch (err) {
-    // Reset key on failure in case it was cached incorrectly
     verificationKey = null;
     console.error('[AUTH] JWT verification failed:', err instanceof Error ? err.message : err);
     res.status(401).json({ error: 'Invalid or expired token' });
