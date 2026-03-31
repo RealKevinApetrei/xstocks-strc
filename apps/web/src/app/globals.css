@@ -184,6 +184,56 @@ body {
   --relay-radius-swap-btn: 9999px !important;
   --relay-borders-widget-swap-currency-button-border-width: 1px !important;
   --relay-radii-widget-swap-currency-button-border-radius: 9999px !important;
+
+  /* Override violet/purple → neutral gray (address badges, accents) */
+  --relay-colors-violet-1: #f5f4f0 !important;
+  --relay-colors-violet-2: #f0eeea !important;
+  --relay-colors-violet-3: #e5e7eb !important;
+  --relay-colors-violet-4: #d1d5db !important;
+  --relay-colors-violet-5: #9ca3af !important;
+  --relay-colors-violet-6: #6b6866 !important;
+  --relay-colors-violet-7: #4b5563 !important;
+  --relay-colors-violet-8: #374151 !important;
+  --relay-colors-violet-9: #2d2d2d !important;
+  --relay-colors-violet-10: #1f2937 !important;
+  --relay-colors-violet-11: #0a0a0a !important;
+  --relay-colors-violet-12: #0a0a0a !important;
+  --relay-colors-violet-dark-1: #f5f4f0 !important;
+  --relay-colors-violet-dark-2: #f0eeea !important;
+  --relay-colors-violet-dark-3: #e5e7eb !important;
+  --relay-colors-violet-dark-4: #d1d5db !important;
+  --relay-colors-violet-dark-5: #9ca3af !important;
+  --relay-colors-violet-dark-6: #6b6866 !important;
+  --relay-colors-violet-dark-7: #4b5563 !important;
+  --relay-colors-violet-dark-8: #374151 !important;
+  --relay-colors-violet-dark-9: #2d2d2d !important;
+  --relay-colors-violet-dark-10: #1f2937 !important;
+  --relay-colors-violet-dark-11: #0a0a0a !important;
+  --relay-colors-violet-dark-12: #0a0a0a !important;
+
+  /* Override blue → neutral (token selector accents) */
+  --relay-colors-blue-1: #f5f4f0 !important;
+  --relay-colors-blue-2: #f0eeea !important;
+  --relay-colors-blue-3: #e5e7eb !important;
+  --relay-colors-blue-4: #d1d5db !important;
+  --relay-colors-blue-5: #9ca3af !important;
+  --relay-colors-blue-6: #6b6866 !important;
+  --relay-colors-blue-9: #2d2d2d !important;
+  --relay-colors-blue-11: #0a0a0a !important;
+  --relay-colors-blue-12: #0a0a0a !important;
+  --relay-colors-blue-dark-1: #f5f4f0 !important;
+  --relay-colors-blue-dark-2: #f0eeea !important;
+  --relay-colors-blue-dark-3: #e5e7eb !important;
+  --relay-colors-blue-dark-9: #2d2d2d !important;
+  --relay-colors-blue-dark-11: #0a0a0a !important;
+  --relay-colors-blue-dark-12: #0a0a0a !important;
+
+  /* Blue light overrides */
+  --relay-colors-blue-light-1: #f5f4f0 !important;
+  --relay-colors-blue-light-2: #f0eeea !important;
+  --relay-colors-blue-light-3: #e5e7eb !important;
+  --relay-colors-blue-light-4: #d1d5db !important;
+  --relay-colors-blue-light-5: #9ca3af !important;
 }
 
 /* Remove all-caps and force font */

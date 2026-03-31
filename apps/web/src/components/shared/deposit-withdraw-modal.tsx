@@ -55,13 +55,8 @@ export function DepositWithdrawModal({
   const { wallets } = useWallets();
   const { address: smartWalletAddress } = useSmartWallet();
 
-  // Embedded wallet address for deposits (where Relay/QR sends USDC)
-  const embeddedWallet = user?.linkedAccounts.find(
-    (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
-  );
-  const depositAddress = embeddedWallet && 'address' in embeddedWallet
-    ? embeddedWallet.address as string
-    : smartWalletAddress;
+  // Deposits go to smart wallet (where loop executor operates)
+  const depositAddress = smartWalletAddress;
 
   // Adapt Privy embedded wallet for Relay SwapWidget
   const [relayWallet, setRelayWallet] = useState<any>(undefined);
@@ -239,7 +234,7 @@ export function DepositWithdrawModal({
             </p>
             {mode === 'deposit' && depositAddress && (
               <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2 px-1">
-                <span>Recipient (embedded wallet)</span>
+                <span>Recipient (trading account)</span>
                 <span className="font-mono">{depositAddress.slice(0, 6)}...{depositAddress.slice(-4)}</span>
               </div>
             )}
