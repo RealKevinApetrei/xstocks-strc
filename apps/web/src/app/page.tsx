@@ -115,33 +115,19 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Bitcoin stack — bottom left */}
+      {/* Bitcoin hand — left side */}
       <img
-        src="/bitcoin-stack.png"
+        src="/bitcoin-hand.png"
         alt=""
         aria-hidden="true"
-        className="absolute left-4 bottom-0 h-[38vh] object-contain object-bottom select-none pointer-events-none"
+        className="absolute left-0 bottom-0 h-[72vh] object-contain object-bottom select-none pointer-events-none"
         style={{
-          filter: 'drop-shadow(4px 0 20px rgba(0,0,0,0.10))',
-          transform: `translate(${parallax.x * -8}px, ${parallax.y * 4}px)`,
+          mixBlendMode: 'multiply',
+          transform: `translate(${parallax.x * -16}px, ${parallax.y * 8}px)`,
           transition: 'transform 0.15s ease-out',
         }}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Chart going up — top left */}
-      <img
-        src="/chart-up.png"
-        alt=""
-        aria-hidden="true"
-        className="absolute left-[10%] top-[12%] h-[22vh] object-contain select-none pointer-events-none opacity-60"
-        style={{
-          transform: `rotate(-5deg) translate(${parallax.x * -20}px, ${parallax.y * -10}px)`,
-          transition: 'transform 0.15s ease-out',
-          filter: 'drop-shadow(2px 2px 12px rgba(0,0,0,0.08))',
-        }}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-      />
 
       {/* Central card */}
       <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-[480px]">
