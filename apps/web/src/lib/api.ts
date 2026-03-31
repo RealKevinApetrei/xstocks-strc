@@ -97,6 +97,12 @@ export const api = {
   getStrcPriceHistory: (days: number = 90) =>
     request<{ history: Array<{ price: number; timestamp: number }>; count: number; source: string }>(`/api/grid/price/history?days=${days}`),
 
+  // Withdraw USDC from smart wallet
+  withdraw: (token: string, amount: string, to: string) =>
+    request<{ txHash: string; success: boolean }>('/api/execution/withdraw', {
+      method: 'POST', body: JSON.stringify({ amount, to }), token,
+    }),
+
   // Loop history (paginated)
   getLoopHistory: (token: string, limit: number = 20, offset: number = 0) =>
     request<{

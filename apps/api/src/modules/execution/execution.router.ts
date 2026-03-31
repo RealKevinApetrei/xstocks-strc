@@ -49,6 +49,56 @@ executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => 
   }
 });
 
+// POST /api/execution/withdraw — Withdraw USDC from smart wallet to an external address
+executionRouter.post('/withdraw', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const { amount, to } = req.body as { amount: string; to: string };
+
+  if (!amount || !to) {
+    res.status(400).json({ error: 'Missing amount or destination address' });
+    return;
+  }
+
+  const amountBn = BigInt(amount);
+  if (amountBn <= 0n) {
+    res.status(400).json({ error: 'Amount must be greater than 0' });
+    return;
+  }
+
+  // Check balance
+  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+  const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
+  const balance: bigint = await usdc.balanceOf(smartAccountAddr);
+
+  if (balance < amountBn) {
+    const balFormatted = (Number(balance) / 1e6).toFixed(2);
+    res.status(400).json({ error: `Insufficient balance. Available: $${balFormatted} USDC` });
+    return;
+  }
+
+  try {
+    // ERC20 transfer calldata
+    const iface = new ethers.Interface(['function transfer(address to, uint256 amount) returns (bool)']);
+    const data = iface.encodeFunctionData('transfer', [to, amountBn]);
+
+    const txHash = await smartAccountService.sendBatchUserOp(privyId, [
+      { to: config.usdc, data },
+    ]);
+
+    const receipt = await smartAccountService.waitForReceipt(txHash);
+    if (!receipt.success) {
+      res.status(500).json({ error: 'Withdraw transaction reverted' });
+      return;
+    }
+
+    res.json({ txHash, success: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: `Withdraw failed: ${msg}` });
+  }
+});
+
 // POST /api/execution/unwind — Unwind a position
 executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
