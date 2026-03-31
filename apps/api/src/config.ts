@@ -38,5 +38,5 @@ export const config = {
   cowApiUrl: optional('COW_API_URL', ''),
 
   // Chainlink
-  chainlinkWebhookSecret: optional('CHAINLINK_WEBHOOK_SECRET', ''),
+  pythWebhookSecret: optional('PYTH_WEBHOOK_SECRET', ''),
 } as const;

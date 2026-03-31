@@ -7,7 +7,7 @@ export function chainlinkWebhookAuth(
   next: NextFunction,
 ): void {
   const secret = req.headers['x-webhook-secret'];
-  if (!config.chainlinkWebhookSecret || secret !== config.chainlinkWebhookSecret) {
+  if (!config.pythWebhookSecret || secret !== config.pythWebhookSecret) {
     res.status(401).json({ error: 'Invalid webhook secret' });
     return;
   }

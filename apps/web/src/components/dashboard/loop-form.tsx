@@ -1,11 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatUsd } from '@/lib/utils';
+
+// Mock Pyth price
+const STRC_PRICE_USD = 105.42;
+
+const LEVERAGE_OPTIONS = [2, 3, 5] as const;
 
 export function LoopForm() {
   const [strcAmount, setStrcAmount] = useState('');
-  const [leverage, setLeverage] = useState(2);
+  const [leverage, setLeverage] = useState<number>(2);
   const [slippageBps, setSlippageBps] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -20,7 +25,10 @@ export function LoopForm() {
     }
   };
 
-  const leverageMarks = [1.5, 2, 2.5, 3, 4, 5];
+  const amountNum = parseFloat(strcAmount) || 0;
+  const amountUsd = amountNum * STRC_PRICE_USD;
+  const totalExposureStrc = amountNum * leverage;
+  const totalExposureUsd = totalExposureStrc * STRC_PRICE_USD;
 
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-5">
@@ -39,34 +47,32 @@ export function LoopForm() {
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">STRC</span>
         </div>
+        {amountNum > 0 && (
+          <div className="text-[10px] text-muted-foreground font-mono text-right">
+            {formatUsd(amountUsd)}
+          </div>
+        )}
       </div>
 
-      {/* Leverage Slider */}
+      {/* Leverage Selection — only 2x, 3x, 5x */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs text-muted-foreground">Target Leverage</label>
-          <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}x</span>
+          <span className="text-sm font-mono font-semibold text-primary">{leverage}x</span>
         </div>
-        <input
-          type="range"
-          min="1.1"
-          max="5"
-          step="0.1"
-          value={leverage}
-          onChange={(e) => setLeverage(parseFloat(e.target.value))}
-          className="w-full accent-primary"
-        />
-        <div className="flex justify-between">
-          {leverageMarks.map((mark) => (
+        <div className="grid grid-cols-3 gap-2">
+          {LEVERAGE_OPTIONS.map((lev) => (
             <button
-              key={mark}
-              onClick={() => setLeverage(mark)}
+              key={lev}
+              onClick={() => setLeverage(lev)}
               className={cn(
-                'text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors',
-                leverage === mark ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground',
+                'rounded-md border py-3 text-center font-mono text-sm font-semibold transition-all',
+                leverage === lev
+                  ? 'border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20'
+                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground',
               )}
             >
-              {mark}x
+              {lev}x
             </button>
           ))}
         </div>
@@ -99,19 +105,26 @@ export function LoopForm() {
         disabled={!strcAmount || isSubmitting}
         className="w-full rounded-md bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? 'Starting Loop...' : `Loop ${leverage.toFixed(1)}x`}
+        {isSubmitting ? 'Starting Loop...' : `Loop ${leverage}x`}
       </button>
 
       {/* Preview */}
-      {strcAmount && (
+      {amountNum > 0 && (
         <div className="rounded-md border border-border bg-background p-3 space-y-1.5">
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Estimated iterations</span>
-            <span className="font-mono">{Math.ceil(Math.log(leverage) / Math.log(1.8))}</span>
+            <span className="text-muted-foreground">Total exposure</span>
+            <div className="text-right">
+              <span className="font-mono">{totalExposureStrc.toFixed(2)} STRC</span>
+              <span className="text-muted-foreground ml-1.5 font-mono">({formatUsd(totalExposureUsd)})</span>
+            </div>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Total exposure</span>
-            <span className="font-mono">{(parseFloat(strcAmount) * leverage).toFixed(2)} STRC</span>
+            <span className="text-muted-foreground">Est. debt</span>
+            <span className="font-mono">{formatUsd(totalExposureUsd - amountUsd)} USDC</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Est. iterations</span>
+            <span className="font-mono">{Math.ceil(Math.log(leverage) / Math.log(1.8))}</span>
           </div>
         </div>
       )}

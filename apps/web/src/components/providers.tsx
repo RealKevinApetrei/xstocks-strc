@@ -2,9 +2,18 @@
 
 import { PrivyProvider } from '@privy-io/react-auth';
 import { type ReactNode } from 'react';
+import { defineChain } from 'viem';
 
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? '';
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '57073');
+const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID!;
+
+const ink = defineChain({
+  id: 57073,
+  name: 'Ink',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://rpc-gel-sepolia.inkonchain.com'] },
+  },
+});
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -18,12 +27,8 @@ export function Providers({ children }: { children: ReactNode }) {
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
-        defaultChain: {
-          id: CHAIN_ID,
-          name: 'Ink',
-          nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-          rpcUrls: { default: { http: [''] } }, // Filled from Privy dashboard
-        },
+        defaultChain: ink,
+        supportedChains: [ink],
       }}
     >
       {children}

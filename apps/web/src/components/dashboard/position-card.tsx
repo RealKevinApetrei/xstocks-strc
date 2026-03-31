@@ -1,34 +1,62 @@
 'use client';
 
-import { cn, formatBigInt, formatUsd, formatPercent } from '@/lib/utils';
+import { cn, formatBigInt, formatUsd } from '@/lib/utils';
 
-// TODO: Wire to usePosition hook with real data
+// Mock Pyth price — will be replaced with real Pyth feed
+const STRC_PRICE_USD = 105.42;
+const MORPHO_BORROW_RATE_APY = 4.2; // Simulated Morpho USDC borrow rate
+const STRC_STAKING_APY = 12.5; // Simulated STRC staking/rebase yield
+
+// TODO: Wire to usePosition hook with real Pyth pricing
 const mockPosition = {
   hasPosition: true,
-  collateralStrc: '5000000000000000000000',
-  debtUsdc: '2500000000',
+  collateralStrc: '5000000000000000000000', // 5000 STRC
+  debtUsdc: '250000000000', // 250,000 USDC (6 decimals)
   healthFactor: 1.82,
-  effectiveLeverage: 2.4,
+  effectiveLeverage: 3,
   liquidationPrice: 68.5,
   exchangeRate: '1050000000000000000',
 };
 
-function HealthIndicator({ hf }: { hf: number }) {
+function HealthFactorGauge({ hf }: { hf: number }) {
+  const percentage = Math.min(Math.max((hf - 1) / 2, 0), 1) * 100;
   const color = hf > 2 ? 'text-success' : hf > 1.5 ? 'text-warning' : 'text-destructive';
-  const bg = hf > 2 ? 'bg-success/10' : hf > 1.5 ? 'bg-warning/10' : 'bg-destructive/10';
-  const borderColor = hf > 2 ? 'border-success/30' : hf > 1.5 ? 'border-warning/30' : 'border-destructive/30';
+  const barColor = hf > 2 ? 'bg-success' : hf > 1.5 ? 'bg-warning' : 'bg-destructive';
+  const glowColor = hf > 2 ? 'shadow-success/30' : hf > 1.5 ? 'shadow-warning/30' : 'shadow-destructive/30';
   const label = hf > 2 ? 'SAFE' : hf > 1.5 ? 'CAUTION' : 'DANGER';
 
   return (
-    <div className={cn('inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-mono', bg, borderColor, color)}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', hf > 2 ? 'bg-success' : hf > 1.5 ? 'bg-warning' : 'bg-destructive')} />
-      {label} &middot; {hf.toFixed(2)}
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Health Factor</span>
+        <div className="flex items-center gap-2">
+          <span className={cn('text-[10px] font-mono font-semibold uppercase tracking-wider', color)}>{label}</span>
+          <span className={cn('text-lg font-mono font-bold', color)}>{hf.toFixed(2)}</span>
+        </div>
+      </div>
+      <div className="relative h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className={cn('absolute left-0 top-0 h-full rounded-full transition-all duration-500 shadow-md', barColor, glowColor)}
+          style={{ width: `${percentage}%` }}
+        />
+        {/* Danger zone marker at HF 1.5 */}
+        <div className="absolute top-0 h-full w-px bg-warning/50" style={{ left: '25%' }} />
+        {/* Safe zone marker at HF 2.0 */}
+        <div className="absolute top-0 h-full w-px bg-success/50" style={{ left: '50%' }} />
+      </div>
+      <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+        <span>1.0 LIQ</span>
+        <span>1.5</span>
+        <span>2.0</span>
+        <span>3.0+</span>
+      </div>
     </div>
   );
 }
 
 export function PositionCard() {
   const p = mockPosition;
+  const strcPrice = STRC_PRICE_USD;
 
   if (!p.hasPosition) {
     return (
@@ -39,36 +67,73 @@ export function PositionCard() {
     );
   }
 
+  const collateralStrc = parseFloat(formatBigInt(p.collateralStrc));
+  const collateralUsd = collateralStrc * strcPrice;
+  const debtUsd = parseFloat(formatBigInt(p.debtUsdc, 6, 2));
+  const equityUsd = collateralUsd - debtUsd;
+  const netYield = (STRC_STAKING_APY * p.effectiveLeverage) - (MORPHO_BORROW_RATE_APY * (p.effectiveLeverage - 1));
+
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-muted-foreground">Position</h2>
-        <HealthIndicator hf={p.healthFactor} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Stat label="Collateral" value={`${formatBigInt(p.collateralStrc)} STRC`} />
-        <Stat label="Debt" value={`${formatBigInt(p.debtUsdc, 6, 2)} USDC`} />
-        <Stat label="Leverage" value={`${p.effectiveLeverage.toFixed(1)}x`} highlight />
-        <Stat label="Liq. Price" value={formatUsd(p.liquidationPrice)} />
-      </div>
-
-      <div className="pt-2 border-t border-border">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>wSTRC Rate</span>
-          <span className="font-mono">{formatBigInt(p.exchangeRate)} STRC/wSTRC</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground font-mono">STRC/USD</span>
+          <span className="text-sm font-mono font-semibold text-foreground">{formatUsd(strcPrice)}</span>
+          <span className="text-[9px] text-muted-foreground">via Pyth</span>
         </div>
       </div>
-    </div>
-  );
-}
 
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div>
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
-      <div className={cn('text-lg font-mono font-semibold', highlight && 'text-primary')}>
-        {value}
+      {/* Main metrics in USD */}
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Collateral</div>
+          <div className="text-lg font-mono font-semibold">{formatUsd(collateralUsd)}</div>
+          <div className="text-[10px] text-muted-foreground font-mono">{collateralStrc.toFixed(2)} STRC</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Debt</div>
+          <div className="text-lg font-mono font-semibold text-destructive/80">{formatUsd(debtUsd)}</div>
+          <div className="text-[10px] text-muted-foreground font-mono">{debtUsd.toFixed(2)} USDC</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Equity</div>
+          <div className="text-lg font-mono font-semibold text-success">{formatUsd(equityUsd)}</div>
+          <div className="text-[10px] text-muted-foreground font-mono">{(equityUsd / strcPrice).toFixed(2)} STRC eq.</div>
+        </div>
+      </div>
+
+      {/* Health Factor Gauge */}
+      <HealthFactorGauge hf={p.healthFactor} />
+
+      {/* Secondary metrics */}
+      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Leverage</span>
+          <span className="text-sm font-mono font-semibold text-primary">{p.effectiveLeverage.toFixed(1)}x</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Liq. Price</span>
+          <span className="text-sm font-mono font-semibold">{formatUsd(p.liquidationPrice)}</span>
+        </div>
+      </div>
+
+      {/* Yield breakdown */}
+      <div className="rounded-md border border-border bg-background p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Morpho Borrow Rate</span>
+          <span className="text-xs font-mono text-destructive/70">-{MORPHO_BORROW_RATE_APY.toFixed(2)}%</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">STRC Yield ({p.effectiveLeverage}x leveraged)</span>
+          <span className="text-xs font-mono text-success">+{(STRC_STAKING_APY * p.effectiveLeverage).toFixed(2)}%</span>
+        </div>
+        <div className="flex items-center justify-between border-t border-border pt-2">
+          <span className="text-xs font-medium text-foreground">Effective Net Yield</span>
+          <span className={cn('text-sm font-mono font-bold', netYield > 0 ? 'text-success' : 'text-destructive')}>
+            {netYield > 0 ? '+' : ''}{netYield.toFixed(2)}% APY
+          </span>
+        </div>
       </div>
     </div>
   );
