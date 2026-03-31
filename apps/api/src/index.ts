@@ -31,10 +31,11 @@ app.listen(config.port, () => {
   console.log(`xStocks API running on port ${config.port}`);
   console.log(`Chain: Ink (${config.chainId})`);
 
-  // Start Pyth price polling (30s price check, 5m on-chain update)
-  if (config.morphoOracle || config.pythPriceFeedId) {
+  // Start Pyth price polling (reads from Hermes every 30s for grid triggers)
+  // On-chain price updates are pushed on-demand before executions
+  if (config.pythPriceFeedId) {
     pythPriceService.start();
   } else {
-    console.log('Oracle not configured — Pyth price service disabled');
+    console.log('Pyth feed ID not configured — price service disabled');
   }
 });

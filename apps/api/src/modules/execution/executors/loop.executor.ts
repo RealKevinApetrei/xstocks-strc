@@ -8,6 +8,7 @@ import { cowSwapService } from '../../cowswap/cowswap.service';
 import { signerService } from '../signer.service';
 import { MAX_LEVERAGE } from '@xstocks/shared';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
+import { pythPriceService } from '../../pyth/pyth-price.service';
 
 const MAX_CUMULATIVE_SLIPPAGE_BPS = 500; // 5%
 const LOOP_TARGET_HF = 1.5;
@@ -60,6 +61,9 @@ export class LoopExecutor {
     await query(`UPDATE loop_executions SET status = 'IN_PROGRESS' WHERE id = $1`, [loopId]);
 
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+
+    // Push fresh Pyth price on-chain before execution
+    await pythPriceService.ensureFreshPrice();
 
     // Step 0: Initial swap USDC → STRC via CoW
     let currentStrcAmount: bigint;

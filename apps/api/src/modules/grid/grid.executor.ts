@@ -9,6 +9,7 @@ import { signerService } from '../execution/signer.service';
 import { approvalExecutor } from '../execution/executors/approval.executor';
 import { borrowExecutor } from '../execution/executors/borrow.executor';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
+import { pythPriceService } from '../pyth/pyth-price.service';
 
 const GRID_BUY_TARGET_HF = 2.0; // Conservative HF for grid buys
 
@@ -53,6 +54,9 @@ export class GridExecutor {
    * Buy the dip: vault → swap USDC→STRC → wrap → supply → borrow.
    */
   private async executeGridBuy(strategy: GridStrategy, triggerPrice: number): Promise<void> {
+    // Push fresh Pyth price on-chain before grid-buy execution
+    await pythPriceService.ensureFreshPrice();
+
     // Debounce: skip if last event was < 5 minutes ago
     const { rows: recentEvents } = await query(
       `SELECT id FROM grid_events WHERE grid_strategy_id = $1 AND created_at > NOW() - INTERVAL '5 minutes'`,

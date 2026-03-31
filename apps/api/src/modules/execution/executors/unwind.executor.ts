@@ -7,6 +7,7 @@ import { cowSwapService } from '../../cowswap/cowswap.service';
 import { signerService } from '../signer.service';
 import { approvalExecutor } from './approval.executor';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
+import { pythPriceService } from '../../pyth/pyth-price.service';
 
 const UNWIND_MIN_HF = 1.3; // Minimum HF to maintain during unwind
 const UNWIND_SAFETY_MARGIN = 0.95; // 5% safety margin on withdrawals
@@ -55,6 +56,10 @@ export class UnwindExecutor {
     await query(`UPDATE unwind_executions SET status = 'IN_PROGRESS' WHERE id = $1`, [unwindId]);
 
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+
+    // Push fresh Pyth price on-chain before unwind
+    await pythPriceService.ensureFreshPrice();
+
     let step = 0;
 
     while (true) {
