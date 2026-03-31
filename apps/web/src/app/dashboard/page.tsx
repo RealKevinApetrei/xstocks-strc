@@ -9,7 +9,7 @@ import { LivePriceTicker } from '@/components/dashboard/live-price-ticker';
 import { PerformanceChart } from '@/components/vaults/performance-chart';
 import { usePosition } from '@/hooks/use-position';
 
-const STRC_APY = 12.5;
+const STRC_APY = 11.5;
 const MORPHO_RATE = 4.2;
 
 export default function Dashboard() {
