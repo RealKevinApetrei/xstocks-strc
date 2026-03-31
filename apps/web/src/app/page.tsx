@@ -34,6 +34,7 @@ function AprCounter() {
 }
 
 const TICKER_ITEMS = [
+  { label: '❝', value: 'There is no second best.' },
   { label: '❝', value: 'Bitcoin is the apex property of the human race.' },
   { label: '❝', value: 'If you don\'t own Bitcoin, you don\'t understand it yet.' },
   { label: '❝', value: 'Bitcoin is hope.' },
