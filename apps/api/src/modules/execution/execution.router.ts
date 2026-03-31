@@ -17,21 +17,20 @@ export const executionRouter = Router();
 // POST /api/execution/loop — Start a leveraged loop
 executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
-  const { strcAmount, targetLeverage, maxSlippageBps } = req.body as StartLoopRequest;
+  const { strcAmount, targetLeverage } = req.body as StartLoopRequest;
 
   try {
     await policyService.validateLoop({
       privyId,
-      strcAmount: BigInt(strcAmount),
+      usdcAmount: BigInt(strcAmount), // Frontend sends as strcAmount field (USDC amount)
       targetLeverage,
-      maxSlippageBps,
     });
 
     const loopId = await loopExecutor.startLoop({
       privyId,
       strcAmount: BigInt(strcAmount),
       targetLeverage,
-      maxSlippageBps,
+      maxSlippageBps: 0, // CoW RFQ — no slippage
     });
 
     res.status(201).json({
@@ -54,8 +53,19 @@ executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => 
 executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
   const { loopExecutionId } = req.body as StartUnwindRequest;
+  const targetLeverage = (req.body as any).targetLeverage ?? 0;
 
-  // Check loop exists
+  try {
+    await policyService.validateUnwind({ privyId, targetLeverage });
+  } catch (err) {
+    if (err instanceof PolicyViolation) {
+      res.status(err.message.includes('in progress') ? 409 : 400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  // Verify loop belongs to user
   const { rows: [loop] } = await query(
     `SELECT id, status FROM loop_executions WHERE id = $1 AND privy_id = $2`,
     [loopExecutionId, privyId],
@@ -65,17 +75,7 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
     return;
   }
 
-  // Check no active unwind
-  const { rows: activeUnwinds } = await query(
-    `SELECT id FROM unwind_executions WHERE loop_execution_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
-    [loopExecutionId],
-  );
-  if (activeUnwinds.length > 0) {
-    res.status(409).json({ error: 'Unwind already in progress' });
-    return;
-  }
-
-  const unwindId = await unwindExecutor.startUnwind({ privyId, loopExecutionId });
+  const unwindId = await unwindExecutor.startUnwind({ privyId, loopExecutionId, targetLeverage });
 
   res.status(201).json({
     id: unwindId,
@@ -229,6 +229,44 @@ executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
       '5x': baseApy * 5 * 0.75,
     },
     history,
+  });
+});
+
+// GET /api/execution/loops — Paginated loop history for a user
+executionRouter.get('/loops', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const limit = Math.min(parseInt((req.query as any).limit ?? '20', 10), 100);
+  const offset = parseInt((req.query as any).offset ?? '0', 10);
+
+  const { rows } = await query(
+    `SELECT l.id, l.strc_amount, l.target_leverage, l.effective_leverage, l.health_factor,
+            l.current_iteration, l.status, l.error, l.created_at, l.updated_at
+     FROM loop_executions l WHERE l.privy_id = $1
+     ORDER BY l.created_at DESC LIMIT $2 OFFSET $3`,
+    [privyId, limit, offset],
+  );
+
+  const { rows: [{ count }] } = await query(
+    `SELECT COUNT(*) FROM loop_executions WHERE privy_id = $1`,
+    [privyId],
+  );
+
+  res.json({
+    loops: rows.map((r: any) => ({
+      id: r.id,
+      strcAmount: r.strc_amount,
+      targetLeverage: Number(r.target_leverage),
+      effectiveLeverage: r.effective_leverage ? Number(r.effective_leverage) : null,
+      healthFactor: r.health_factor ? Number(r.health_factor) : null,
+      iterations: r.current_iteration,
+      status: r.status,
+      error: r.error,
+      createdAt: r.created_at.toISOString(),
+      updatedAt: r.updated_at.toISOString(),
+    })),
+    total: parseInt(count, 10),
+    limit,
+    offset,
   });
 });
 

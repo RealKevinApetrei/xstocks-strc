@@ -1,14 +1,12 @@
 /**
  * Fetches Aave USDC lending yield data.
- * Uses Aave's public subgraph for historical rates
- * and on-chain reserve data for current rates.
+ *
+ * Uses DeFi Llama's public yield API for reliable historical and current rates.
+ * Falls back to simulated data if the API is unavailable.
  */
 
-// Aave V3 subgraph on mainnet (USDC rates are similar across chains)
-const AAVE_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/aave/protocol-v3';
-
-// Aave USDC reserve address (Ethereum mainnet — used as benchmark)
-const USDC_RESERVE_ID = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb480x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e';
+// DeFi Llama yield API — free, no API key, reliable
+const DEFILLAMA_POOLS_URL = 'https://yields.llama.fi/pools';
 
 export interface AaveYieldData {
   currentSupplyApy: number;
@@ -22,6 +20,7 @@ export class AaveYieldService {
   private cache: AaveYieldData | null = null;
   private cacheTimestamp = 0;
   private readonly CACHE_TTL_MS = 300_000; // 5 min
+  private poolId: string | null = null;
 
   /**
    * Get current and historical Aave USDC supply APY.
@@ -33,68 +32,66 @@ export class AaveYieldService {
     }
 
     try {
-      const data = await this.fetchFromSubgraph(days);
+      const data = await this.fetchFromDefiLlama(days);
       this.cache = data;
       this.cacheTimestamp = now;
       return data;
     } catch (err) {
       console.error('Failed to fetch Aave yield data:', err);
-      // Return simulated data as fallback
       return this.getSimulatedData(days);
     }
   }
 
-  private async fetchFromSubgraph(days: number): Promise<AaveYieldData> {
-    const fromTimestamp = Math.floor(Date.now() / 1000) - days * 86400;
+  /**
+   * Find the Aave V3 USDC pool ID on DeFi Llama.
+   */
+  private async getPoolId(): Promise<string> {
+    if (this.poolId) return this.poolId;
 
-    const query = `{
-      reserveParamsHistoryItems(
-        where: {
-          reserve: "${USDC_RESERVE_ID.toLowerCase()}"
-          timestamp_gte: ${fromTimestamp}
-        }
-        orderBy: timestamp
-        orderDirection: asc
-        first: 1000
-      ) {
-        timestamp
-        liquidityRate
-      }
-      reserve(id: "${USDC_RESERVE_ID.toLowerCase()}") {
-        liquidityRate
-      }
-    }`;
+    const response = await fetch(DEFILLAMA_POOLS_URL);
+    if (!response.ok) throw new Error(`DeFi Llama pools: ${response.status}`);
 
-    const response = await fetch(AAVE_SUBGRAPH_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Aave subgraph error: ${response.status}`);
-    }
-
-    const result = (await response.json()) as {
-      data: {
-        reserveParamsHistoryItems: Array<{ timestamp: string; liquidityRate: string }>;
-        reserve: { liquidityRate: string } | null;
-      };
+    const { data } = (await response.json()) as {
+      data: Array<{ pool: string; project: string; symbol: string; chain: string; apy: number }>;
     };
 
-    // Convert Aave ray (27 decimals) to APY percentage
-    const rayToApy = (ray: string): number => {
-      const rate = Number(BigInt(ray)) / 1e27;
-      return rate * 100;
+    // Find Aave V3 USDC on Ethereum (primary benchmark)
+    const pool = data.find(
+      (p) => p.project === 'aave-v3' && p.symbol === 'USDC' && p.chain === 'Ethereum',
+    ) ?? data.find(
+      // Fallback: any Aave V3 USDC pool
+      (p) => p.project === 'aave-v3' && p.symbol.includes('USDC'),
+    );
+
+    if (!pool) throw new Error('Aave V3 USDC pool not found on DeFi Llama');
+    this.poolId = pool.pool;
+    return pool.pool;
+  }
+
+  private async fetchFromDefiLlama(days: number): Promise<AaveYieldData> {
+    const poolId = await this.getPoolId();
+    const chartUrl = `https://yields.llama.fi/chart/${poolId}`;
+    const response = await fetch(chartUrl);
+    if (!response.ok) throw new Error(`DeFi Llama chart: ${response.status}`);
+
+    const { data } = (await response.json()) as {
+      data: Array<{ timestamp: string; apy: number; tvlUsd: number }>;
     };
 
-    const history = result.data.reserveParamsHistoryItems.map((item) => ({
-      timestamp: new Date(parseInt(item.timestamp) * 1000).toISOString(),
-      supplyApy: rayToApy(item.liquidityRate),
+    // Filter to requested time range
+    const cutoffMs = Date.now() - days * 86400000;
+    const filtered = data.filter((d) => new Date(d.timestamp).getTime() >= cutoffMs);
+
+    const history = filtered.map((d) => ({
+      timestamp: d.timestamp,
+      supplyApy: d.apy,
     }));
 
-    const currentRate = result.data.reserve?.liquidityRate;
-    const currentSupplyApy = currentRate ? rayToApy(currentRate) : (history.length > 0 ? history[history.length - 1].supplyApy : 3.5);
+    const currentSupplyApy = history.length > 0
+      ? history[history.length - 1].supplyApy
+      : 3.5;
+
+    console.log(`Aave V3 USDC APY: ${currentSupplyApy.toFixed(2)}% (${history.length} data points from DeFi Llama)`);
 
     return { currentSupplyApy, history };
   }

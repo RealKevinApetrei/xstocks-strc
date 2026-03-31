@@ -6,7 +6,7 @@ import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 
 const MORPHO_BORROW_RATE_APY = 4.2;
-const STRC_STAKING_APY = 12.5;
+const STRC_STAKING_APY = 11.5;
 
 function HealthFactorGauge({ hf }: { hf: number }) {
   const targetPct = Math.min(Math.max((hf - 1) / 2, 0), 1) * 100;
@@ -67,7 +67,7 @@ function HealthFactorGauge({ hf }: { hf: number }) {
 
 export function PositionCard() {
   const { data: positionData, loading } = usePosition();
-  const { price: strcPrice } = useStrcxPrice();
+  const { price: strcPrice, stale, source } = useStrcxPrice();
 
   if (loading) {
     return (
@@ -104,7 +104,12 @@ export function PositionCard() {
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground font-mono">STRCx/USD</span>
           <span className="text-sm font-mono font-semibold text-foreground">{formatUsd(strcPrice)}</span>
-          <span className="text-[9px] text-muted-foreground">live</span>
+          {!stale && source !== 'fallback' && (
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success" />
+            </span>
+          )}
         </div>
       </div>
 

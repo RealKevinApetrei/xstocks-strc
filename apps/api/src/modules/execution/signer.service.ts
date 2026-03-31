@@ -17,11 +17,12 @@ export class SignerService {
       (a: any) => a.type === 'wallet' && a.wallet_client_type === 'privy',
     );
 
-    if (!wallet) {
+    if (!wallet?.address) {
       throw new Error(`No embedded wallet found for user ${privyId}`);
     }
 
     const walletId = wallet.id ?? wallet.address;
+    if (!walletId) throw new Error(`Wallet ID missing for user ${privyId}`);
     return { address: wallet.address, walletId };
   }
 
@@ -38,7 +39,7 @@ export class SignerService {
         transaction: {
           to: tx.to as `0x${string}`,
           data: tx.data as `0x${string}`,
-          value: tx.value ? Number(tx.value) : 0,
+          value: tx.value ? parseInt(tx.value, 10) : 0,
         },
       },
       caip2: `eip155:${tx.chainId}`,
@@ -46,7 +47,9 @@ export class SignerService {
     });
 
     const data = result.data as any;
-    return data.hash ?? data.transaction_hash;
+    const hash = data.hash ?? data.transaction_hash;
+    if (!hash) throw new Error(`Privy sendTransaction returned no hash: ${JSON.stringify(data)}`);
+    return hash;
   }
 
   /**
@@ -72,7 +75,9 @@ export class SignerService {
       chain_type: 'ethereum',
     });
 
-    return (result.data as any).signature;
+    const sig = (result.data as any).signature;
+    if (!sig || typeof sig !== 'string') throw new Error('Privy signTypedData returned no signature');
+    return sig;
   }
 }
 

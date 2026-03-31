@@ -1,21 +1,18 @@
 /**
  * Contract addresses on Ink (chain ID 57073).
- * Filled in after Person A deploys contracts.
  */
 export const ADDRESSES = {
   // Tokens
   STRC: process.env.STRC_ADDRESS ?? '',
   USDC: process.env.USDC_ADDRESS ?? '',
 
-  // Our contracts (deployed by Person A)
+  // Our contracts
   WSTRC: process.env.WSTRC_ADDRESS ?? '',
   USDC_VAULT: process.env.USDC_VAULT_ADDRESS ?? '',
 
   // External protocols
   MORPHO: process.env.MORPHO_ADDRESS ?? '',
   TYDRO_VAULT: process.env.TYDRO_VAULT_ADDRESS ?? '',
-
-  // Morpho market ID (computed after market creation)
   MORPHO_MARKET_ID: process.env.MORPHO_MARKET_ID ?? '',
 
   // CoW Protocol (deterministic across all EVM chains)
@@ -24,10 +21,21 @@ export const ADDRESSES = {
 } as const;
 
 export const CHAIN_ID = 57073;
-export const DEFAULT_GRID_HF_THRESHOLD = 1.5; // Trigger buy-the-dip when HF drops below this
+
+// Leverage options (only these are allowed)
+export const LEVERAGE_OPTIONS = [2, 3, 5] as const;
 export const MAX_LEVERAGE = 5;
-export const MIN_LEVERAGE = 1.1;
-export const MAX_SLIPPAGE_BPS = 500; // 5%
+
+// Unwind targets (0 = full unwind to USDC, others = target leverage)
+export const UNWIND_TARGETS = [0, 1, 2, 3, 5] as const;
+
+// Grid strategy defaults
+export const DEFAULT_GRID_HF_THRESHOLD = 1.5;
+
+// CoW Protocol polling
 export const COW_POLL_INTERVAL_MS = 30_000;
-export const COW_TIMEOUT_MS = 600_000; // 10 minutes
 export const GRID_DEBOUNCE_MS = 300_000; // 5 minutes
+
+// Dust thresholds (below this, amounts are too small to execute)
+export const USDC_DUST = 1_000n; // 0.001 USDC (6 decimals)
+export const STRC_DUST = 10n ** 14n; // 0.0001 STRC (18 decimals)

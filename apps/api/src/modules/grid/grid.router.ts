@@ -154,7 +154,7 @@ gridRouter.get('/events/:strategyId', privyAuth, async (req: Request, res: Respo
   });
 });
 
-// GET /api/grid/price — Current STRCx/USD price from Chainlink
+// GET /api/grid/price — Current STRCx/USD price from Pyth Hermes
 gridRouter.get('/price', async (_req: Request, res: Response) => {
   try {
     const price = await pythPriceService.getPrice();
@@ -162,11 +162,38 @@ gridRouter.get('/price', async (_req: Request, res: Response) => {
       price: price.price,
       timestamp: price.timestamp,
       stale: price.stale,
-      source: 'chainlink-data-streams',
+      source: 'pyth-hermes',
     });
   } catch {
     res.json({ price: 0, timestamp: 0, stale: true, source: 'unavailable' });
   }
+});
+
+// GET /api/grid/price/history — Price history for charts
+// ?hours=24 for recent polling data, ?days=90 for historical from Pyth Benchmarks
+gridRouter.get('/price/history', async (req: Request, res: Response) => {
+  const days = Number(req.query.days) || 0;
+  if (days > 0) {
+    const history = await pythPriceService.getHistoricalPrices(Math.min(days, 365));
+    res.json({ history, count: history.length, source: 'pyth-benchmarks' });
+    return;
+  }
+  const hours = Math.min(Number(req.query.hours) || 24, 24);
+  const history = pythPriceService.getPriceHistory(hours);
+  res.json({ history, count: history.length, source: 'pyth-hermes-poll' });
+});
+
+// GET /api/grid/price/stream — SSE stream of live prices
+gridRouter.get('/price/stream', (req: Request, res: Response) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.write(':ok\n\n');
+  pythPriceService.addSseClient(res);
+  req.on('close', () => res.end());
 });
 
 // ============================================

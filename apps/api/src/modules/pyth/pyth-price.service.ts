@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import type { Response } from 'express';
 import { config } from '../../config';
 import { gridExecutor } from '../grid/grid.executor';
 
@@ -23,6 +24,7 @@ const ORACLE_ABI = [
 ];
 
 const HERMES_URL = 'https://hermes.pyth.network';
+const BENCHMARKS_URL = 'https://benchmarks.pyth.network';
 
 export interface StrcxPrice {
   price: number;
@@ -31,9 +33,19 @@ export interface StrcxPrice {
   stale: boolean;
 }
 
+export interface PricePoint {
+  price: number;
+  timestamp: number;
+}
+
+const MAX_HISTORY_POINTS = 2880; // 24h at 30s intervals
+
 export class PythPriceService {
   private cachedPrice: StrcxPrice | null = null;
   private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private priceHistory: PricePoint[] = [];
+  private sseClients: Set<Response> = new Set();
+  private historicalCache: Map<number, PricePoint[]> = new Map(); // keyed by days
 
   /**
    * Get current STRCx/USD price.
@@ -44,6 +56,94 @@ export class PythPriceService {
       return this.cachedPrice;
     }
     return this.fetchFromHermes();
+  }
+
+  /**
+   * Get price history for the given number of hours.
+   */
+  getPriceHistory(hours: number = 24): PricePoint[] {
+    const cutoff = Date.now() / 1000 - hours * 3600;
+    return this.priceHistory.filter(p => p.timestamp >= cutoff);
+  }
+
+  /**
+   * Fetch historical daily prices from Pyth Benchmarks API.
+   * Samples one price per day for the given number of days.
+   */
+  async getHistoricalPrices(days: number): Promise<PricePoint[]> {
+    // Check cache (keyed by days, refreshed every 30min)
+    const cached = this.historicalCache.get(days);
+    if (cached) return cached;
+
+    if (!config.pythPriceFeedId) return [];
+
+    const feedId = config.pythPriceFeedId.replace('0x', '');
+    const now = Math.floor(Date.now() / 1000);
+    const points: PricePoint[] = [];
+
+    // Fetch prices in parallel batches (one per day)
+    const timestamps = Array.from({ length: days }, (_, i) => now - (days - i) * 86400);
+    const batchSize = 10;
+
+    for (let i = 0; i < timestamps.length; i += batchSize) {
+      const batch = timestamps.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map(async (ts) => {
+          const url = `${BENCHMARKS_URL}/v1/updates/price/${ts}?ids=${feedId}&parsed=true`;
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const data = (await res.json()) as {
+            parsed: Array<{ price: { price: string; expo: number; publish_time: number } }>;
+          };
+          if (!data.parsed?.[0]) return null;
+          const p = data.parsed[0].price;
+          return {
+            price: parseInt(p.price) * Math.pow(10, p.expo),
+            timestamp: p.publish_time,
+          };
+        }),
+      );
+
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) points.push(r.value);
+      }
+    }
+
+    if (points.length > 0) {
+      this.historicalCache.set(days, points);
+      // Expire cache after 30 min
+      setTimeout(() => this.historicalCache.delete(days), 30 * 60_000);
+    }
+
+    console.log(`Pyth Benchmarks: fetched ${points.length} historical prices for ${days} days`);
+    return points;
+  }
+
+  /**
+   * Register an SSE client for real-time price updates.
+   */
+  addSseClient(res: Response): void {
+    this.sseClients.add(res);
+    res.on('close', () => this.sseClients.delete(res));
+
+    // Send current price immediately
+    if (this.cachedPrice && this.cachedPrice.price > 0) {
+      res.write(`data: ${JSON.stringify({ price: this.cachedPrice.price, timestamp: this.cachedPrice.timestamp })}\n\n`);
+    }
+  }
+
+  private recordPrice(price: number, timestamp: number): void {
+    this.priceHistory.push({ price, timestamp });
+    if (this.priceHistory.length > MAX_HISTORY_POINTS) {
+      this.priceHistory = this.priceHistory.slice(-MAX_HISTORY_POINTS);
+    }
+  }
+
+  private broadcastPrice(price: number, timestamp: number): void {
+    const data = `data: ${JSON.stringify({ price, timestamp })}\n\n`;
+    for (const client of this.sseClients) {
+      try { client.write(data); } catch { this.sseClients.delete(client); }
+    }
   }
 
   /**
@@ -127,6 +227,8 @@ export class PythPriceService {
         timestamp: p.publish_time,
         stale: false,
       };
+      this.recordPrice(priceUsd, p.publish_time);
+      this.broadcastPrice(priceUsd, p.publish_time);
       return this.cachedPrice;
     } catch {
       return this.cachedPrice ?? { price: 0, priceRaw: 0n, timestamp: 0, stale: true };
