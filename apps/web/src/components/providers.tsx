@@ -11,7 +11,7 @@ const ink = defineChain({
   name: 'Ink',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://rpc-gel-sepolia.inkonchain.com'] },
+    default: { http: ['https://rpc-gel.inkonchain.com'] },
   },
 });
 

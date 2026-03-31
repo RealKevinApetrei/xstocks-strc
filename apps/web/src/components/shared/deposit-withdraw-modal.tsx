@@ -68,7 +68,16 @@ export function DepositWithdrawModal({
       setAmount('');
       refreshBalance();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Deposit failed');
+      const msg = err instanceof Error ? err.message : 'Deposit failed';
+      if (msg.includes('intrinsic gas too low') || msg.includes('insufficient funds for gas')) {
+        setError('Your wallet needs a small amount of ETH on Ink to cover gas fees. Send ETH to your wallet address first, or use the QR Code tab to deposit USDC directly.');
+      } else if (msg.includes('insufficient balance') || msg.includes('transfer amount exceeds')) {
+        setError('Insufficient USDC balance in your wallet.');
+      } else if (msg.includes('rejected') || msg.includes('denied')) {
+        setError('Transaction was cancelled.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }

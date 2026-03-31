@@ -5,7 +5,7 @@ import { useSmartWallet } from './use-smart-wallet';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '';
-const INK_RPC = process.env.NEXT_PUBLIC_INK_RPC || 'https://rpc-gel-sepolia.inkonchain.com';
+const INK_RPC = process.env.NEXT_PUBLIC_INK_RPC || 'https://rpc-gel.inkonchain.com';
 
 // Minimal ERC20 ABI for balanceOf
 const BALANCE_OF_SIG = '0x70a08231';

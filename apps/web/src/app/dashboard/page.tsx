@@ -12,7 +12,7 @@ const STRC_APY = 11.5;
 
 export default function Dashboard() {
   const { data: position } = usePosition();
-  const { borrowApy } = useMarketRate();
+  const { borrowApy, loading: rateLoading } = useMarketRate();
 
   return (
     <div className="space-y-5">
@@ -32,24 +32,25 @@ export default function Dashboard() {
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-1">
             Net APY @ 5x
           </p>
-          <p className="text-xl font-mono font-semibold text-success">
-            +{(STRC_APY * 5 - borrowApy * 4).toFixed(1)}%
-          </p>
+          {rateLoading || borrowApy === null ? (
+            <div className="h-7 w-20 bg-secondary animate-pulse rounded mt-0.5" />
+          ) : (
+            <p className="text-xl font-mono font-semibold text-success">
+              +{(STRC_APY * 5 - borrowApy * 4).toFixed(1)}%
+            </p>
+          )}
           <p className="text-[10px] text-muted-foreground mt-0.5">After borrow cost</p>
         </div>
         <div className="bg-card px-5 py-4">
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-1">
             Borrow Rate
           </p>
-          <p className="text-xl font-mono font-semibold">{borrowApy}%</p>
-          <a
-            href="https://app.morpho.org/?network=ink"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-muted-foreground mt-0.5 hover:text-foreground transition-colors underline underline-offset-2"
-          >
-            Morpho · variable
-          </a>
+          {rateLoading || borrowApy === null ? (
+            <div className="h-7 w-16 bg-secondary animate-pulse rounded mt-0.5" />
+          ) : (
+            <p className="text-xl font-mono font-semibold">{borrowApy}%</p>
+          )}
+          <p className="text-[10px] text-muted-foreground mt-0.5">Morpho · variable</p>
         </div>
       </div>
 
