@@ -34,8 +34,14 @@ export const config = {
   usdcVault: optional('USDC_VAULT_ADDRESS', ''),
   tydroVault: optional('TYDRO_VAULT_ADDRESS', ''),
 
+  // Morpho oracle & IRM (filled after market creation)
+  morphoOracle: optional('MORPHO_ORACLE_ADDRESS', ''),
+  morphoIrm: optional('MORPHO_IRM_ADDRESS', ''),
+
   // CoW Protocol
   cowApiUrl: optional('COW_API_URL', ''),
+  cowSettlement: optional('COW_SETTLEMENT_ADDRESS', '0x9008d19f58aabd9ed0d60971565aa8510560ab41'),
+  cowVaultRelayer: optional('COW_VAULT_RELAYER_ADDRESS', '0xc92e8bdf79f0507f65a392b0ab4667716bfe0110'),
 
   // Pyth
   pythWebhookSecret: optional('PYTH_WEBHOOK_SECRET', ''),

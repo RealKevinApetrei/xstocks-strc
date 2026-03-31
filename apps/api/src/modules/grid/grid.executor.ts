@@ -1,14 +1,16 @@
+import { ethers } from 'ethers';
 import { query } from '../../db/pool';
 import { config } from '../../config';
-import { GRID_DEBOUNCE_MS, GRID_THRESHOLD_USD, MAX_LEVERAGE } from '@xstocks/shared';
+import { GRID_THRESHOLD_USD, MAX_LEVERAGE } from '@xstocks/shared';
 import { vaultService } from '../vault/vault.service';
 import { cowSwapService } from '../cowswap/cowswap.service';
 import { smartAccountService } from '../execution/smart-account.service';
 import { signerService } from '../execution/signer.service';
 import { approvalExecutor } from '../execution/executors/approval.executor';
 import { borrowExecutor } from '../execution/executors/borrow.executor';
-import { ethers } from 'ethers';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
+
+const GRID_BUY_TARGET_HF = 2.0; // Conservative HF for grid buys
 
 interface GridStrategy {
   id: string;
@@ -21,6 +23,8 @@ interface GridStrategy {
 }
 
 export class GridExecutor {
+  private wstrcIface = new ethers.Interface(wSTRCABI);
+
   /**
    * Handle a Pyth price trigger.
    * Called when STRC price drops below $103.
@@ -31,7 +35,6 @@ export class GridExecutor {
       return;
     }
 
-    // Find all enabled grid strategies
     const { rows: strategies } = await query<GridStrategy>(
       `SELECT * FROM grid_strategies WHERE enabled = true`,
     );
@@ -47,13 +50,12 @@ export class GridExecutor {
   }
 
   /**
-   * Buy the dip: withdraw USDC from vault → swap to STRC → loop it.
+   * Buy the dip: vault → swap USDC→STRC → wrap → supply → borrow.
    */
   private async executeGridBuy(strategy: GridStrategy, triggerPrice: number): Promise<void> {
     // Debounce: skip if last event was < 5 minutes ago
     const { rows: recentEvents } = await query(
-      `SELECT id FROM grid_events
-       WHERE grid_strategy_id = $1 AND created_at > NOW() - INTERVAL '5 minutes'`,
+      `SELECT id FROM grid_events WHERE grid_strategy_id = $1 AND created_at > NOW() - INTERVAL '5 minutes'`,
       [strategy.id],
     );
     if (recentEvents.length > 0) {
@@ -61,7 +63,7 @@ export class GridExecutor {
       return;
     }
 
-    // Check loop is still active
+    // Check loop has a valid position
     const { rows: [loop] } = await query(
       `SELECT status FROM loop_executions WHERE id = $1`,
       [strategy.loop_execution_id],
@@ -87,10 +89,10 @@ export class GridExecutor {
       return;
     }
 
-    // Check leverage cap before buying
+    // Check leverage cap
     const position = await borrowExecutor.getPosition(smartAccountAddr);
-    const currentLeverage = position.collateral > 0n
-      ? Number(position.collateral) / (Number(position.collateral) - Number(position.borrowed))
+    const currentLeverage = position.healthFactor > 1
+      ? 1 / (1 - 1 / position.healthFactor)
       : 1;
     if (currentLeverage >= MAX_LEVERAGE) {
       await this.recordGridEvent(strategy, triggerPrice, 'FAILED', 'Max leverage reached');
@@ -106,22 +108,24 @@ export class GridExecutor {
 
     // 1. Withdraw USDC from vault
     const withdrawCalls = vaultService.buildWithdrawCalls(buyAmountUsdc, smartAccountAddr, smartAccountAddr);
-    await smartAccountService.sendBatchUserOp(strategy.privy_id, withdrawCalls);
+    const withdrawHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, withdrawCalls);
+    await smartAccountService.waitForReceipt(withdrawHash);
 
-    // 2. Swap USDC → STRC via CoW
+    // 2. Approve USDC for CoW + swap USDC → STRC
+    const approveCowCalls = approvalExecutor.buildApproveCalls({
+      token: config.usdc, spender: config.cowVaultRelayer, amount: buyAmountUsdc,
+    });
+    const approveHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, approveCowCalls);
+    await smartAccountService.waitForReceipt(approveHash);
+
     const quote = await cowSwapService.getQuote({
-      sellToken: config.usdc,
-      buyToken: config.strc,
-      sellAmount: buyAmountUsdc,
-      from: smartAccountAddr,
+      sellToken: config.usdc, buyToken: config.strc,
+      sellAmount: buyAmountUsdc, from: smartAccountAddr,
     });
 
     const wallet = await signerService.getWalletForUser(strategy.privy_id);
     const signature = await signerService.signTypedData(
-      wallet.walletId,
-      quote.domain,
-      quote.types,
-      quote.order,
+      wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order,
     );
 
     const orderUid = await cowSwapService.createOrder(quote, signature);
@@ -129,15 +133,25 @@ export class GridExecutor {
 
     const fill = await cowSwapService.waitForFill(orderUid);
 
-    // 3. Loop it: wrap → supply → borrow
-    const wstrcIface = new ethers.Interface(wSTRCABI);
+    // 3. Loop the purchased STRC: wrap → supply → borrow
+    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
+    const wstrcAmount: bigint = await wstrcContract.strcToWstrc(fill.buyAmount);
+
+    const updatedPosition = await borrowExecutor.getPosition(smartAccountAddr);
+    const maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
+      wstrcAmount, updatedPosition, GRID_BUY_TARGET_HF,
+    );
+
     const loopCalls = [
       ...approvalExecutor.buildApproveCalls({ token: config.strc, spender: config.wstrc, amount: fill.buyAmount }),
-      { to: config.wstrc, data: wstrcIface.encodeFunctionData('wrap', [fill.buyAmount]) },
-      ...approvalExecutor.buildApproveCalls({ token: config.wstrc, spender: config.morpho, amount: ethers.MaxUint256 }),
-      // TODO: Add supplyCollateral + borrow calls with calculated amounts
+      { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('wrap', [fill.buyAmount]) },
+      ...approvalExecutor.buildApproveCalls({ token: config.wstrc, spender: config.morpho, amount: wstrcAmount }),
+      ...borrowExecutor.buildSupplyCollateralCalls(wstrcAmount, smartAccountAddr),
+      ...(maxBorrowUsdc > 0n ? borrowExecutor.buildBorrowCalls(maxBorrowUsdc, smartAccountAddr, smartAccountAddr) : []),
     ];
-    await smartAccountService.sendBatchUserOp(strategy.privy_id, loopCalls);
+    const loopHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, loopCalls);
+    await smartAccountService.waitForReceipt(loopHash);
 
     // Record success
     await query(
