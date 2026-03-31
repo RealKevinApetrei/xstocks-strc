@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 const MOCK_DEPOSITS_USD = 527_000;
 const MOCK_24H_CHANGE = 12_400;
 const MOCK_24H_PCT = 2.4;
-const MOCK_NET_APY = 38.2; // at 5x leverage
+const MOCK_NET_APY = 40.7; // 11.5 * 5 - 4.2 * 4 at 5x leverage
 
 function useCountUp(target: number, duration = 1800, decimals = 0) {
   const [value, setValue] = useState(0);

@@ -7,7 +7,7 @@ import { LoopHistory } from '@/components/dashboard/loop-history';
 import { DepositsHero } from '@/components/dashboard/deposits-hero';
 import { usePosition } from '@/hooks/use-position';
 
-const STRC_APY = 11;
+const STRC_APY = 11.5;
 const MORPHO_RATE = 4.2;
 
 export default function Dashboard() {
@@ -19,10 +19,10 @@ export default function Dashboard() {
       <DepositsHero />
 
       {/* Top stat bar */}
-      <div className="grid grid-cols-4 gap-px border border-border rounded-lg overflow-hidden bg-border">
+      <div className="grid grid-cols-3 gap-px border border-border rounded-lg overflow-hidden bg-border">
         <div className="bg-card px-5 py-4">
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-1">
-            STRC Yield
+            STRC Dividend Yield
           </p>
           <p className="text-xl font-mono font-semibold text-success">+{STRC_APY}%</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Base APY · fixed</p>
@@ -42,13 +42,6 @@ export default function Dashboard() {
           </p>
           <p className="text-xl font-mono font-semibold">{MORPHO_RATE}%</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Morpho · variable</p>
-        </div>
-        <div className="bg-card px-5 py-4">
-          <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-1">
-            Network
-          </p>
-          <p className="text-xl font-mono font-semibold">INK</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Chain ID 57073</p>
         </div>
       </div>
 
