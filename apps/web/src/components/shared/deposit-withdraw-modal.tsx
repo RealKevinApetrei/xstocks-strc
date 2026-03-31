@@ -244,6 +244,7 @@ export function DepositWithdrawModal({
                   <SwapWidget
                     key={depositAddress}
                     supportedWalletVMs={['evm']}
+                    wallet={relayWallet}
                     toToken={toToken}
                     setToToken={setToToken}
                     fromToken={fromToken}
