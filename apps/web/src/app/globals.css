@@ -153,12 +153,66 @@ body {
   --relay-colors-primary10: #1f2937 !important;
   --relay-colors-primary11: #111827 !important;
   --relay-colors-primary12: #0a0a0a !important;
+
+  /* Light gray overrides (used by some components) */
+  --relay-colors-gray-light-1: #ffffff !important;
+  --relay-colors-gray-light-2: #f5f4f0 !important;
+  --relay-colors-gray-light-3: #f0eeea !important;
+  --relay-colors-gray-light-4: #e5e7eb !important;
+  --relay-colors-gray-light-5: #d1d5db !important;
+  --relay-colors-gray-light-6: #9ca3af !important;
+  --relay-colors-gray-light-7: #6b6866 !important;
+  --relay-colors-gray-light-8: #4b5563 !important;
+  --relay-colors-gray-light-9: #374151 !important;
+  --relay-colors-gray-light-10: #1f2937 !important;
+  --relay-colors-gray-light-11: #111827 !important;
+  --relay-colors-gray-light-12: #0a0a0a !important;
+
+  /* Error states → match our destructive color */
+  --relay-colors-text-error: #d93030 !important;
+  --relay-colors-red2: #fef2f2 !important;
+  --relay-colors-red3: #fee2e2 !important;
+  --relay-colors-red4: #fecaca !important;
+  --relay-colors-red5: #fca5a5 !important;
+  --relay-colors-red6: #f87171 !important;
+  --relay-colors-red9: #d93030 !important;
+  --relay-colors-red10: #b91c1c !important;
+  --relay-colors-red11: #d93030 !important;
+  --relay-colors-red12: #7f1d1d !important;
+
+  /* Swap arrows button */
+  --relay-radius-swap-btn: 9999px !important;
+  --relay-borders-widget-swap-currency-button-border-width: 1px !important;
+  --relay-radii-widget-swap-currency-button-border-radius: 9999px !important;
 }
 
 /* Remove all-caps and force font */
 .relay-widget-container button,
 .relay-widget-container span,
-.relay-widget-container div {
+.relay-widget-container div,
+.relay-widget-container p {
   text-transform: none !important;
   font-family: 'IBM Plex Mono', monospace !important;
+}
+
+/* Force all nested backgrounds to light */
+.relay-widget-container [style*="background"] {
+  background-color: inherit !important;
+}
+
+/* Error banner — light red background with our destructive red */
+.relay-widget-container [class*="error"],
+.relay-widget-container [class*="Error"] {
+  background-color: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #d93030 !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Address badge — neutral instead of purple/lavender */
+.relay-widget-container [class*="truncated"],
+.relay-widget-container [class*="address"] {
+  background-color: #f0eeea !important;
+  color: #0a0a0a !important;
+  border: 1px solid #e5e7eb !important;
 }
