@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import type { Response } from 'express';
 import { config } from '../../config';
 import { gridExecutor } from '../grid/grid.executor';
 
@@ -31,9 +32,18 @@ export interface StrcxPrice {
   stale: boolean;
 }
 
+export interface PricePoint {
+  price: number;
+  timestamp: number;
+}
+
+const MAX_HISTORY_POINTS = 2880; // 24h at 30s intervals
+
 export class PythPriceService {
   private cachedPrice: StrcxPrice | null = null;
   private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private priceHistory: PricePoint[] = [];
+  private sseClients: Set<Response> = new Set();
 
   /**
    * Get current STRCx/USD price.
@@ -44,6 +54,41 @@ export class PythPriceService {
       return this.cachedPrice;
     }
     return this.fetchFromHermes();
+  }
+
+  /**
+   * Get price history for the given number of hours.
+   */
+  getPriceHistory(hours: number = 24): PricePoint[] {
+    const cutoff = Date.now() / 1000 - hours * 3600;
+    return this.priceHistory.filter(p => p.timestamp >= cutoff);
+  }
+
+  /**
+   * Register an SSE client for real-time price updates.
+   */
+  addSseClient(res: Response): void {
+    this.sseClients.add(res);
+    res.on('close', () => this.sseClients.delete(res));
+
+    // Send current price immediately
+    if (this.cachedPrice && this.cachedPrice.price > 0) {
+      res.write(`data: ${JSON.stringify({ price: this.cachedPrice.price, timestamp: this.cachedPrice.timestamp })}\n\n`);
+    }
+  }
+
+  private recordPrice(price: number, timestamp: number): void {
+    this.priceHistory.push({ price, timestamp });
+    if (this.priceHistory.length > MAX_HISTORY_POINTS) {
+      this.priceHistory = this.priceHistory.slice(-MAX_HISTORY_POINTS);
+    }
+  }
+
+  private broadcastPrice(price: number, timestamp: number): void {
+    const data = `data: ${JSON.stringify({ price, timestamp })}\n\n`;
+    for (const client of this.sseClients) {
+      try { client.write(data); } catch { this.sseClients.delete(client); }
+    }
   }
 
   /**
@@ -127,6 +172,8 @@ export class PythPriceService {
         timestamp: p.publish_time,
         stale: false,
       };
+      this.recordPrice(priceUsd, p.publish_time);
+      this.broadcastPrice(priceUsd, p.publish_time);
       return this.cachedPrice;
     } catch {
       return this.cachedPrice ?? { price: 0, priceRaw: 0n, timestamp: 0, stale: true };

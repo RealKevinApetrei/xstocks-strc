@@ -85,7 +85,7 @@ export const api = {
   getSimulatedApy: () =>
     request<SimulatedApyResponse>('/api/apy/simulated'),
 
-  // Price (Chainlink Data Streams — STRCx/USD)
+  // Price (Pyth Hermes — STRCx/USD)
   getStrcxPrice: () =>
     request<{ price: number; timestamp: number; stale: boolean; source: string }>('/api/grid/price'),
 

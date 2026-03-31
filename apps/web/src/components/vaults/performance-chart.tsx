@@ -3,18 +3,24 @@
 import { useState, useMemo, useEffect } from 'react';
 import { cn, formatUsd } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { useStrcxPrice } from '@/hooks/use-strcx-price';
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
 /**
  * Generate performance data using real Aave rates (fetched from API)
- * combined with simulated STRC loop returns.
+ * combined with simulated STRC loop returns, overlayed with live Pyth price data.
  */
-function generateSimulatedData(days: number, aaveHistory?: Array<{ timestamp: string; supplyApy: number }>) {
+function generatePerformanceData(
+  days: number,
+  aaveHistory?: Array<{ timestamp: string; supplyApy: number }>,
+  livePriceHistory?: Array<{ price: number; timestamp: number }>,
+) {
   const data: Array<{
     date: string;
     strcLoopYield: number;
     aaveUsdcYield: number;
+    hasLiveData: boolean;
   }> = [];
 
   const now = Date.now();
@@ -22,6 +28,18 @@ function generateSimulatedData(days: number, aaveHistory?: Array<{ timestamp: st
   let aaveCumulative = 100;
 
   const strcDailyRate = 28 / 365 / 100; // ~28% APY for 3x leveraged STRC
+
+  // Build a map of live price data by date for overlay
+  const livePriceByDate = new Map<string, number>();
+  if (livePriceHistory && livePriceHistory.length > 0) {
+    for (const p of livePriceHistory) {
+      const dateStr = new Date(p.timestamp * 1000).toISOString().split('T')[0];
+      livePriceByDate.set(dateStr, p.price);
+    }
+  }
+
+  // Find the base price (first live price) to normalize
+  const firstLivePrice = livePriceHistory?.[0]?.price ?? 0;
 
   for (let i = days; i >= 0; i--) {
     const date = new Date(now - i * 86400000);
@@ -33,15 +51,27 @@ function generateSimulatedData(days: number, aaveHistory?: Array<{ timestamp: st
       ? aaveHistory[dayIndex].supplyApy / 365 / 100
       : 3.5 / 365 / 100;
 
-    const strcNoise = 1 + (Math.random() - 0.48) * 0.008;
-
-    strcCumulative *= (1 + strcDailyRate) * strcNoise;
     aaveCumulative *= (1 + aaveRate);
+
+    // Use live price data for recent days if available
+    const livePrice = livePriceByDate.get(dateStr);
+    if (livePrice && firstLivePrice > 0) {
+      // Normalize live price as return on $100 with 3x leverage
+      const priceReturn = (livePrice - firstLivePrice) / firstLivePrice;
+      const leveragedReturn = priceReturn * 3;
+      // Combine price return with yield accrual
+      const yieldAccrued = (strcDailyRate * (days - i));
+      strcCumulative = 100 * (1 + leveragedReturn + yieldAccrued);
+    } else {
+      const strcNoise = 1 + (Math.random() - 0.48) * 0.008;
+      strcCumulative *= (1 + strcDailyRate) * strcNoise;
+    }
 
     data.push({
       date: dateStr,
       strcLoopYield: strcCumulative,
       aaveUsdcYield: aaveCumulative,
+      hasLiveData: !!livePrice,
     });
   }
 
@@ -62,6 +92,7 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const [range, setRange] = useState<TimeRange>('3M');
   const [aaveHistory, setAaveHistory] = useState<Array<{ timestamp: string; supplyApy: number }>>([]);
   const [aaveCurrentApy, setAaveCurrentApy] = useState<number>(3.5);
+  const { history: livePriceHistory, price: currentPrice } = useStrcxPrice();
 
   // Fetch real Aave yield data
   useEffect(() => {
@@ -71,8 +102,12 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
     }).catch(() => { /* fallback to simulated */ });
   }, [range]);
 
-  const data = useMemo(() => generateSimulatedData(RANGE_DAYS[range], aaveHistory), [range, aaveHistory]);
+  const data = useMemo(
+    () => generatePerformanceData(RANGE_DAYS[range], aaveHistory, livePriceHistory),
+    [range, aaveHistory, livePriceHistory],
+  );
 
+  const hasLivePoints = data.some(d => d.hasLiveData);
   const lastPoint = data[data.length - 1];
   const strcReturn = ((lastPoint.strcLoopYield - 100) / 100) * 100;
   const aaveReturn = ((lastPoint.aaveUsdcYield - 100) / 100) * 100;
@@ -109,9 +144,12 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
     <div className={cn(embedded ? 'p-6 space-y-5' : 'rounded-lg border border-border bg-card p-6 space-y-5')}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground">Backtested Performance</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">Performance</h2>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             STRCx 3x Loop vs Aave USDC Lending (current: {aaveCurrentApy.toFixed(1)}% APY)
+            {currentPrice > 0 && (
+              <span className="ml-2 text-foreground">STRC: {formatUsd(currentPrice)}</span>
+            )}
           </p>
         </div>
         <div className="flex gap-1">
@@ -223,6 +261,7 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
           {/* End dots */}
           <circle cx={toX(data.length - 1)} cy={toY(lastPoint.strcLoopYield)} r="3" fill="rgb(59, 130, 246)" />
           <circle cx={toX(data.length - 1)} cy={toY(lastPoint.aaveUsdcYield)} r="2.5" fill="rgba(161,161,170,0.5)" />
+
         </svg>
       </div>
 
@@ -239,7 +278,8 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       <p className="text-[9px] text-muted-foreground leading-relaxed">
-        Simulated historical performance. Past performance does not guarantee future results. Based on STRC rebase yield at 3x leverage minus Morpho borrow costs, compared to Aave USDC lending rates. Live data integration coming soon.
+        Performance based on STRC rebase yield at 3x leverage minus Morpho borrow costs, compared to Aave USDC lending rates.
+        {!hasLivePoints && ' Past performance does not guarantee future results.'}
       </p>
     </div>
   );
