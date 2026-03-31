@@ -38,6 +38,7 @@ export function DepositsHero() {
   const { data: positionData, loading } = usePosition();
   const { price: strcPrice, change24h, changePct24h } = useStrcxPrice();
   const { borrowApy } = useMarketRate();
+  const effectiveBorrowApy = borrowApy ?? 4.2;
 
   // Derive real values from position
   const position = positionData?.position;
@@ -49,7 +50,7 @@ export function DepositsHero() {
   const equityUsd = collateralUsd - debtUsd;
   const leverage = hasPosition ? position.effectiveLeverage : 0;
   const netApy = leverage > 0
-    ? STRC_BASE_APY * leverage - borrowApy * (leverage - 1)
+    ? STRC_BASE_APY * leverage - effectiveBorrowApy * (leverage - 1)
     : 0;
 
   // 24h P&L on equity from price movement

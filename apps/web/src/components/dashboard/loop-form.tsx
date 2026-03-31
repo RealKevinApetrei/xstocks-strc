@@ -19,7 +19,7 @@ function netApy(leverage: number, borrowRate: number) {
 export function LoopForm() {
   const { getAccessToken } = usePrivy();
   const { price: strcPrice } = useStrcxPrice();
-  const { borrowApy } = useMarketRate();
+  const { borrowApy, loading: rateLoading } = useMarketRate();
   const [usdcAmount, setUsdcAmount] = useState('');
   const [leverage, setLeverage] = useState<number>(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,7 +144,11 @@ export function LoopForm() {
           </div>
           <div className="flex justify-between text-xs pt-1 border-t border-border/50">
             <span className="text-muted-foreground">Est. net APY</span>
-            <span className="font-mono text-success">+{netApy(leverage, borrowApy)}%</span>
+            {rateLoading || borrowApy === null ? (
+              <span className="inline-block h-4 w-12 bg-secondary animate-pulse rounded" />
+            ) : (
+              <span className="font-mono text-success">+{netApy(leverage, borrowApy)}%</span>
+            )}
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Min. deposit ({leverage}x)</span>

@@ -5,30 +5,36 @@ import { useState, useEffect, useCallback } from 'react';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface MarketRate {
-  borrowApy: number;
+  borrowApy: number | null;
   utilization: number | null;
+  loading: boolean;
 }
 
-export function useMarketRate() {
-  const [data, setData] = useState<MarketRate>({ borrowApy: 4.2, utilization: null });
+export function useMarketRate(): MarketRate {
+  const [borrowApy, setBorrowApy] = useState<number | null>(null);
+  const [utilization, setUtilization] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/execution/market-rate`);
       if (res.ok) {
         const json = await res.json();
-        setData({ borrowApy: json.borrowApy, utilization: json.utilization });
+        setBorrowApy(json.borrowApy);
+        setUtilization(json.utilization);
       }
     } catch {
-      // Keep fallback
+      // keep null
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetch_();
-    const interval = setInterval(fetch_, 60_000); // Refresh every 60s
+    const interval = setInterval(fetch_, 60_000);
     return () => clearInterval(interval);
   }, [fetch_]);
 
-  return data;
+  return { borrowApy, utilization, loading };
 }
