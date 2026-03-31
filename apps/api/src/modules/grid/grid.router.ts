@@ -170,10 +170,17 @@ gridRouter.get('/price', async (_req: Request, res: Response) => {
 });
 
 // GET /api/grid/price/history — Price history for charts
+// ?hours=24 for recent polling data, ?days=90 for historical from Pyth Benchmarks
 gridRouter.get('/price/history', async (req: Request, res: Response) => {
+  const days = Number(req.query.days) || 0;
+  if (days > 0) {
+    const history = await pythPriceService.getHistoricalPrices(Math.min(days, 365));
+    res.json({ history, count: history.length, source: 'pyth-benchmarks' });
+    return;
+  }
   const hours = Math.min(Number(req.query.hours) || 24, 24);
   const history = pythPriceService.getPriceHistory(hours);
-  res.json({ history, count: history.length });
+  res.json({ history, count: history.length, source: 'pyth-hermes-poll' });
 });
 
 // GET /api/grid/price/stream — SSE stream of live prices

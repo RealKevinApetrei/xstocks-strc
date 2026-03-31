@@ -24,6 +24,7 @@ const ORACLE_ABI = [
 ];
 
 const HERMES_URL = 'https://hermes.pyth.network';
+const BENCHMARKS_URL = 'https://benchmarks.pyth.network';
 
 export interface StrcxPrice {
   price: number;
@@ -44,6 +45,7 @@ export class PythPriceService {
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private priceHistory: PricePoint[] = [];
   private sseClients: Set<Response> = new Set();
+  private historicalCache: Map<number, PricePoint[]> = new Map(); // keyed by days
 
   /**
    * Get current STRCx/USD price.
@@ -62,6 +64,59 @@ export class PythPriceService {
   getPriceHistory(hours: number = 24): PricePoint[] {
     const cutoff = Date.now() / 1000 - hours * 3600;
     return this.priceHistory.filter(p => p.timestamp >= cutoff);
+  }
+
+  /**
+   * Fetch historical daily prices from Pyth Benchmarks API.
+   * Samples one price per day for the given number of days.
+   */
+  async getHistoricalPrices(days: number): Promise<PricePoint[]> {
+    // Check cache (keyed by days, refreshed every 30min)
+    const cached = this.historicalCache.get(days);
+    if (cached) return cached;
+
+    if (!config.pythPriceFeedId) return [];
+
+    const feedId = config.pythPriceFeedId.replace('0x', '');
+    const now = Math.floor(Date.now() / 1000);
+    const points: PricePoint[] = [];
+
+    // Fetch prices in parallel batches (one per day)
+    const timestamps = Array.from({ length: days }, (_, i) => now - (days - i) * 86400);
+    const batchSize = 10;
+
+    for (let i = 0; i < timestamps.length; i += batchSize) {
+      const batch = timestamps.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map(async (ts) => {
+          const url = `${BENCHMARKS_URL}/v1/updates/price/${ts}?ids=${feedId}&parsed=true`;
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const data = (await res.json()) as {
+            parsed: Array<{ price: { price: string; expo: number; publish_time: number } }>;
+          };
+          if (!data.parsed?.[0]) return null;
+          const p = data.parsed[0].price;
+          return {
+            price: parseInt(p.price) * Math.pow(10, p.expo),
+            timestamp: p.publish_time,
+          };
+        }),
+      );
+
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) points.push(r.value);
+      }
+    }
+
+    if (points.length > 0) {
+      this.historicalCache.set(days, points);
+      // Expire cache after 30 min
+      setTimeout(() => this.historicalCache.delete(days), 30 * 60_000);
+    }
+
+    console.log(`Pyth Benchmarks: fetched ${points.length} historical prices for ${days} days`);
+    return points;
   }
 
   /**

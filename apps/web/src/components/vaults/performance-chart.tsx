@@ -7,72 +7,44 @@ import { useStrcxPrice } from '@/hooks/use-strcx-price';
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
-/**
- * Generate performance data using real Aave rates (fetched from API)
- * combined with simulated STRC loop returns, overlayed with live Pyth price data.
- */
-function generatePerformanceData(
-  days: number,
-  aaveHistory?: Array<{ timestamp: string; supplyApy: number }>,
-  livePriceHistory?: Array<{ price: number; timestamp: number }>,
-) {
-  const data: Array<{
-    date: string;
-    strcLoopYield: number;
-    aaveUsdcYield: number;
-    hasLiveData: boolean;
-  }> = [];
+const STRC_BASE_APY = 11.5;
+const MORPHO_BORROW_RATE = 4.2;
+const LEVERAGE = 3;
+const NET_DAILY_RATE = (STRC_BASE_APY * LEVERAGE - MORPHO_BORROW_RATE * (LEVERAGE - 1)) / 365 / 100;
 
-  const now = Date.now();
-  let strcCumulative = 100;
+/**
+ * Build performance data from real STRC prices (Pyth Benchmarks)
+ * and real Aave rates (DeFi Llama).
+ */
+function buildPerformanceData(
+  days: number,
+  strcPrices: Array<{ price: number; timestamp: number }>,
+  aaveHistory: Array<{ timestamp: string; supplyApy: number }>,
+) {
+  const data: Array<{ date: string; strcLoopYield: number; aaveUsdcYield: number }> = [];
+
+  if (strcPrices.length === 0) return data;
+
+  const basePrice = strcPrices[0].price;
   let aaveCumulative = 100;
 
-  const strcDailyRate = 28 / 365 / 100; // ~28% APY for 3x leveraged STRC
+  for (let i = 0; i < strcPrices.length; i++) {
+    const p = strcPrices[i];
+    const dateStr = new Date(p.timestamp * 1000).toISOString().split('T')[0];
 
-  // Build a map of live price data by date for overlay
-  const livePriceByDate = new Map<string, number>();
-  if (livePriceHistory && livePriceHistory.length > 0) {
-    for (const p of livePriceHistory) {
-      const dateStr = new Date(p.timestamp * 1000).toISOString().split('T')[0];
-      livePriceByDate.set(dateStr, p.price);
-    }
-  }
+    // STRC 3x loop: price return * leverage + yield accrual
+    const priceReturn = (p.price - basePrice) / basePrice;
+    const leveragedPriceReturn = priceReturn * LEVERAGE;
+    const yieldAccrued = NET_DAILY_RATE * i;
+    const strcLoopYield = 100 * (1 + leveragedPriceReturn + yieldAccrued);
 
-  // Find the base price (first live price) to normalize
-  const firstLivePrice = livePriceHistory?.[0]?.price ?? 0;
-
-  for (let i = days; i >= 0; i--) {
-    const date = new Date(now - i * 86400000);
-    const dateStr = date.toISOString().split('T')[0];
-
-    // Use real Aave rate if available, otherwise fallback to 3.5%
-    const dayIndex = days - i;
-    const aaveRate = aaveHistory && aaveHistory[dayIndex]
-      ? aaveHistory[dayIndex].supplyApy / 365 / 100
-      : 3.5 / 365 / 100;
-
+    // Aave: use real daily rate
+    const aaveRate = aaveHistory[i]
+      ? aaveHistory[i].supplyApy / 365 / 100
+      : 2.5 / 365 / 100;
     aaveCumulative *= (1 + aaveRate);
 
-    // Use live price data for recent days if available
-    const livePrice = livePriceByDate.get(dateStr);
-    if (livePrice && firstLivePrice > 0) {
-      // Normalize live price as return on $100 with 3x leverage
-      const priceReturn = (livePrice - firstLivePrice) / firstLivePrice;
-      const leveragedReturn = priceReturn * 3;
-      // Combine price return with yield accrual
-      const yieldAccrued = (strcDailyRate * (days - i));
-      strcCumulative = 100 * (1 + leveragedReturn + yieldAccrued);
-    } else {
-      const strcNoise = 1 + (Math.random() - 0.48) * 0.008;
-      strcCumulative *= (1 + strcDailyRate) * strcNoise;
-    }
-
-    data.push({
-      date: dateStr,
-      strcLoopYield: strcCumulative,
-      aaveUsdcYield: aaveCumulative,
-      hasLiveData: !!livePrice,
-    });
+    data.push({ date: dateStr, strcLoopYield, aaveUsdcYield: aaveCumulative });
   }
 
   return data;
@@ -91,29 +63,47 @@ function formatDateLabel(dateStr: string, range: TimeRange): string {
 export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const [range, setRange] = useState<TimeRange>('3M');
   const [aaveHistory, setAaveHistory] = useState<Array<{ timestamp: string; supplyApy: number }>>([]);
-  const [aaveCurrentApy, setAaveCurrentApy] = useState<number>(3.5);
-  const { history: livePriceHistory, price: currentPrice } = useStrcxPrice();
+  const [aaveCurrentApy, setAaveCurrentApy] = useState<number>(2.5);
+  const [strcPrices, setStrcPrices] = useState<Array<{ price: number; timestamp: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const { price: currentPrice } = useStrcxPrice();
 
-  // Fetch real Aave yield data
+  // Fetch both data sources when range changes
   useEffect(() => {
-    api.getAaveYield(RANGE_DAYS[range]).then((result) => {
-      setAaveHistory(result.history);
-      setAaveCurrentApy(result.currentSupplyApy);
-    }).catch(() => { /* fallback to simulated */ });
+    setLoading(true);
+    Promise.all([
+      api.getAaveYield(RANGE_DAYS[range]).catch(() => ({ currentSupplyApy: 2.5, history: [] as Array<{ timestamp: string; supplyApy: number }> })),
+      api.getStrcPriceHistory(RANGE_DAYS[range]).catch(() => ({ history: [] as Array<{ price: number; timestamp: number }> })),
+    ]).then(([aaveData, strcData]) => {
+      setAaveHistory(aaveData.history);
+      setAaveCurrentApy(aaveData.currentSupplyApy);
+      setStrcPrices(strcData.history);
+      setLoading(false);
+    });
   }, [range]);
 
   const data = useMemo(
-    () => generatePerformanceData(RANGE_DAYS[range], aaveHistory, livePriceHistory),
-    [range, aaveHistory, livePriceHistory],
+    () => buildPerformanceData(RANGE_DAYS[range], strcPrices, aaveHistory),
+    [range, strcPrices, aaveHistory],
   );
 
-  const hasLivePoints = data.some(d => d.hasLiveData);
+  if (loading || data.length === 0) {
+    return (
+      <div className={cn(embedded ? 'p-6' : 'rounded-lg border border-border bg-card p-6')}>
+        <h2 className="text-sm font-medium text-muted-foreground mb-4">Performance</h2>
+        <div className="h-[240px] flex items-center justify-center">
+          <span className="text-xs text-muted-foreground font-mono animate-pulse">Loading Pyth price history...</span>
+        </div>
+      </div>
+    );
+  }
+
   const lastPoint = data[data.length - 1];
   const strcReturn = ((lastPoint.strcLoopYield - 100) / 100) * 100;
   const aaveReturn = ((lastPoint.aaveUsdcYield - 100) / 100) * 100;
   const outperformance = strcReturn - aaveReturn;
 
-  // Chart dimensions with proper padding for axes
+  // Chart dimensions
   const width = 800;
   const height = 240;
   const padding = { top: 16, right: 20, bottom: 36, left: 52 };
@@ -131,13 +121,11 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const aavePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.aaveUsdcYield)}`).join(' ');
   const strcArea = strcPath + ` L ${toX(data.length - 1)} ${padding.top + chartH} L ${toX(0)} ${padding.top + chartH} Z`;
 
-  // X-axis: pick ~5-6 evenly spaced date labels
   const xLabelCount = range === '1M' ? 5 : 6;
   const xLabelIndices = Array.from({ length: xLabelCount }, (_, i) =>
     Math.round((i / (xLabelCount - 1)) * (data.length - 1))
   );
 
-  // Y-axis: 4 ticks
   const yTicks = Array.from({ length: 4 }, (_, i) => minY + (maxY - minY) * (i / 3));
 
   return (
@@ -174,7 +162,9 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
       <div className="grid grid-cols-3 gap-4">
         <div>
           <div className="text-[10px] text-muted-foreground mb-0.5">STRC 3x Loop</div>
-          <div className="text-lg font-mono font-semibold text-primary">+{strcReturn.toFixed(1)}%</div>
+          <div className={cn('text-lg font-mono font-semibold', strcReturn >= 0 ? 'text-primary' : 'text-destructive')}>
+            {strcReturn >= 0 ? '+' : ''}{strcReturn.toFixed(1)}%
+          </div>
           <div className="text-[10px] text-muted-foreground font-mono">{formatUsd(lastPoint.strcLoopYield)} from $100</div>
         </div>
         <div>
@@ -201,71 +191,32 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
             </linearGradient>
           </defs>
 
-          {/* Horizontal grid lines + Y-axis labels */}
           {yTicks.map((val, i) => (
             <g key={`y-${i}`}>
-              <line
-                x1={padding.left}
-                y1={toY(val)}
-                x2={width - padding.right}
-                y2={toY(val)}
-                stroke="rgba(255,255,255,0.06)"
-                strokeDasharray="3,3"
-              />
-              <text
-                x={padding.left - 8}
-                y={toY(val) + 4}
-                textAnchor="end"
-                fill="rgba(161,161,170,0.6)"
-                fontSize="10"
-                fontFamily="monospace"
-              >
+              <line x1={padding.left} y1={toY(val)} x2={width - padding.right} y2={toY(val)} stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
+              <text x={padding.left - 8} y={toY(val) + 4} textAnchor="end" fill="rgba(161,161,170,0.6)" fontSize="10" fontFamily="monospace">
                 ${val.toFixed(0)}
               </text>
             </g>
           ))}
 
-          {/* Vertical grid lines + X-axis date labels */}
           {xLabelIndices.map((idx) => (
             <g key={`x-${idx}`}>
-              <line
-                x1={toX(idx)}
-                y1={padding.top}
-                x2={toX(idx)}
-                y2={padding.top + chartH}
-                stroke="rgba(255,255,255,0.04)"
-                strokeDasharray="3,3"
-              />
-              <text
-                x={toX(idx)}
-                y={padding.top + chartH + 20}
-                textAnchor="middle"
-                fill="rgba(161,161,170,0.6)"
-                fontSize="10"
-                fontFamily="monospace"
-              >
+              <line x1={toX(idx)} y1={padding.top} x2={toX(idx)} y2={padding.top + chartH} stroke="rgba(255,255,255,0.04)" strokeDasharray="3,3" />
+              <text x={toX(idx)} y={padding.top + chartH + 20} textAnchor="middle" fill="rgba(161,161,170,0.6)" fontSize="10" fontFamily="monospace">
                 {formatDateLabel(data[idx].date, range)}
               </text>
             </g>
           ))}
 
-          {/* STRC area fill */}
           <path d={strcArea} fill="url(#strcGradient)" />
-
-          {/* Aave line (benchmark — dashed) */}
           <path d={aavePath} fill="none" stroke="rgba(161,161,170,0.35)" strokeWidth="1.5" strokeDasharray="5,4" />
-
-          {/* STRC line */}
           <path d={strcPath} fill="none" stroke="rgb(59, 130, 246)" strokeWidth="2" />
-
-          {/* End dots */}
           <circle cx={toX(data.length - 1)} cy={toY(lastPoint.strcLoopYield)} r="3" fill="rgb(59, 130, 246)" />
           <circle cx={toX(data.length - 1)} cy={toY(lastPoint.aaveUsdcYield)} r="2.5" fill="rgba(161,161,170,0.5)" />
-
         </svg>
       </div>
 
-      {/* Legend — outside SVG, clean layout */}
       <div className="flex items-center gap-6 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4 rounded-full bg-primary" />
@@ -275,11 +226,13 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
           <span className="inline-block h-0.5 w-4 rounded-full bg-muted-foreground/40" style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgb(39,39,42) 3px, rgb(39,39,42) 6px)' }} />
           <span>Aave USDC</span>
         </div>
+        <div className="text-[9px] font-mono text-muted-foreground/50 ml-auto">
+          Pyth Network + DeFi Llama
+        </div>
       </div>
 
       <p className="text-[9px] text-muted-foreground leading-relaxed">
-        Performance based on STRC rebase yield at 3x leverage minus Morpho borrow costs, compared to Aave USDC lending rates.
-        {!hasLivePoints && ' Past performance does not guarantee future results.'}
+        Real STRC price data from Pyth Network. Aave USDC rates from DeFi Llama. Loop returns model {LEVERAGE}x leveraged STRC yield minus Morpho borrow costs.
       </p>
     </div>
   );
