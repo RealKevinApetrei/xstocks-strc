@@ -51,11 +51,21 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
+      {/* Floating stat labels — scattered like image 9's tickers */}
+      <div className="absolute top-[14%] left-[8%] text-xs font-mono text-gray-400 select-none">Base APR</div>
+      <div className="absolute top-[18%] left-[8%] text-2xl font-mono font-bold select-none" style={{ color: '#16a34a' }}>11.5%</div>
+
+      <div className="absolute top-[12%] right-[22%] text-xs font-mono text-gray-400 select-none">Max APR at 5×</div>
+      <div className="absolute top-[16%] right-[22%] text-2xl font-mono font-bold select-none" style={{ color: '#16a34a' }}>40.7%</div>
+
+      <div className="absolute bottom-[28%] left-[6%] text-xs font-mono text-gray-400 select-none">Dividend yield</div>
+      <div className="absolute bottom-[24%] left-[6%] text-sm font-mono font-semibold text-gray-600 select-none">STRC · on-chain</div>
+
       {/* Central card */}
       <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-[480px]">
 
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-10">
+        {/* Spreads logo */}
+        <div className="flex items-center gap-2 mb-8">
           <svg width="18" height="22" viewBox="415 379 250 322" xmlns="http://www.w3.org/2000/svg">
             <polygon fill="#1a3520" points="416.8 476.1 525.8 476.4 602 379.7 663.9 380.4 664.2 380.7 662.9 484.1 537.5 484 473 581.2 415.8 580.8 416.8 476.1"/>
             <polygon fill="#1a3520" points="416.8 605.1 525.8 605.4 591.9 508.8 664.2 508.8 662.9 610.4 537.5 613 483 700.3 415.8 699.9 416.8 605.1"/>
@@ -63,28 +73,25 @@ export default function Home() {
           <span className="text-sm font-semibold tracking-widest uppercase">Spreads</span>
         </div>
 
+        {/* STRC logo */}
+        <img src="/strc-logo.png" alt="STRC" className="h-10 mb-6 select-none" />
+
+        {/* APR hook */}
+        <div className="flex items-center gap-4 mb-6">
+          <span className="text-3xl font-mono font-bold text-gray-400">11.5%</span>
+          <span className="text-2xl text-gray-300 font-mono">→</span>
+          <span className="text-3xl font-mono font-bold" style={{ color: '#16a34a' }}>40%</span>
+        </div>
+
         {/* Headline */}
-        <h1 className="text-[3.2rem] font-bold tracking-tight leading-[1.1] mb-5">
-          Stack STRC.<br />
-          <span style={{ color: '#16a34a' }}>Earn more.</span>
+        <h1 className="text-[2.8rem] font-bold tracking-tight leading-[1.1] mb-4">
+          Your yield,<br />
+          <span style={{ color: '#16a34a' }}>multiplied.</span>
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8 leading-relaxed">
-          Leveraged looping on Morpho. Up to 5× your STRC dividend yield — automated, on-chain, on INK.
+        <p className="text-sm text-gray-400 mb-8 leading-relaxed">
+          Turn your STRC dividend into up to 5× more — automatically.
         </p>
-
-        {/* Stat pills */}
-        <div className="flex items-center gap-3 mb-8 flex-wrap justify-center">
-          <div className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs">
-            <span style={{ color: '#16a34a' }}>+11.5%</span> base APY
-          </div>
-          <div className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs">
-            Up to <span style={{ color: '#16a34a' }}>+40.7%</span> at 5×
-          </div>
-          <div className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs">
-            Morpho · CoW
-          </div>
-        </div>
 
         {/* CTA */}
         <button
@@ -95,10 +102,6 @@ export default function Home() {
         >
           {ready ? 'Connect Wallet' : 'Loading...'}
         </button>
-
-        <p className="text-[10px] text-gray-400 mt-4 tracking-wide">
-          INK Chain · Chain ID 57073
-        </p>
       </div>
 
       {/* Bottom bar */}
