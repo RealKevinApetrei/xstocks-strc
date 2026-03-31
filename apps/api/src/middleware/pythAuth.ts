@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { config } from '../config';
 
-export function chainlinkWebhookAuth(
+export function pythWebhookAuth(
   req: Request,
   res: Response,
   next: NextFunction,

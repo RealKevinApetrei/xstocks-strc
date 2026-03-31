@@ -22,7 +22,7 @@ interface GridStrategy {
 
 export class GridExecutor {
   /**
-   * Handle a Chainlink CRE price trigger.
+   * Handle a Pyth price trigger.
    * Called when STRC price drops below $103.
    */
   async handlePriceTrigger(params: { price: number; timestamp: number }): Promise<void> {

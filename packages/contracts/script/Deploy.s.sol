@@ -41,6 +41,6 @@ contract Deploy is Script {
         console.log("Next steps:");
         console.log("1. Create Morpho market with wSTRC as collateral and USDC as loan token");
         console.log("2. Set these addresses in .env");
-        console.log("3. Configure Chainlink CRE to watch STRC price");
+        console.log("3. Configure Pyth price feed for STRC price monitoring");
     }
 }

@@ -10,7 +10,7 @@ import {IwSTRC} from "./interfaces/IwSTRC.sol";
  *         Combines the wSTRC→STRC exchange rate with an STRC/USDC price feed.
  *
  *         HACKATHON MODE: STRC/USDC price is owner-settable for demo purposes.
- *         In production, this would read from a Chainlink feed or similar.
+ *         In production, this would read from a Pyth feed or similar.
  */
 contract WSTRCOracleAdapter is Ownable {
     IwSTRC public immutable wstrc;

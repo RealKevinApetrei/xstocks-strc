@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { privyAuth, type AuthenticatedRequest } from '../../middleware/privyAuth';
-import { chainlinkWebhookAuth } from '../../middleware/chainlinkAuth';
+import { pythWebhookAuth } from '../../middleware/pythAuth';
 import { gridExecutor } from './grid.executor';
 import { policyService, PolicyViolation } from '../execution/policy.service';
 import { smartAccountService } from '../execution/smart-account.service';
@@ -154,8 +154,8 @@ gridRouter.get('/events/:strategyId', privyAuth, async (req: Request, res: Respo
   });
 });
 
-// POST /api/grid/trigger — Chainlink CRE webhook
-gridRouter.post('/trigger', chainlinkWebhookAuth, async (req: Request, res: Response) => {
+// POST /api/grid/trigger — Pyth price webhook
+gridRouter.post('/trigger', pythWebhookAuth, async (req: Request, res: Response) => {
   const { price, timestamp } = req.body;
   console.log(`Grid trigger received: price=$${price}, timestamp=${timestamp}`);
 

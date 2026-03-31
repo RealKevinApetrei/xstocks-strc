@@ -19,7 +19,7 @@ export function GridConfig() {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-muted-foreground">Buy-the-Dip Strategy</h2>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">Chainlink CRE</span>
+          <span className="text-[10px] text-muted-foreground">Auto</span>
           <button
             onClick={() => setEnabled(!enabled)}
             className={cn(
@@ -94,7 +94,7 @@ export function GridConfig() {
         <div className="flex items-center gap-2 text-xs">
           <span className={cn('h-2 w-2 rounded-full', enabled ? 'bg-success animate-pulse' : 'bg-muted-foreground')} />
           <span className="text-muted-foreground">
-            {enabled ? 'Monitoring STRC price via Chainlink' : 'Strategy paused'}
+            {enabled ? 'Monitoring STRC price' : 'Strategy paused'}
           </span>
         </div>
       )}
