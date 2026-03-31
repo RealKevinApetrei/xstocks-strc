@@ -1,14 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { useState, useEffect, useCallback } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
+import { cn, formatUsd } from '@/lib/utils';
+import { api } from '@/lib/api';
 import { PerformanceChart } from '@/components/vaults/performance-chart';
-
-// TODO: Wire to real data from API
-const mockHistory = [
-  { id: '1', date: '2025-03-28', strcAmount: '1000', leverage: '2.5x', iterations: 3, status: 'COMPLETED' as const },
-  { id: '2', date: '2025-03-29', strcAmount: '500', leverage: '3.0x', iterations: 2, status: 'COMPLETED_PARTIAL' as const },
-];
 
 const statusColors: Record<string, string> = {
   COMPLETED: 'text-success bg-success/10 border-success/20',
@@ -20,12 +16,43 @@ const statusColors: Record<string, string> = {
 
 type Tab = 'history' | 'performance';
 
+interface LoopRecord {
+  id: string;
+  strcAmount: string;
+  targetLeverage: number;
+  effectiveLeverage: number | null;
+  iterations: number;
+  status: string;
+  createdAt: string;
+}
+
 export function LoopHistory() {
+  const { getAccessToken } = usePrivy();
   const [tab, setTab] = useState<Tab>('history');
+  const [loops, setLoops] = useState<LoopRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchLoops = useCallback(async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const data = await api.getLoopHistory(token, 20, 0);
+      setLoops(data.loops);
+    } catch {
+      // Keep existing data on error
+    } finally {
+      setLoading(false);
+    }
+  }, [getAccessToken]);
+
+  useEffect(() => {
+    fetchLoops();
+    const interval = setInterval(fetchLoops, 15_000); // Refresh every 15s
+    return () => clearInterval(interval);
+  }, [fetchLoops]);
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      {/* Tabs */}
       <div className="flex border-b border-border px-6 pt-4">
         {([['history', 'Loop History'], ['performance', 'Performance']] as const).map(([value, label]) => (
           <button
@@ -45,26 +72,38 @@ export function LoopHistory() {
 
       {tab === 'history' ? (
         <div className="p-6">
-          {mockHistory.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No loops yet.</p>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <div key={i} className="h-8 bg-muted rounded animate-pulse" />)}
+            </div>
+          ) : loops.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No loops yet. Start a loop to get leveraged exposure.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs text-muted-foreground">
                     <th className="py-2 text-left font-medium">Date</th>
-                    <th className="py-2 text-right font-medium">STRC</th>
-                    <th className="py-2 text-right font-medium">Leverage</th>
+                    <th className="py-2 text-right font-medium">USDC</th>
+                    <th className="py-2 text-right font-medium">Target</th>
+                    <th className="py-2 text-right font-medium">Achieved</th>
                     <th className="py-2 text-right font-medium">Iterations</th>
                     <th className="py-2 text-right font-medium">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {mockHistory.map((loop) => (
+                  {loops.map((loop) => (
                     <tr key={loop.id} className="border-b border-border/50 last:border-0">
-                      <td className="py-3 text-left font-mono text-xs">{loop.date}</td>
-                      <td className="py-3 text-right font-mono">{loop.strcAmount}</td>
-                      <td className="py-3 text-right font-mono text-primary">{loop.leverage}</td>
+                      <td className="py-3 text-left font-mono text-xs">
+                        {new Date(loop.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 text-right font-mono">
+                        {formatUsd(parseFloat(loop.strcAmount) / 1e6)}
+                      </td>
+                      <td className="py-3 text-right font-mono">{loop.targetLeverage}x</td>
+                      <td className="py-3 text-right font-mono text-primary">
+                        {loop.effectiveLeverage ? `${loop.effectiveLeverage.toFixed(1)}x` : '—'}
+                      </td>
                       <td className="py-3 text-right font-mono">{loop.iterations}</td>
                       <td className="py-3 text-right">
                         <span className={cn(

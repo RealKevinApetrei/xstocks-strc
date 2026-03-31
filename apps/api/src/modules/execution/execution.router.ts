@@ -232,6 +232,44 @@ executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
   });
 });
 
+// GET /api/execution/loops — Paginated loop history for a user
+executionRouter.get('/loops', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const limit = Math.min(parseInt((req.query as any).limit ?? '20', 10), 100);
+  const offset = parseInt((req.query as any).offset ?? '0', 10);
+
+  const { rows } = await query(
+    `SELECT l.id, l.strc_amount, l.target_leverage, l.effective_leverage, l.health_factor,
+            l.current_iteration, l.status, l.error, l.created_at, l.updated_at
+     FROM loop_executions l WHERE l.privy_id = $1
+     ORDER BY l.created_at DESC LIMIT $2 OFFSET $3`,
+    [privyId, limit, offset],
+  );
+
+  const { rows: [{ count }] } = await query(
+    `SELECT COUNT(*) FROM loop_executions WHERE privy_id = $1`,
+    [privyId],
+  );
+
+  res.json({
+    loops: rows.map((r: any) => ({
+      id: r.id,
+      strcAmount: r.strc_amount,
+      targetLeverage: Number(r.target_leverage),
+      effectiveLeverage: r.effective_leverage ? Number(r.effective_leverage) : null,
+      healthFactor: r.health_factor ? Number(r.health_factor) : null,
+      iterations: r.current_iteration,
+      status: r.status,
+      error: r.error,
+      createdAt: r.created_at.toISOString(),
+      updatedAt: r.updated_at.toISOString(),
+    })),
+    total: parseInt(count, 10),
+    limit,
+    offset,
+  });
+});
+
 // GET /api/apy/aave — Aave USDC lending yield data
 executionRouter.get('/apy/aave', async (req: Request, res: Response) => {
   // Lazy import to avoid circular deps

@@ -12,6 +12,12 @@ import { pythPriceService } from '../../pyth/pyth-price.service';
 
 const UNWIND_SAFETY_MARGIN = 0.95;
 
+let _provider: ethers.JsonRpcProvider | null = null;
+function getProvider(): ethers.JsonRpcProvider {
+  if (!_provider) _provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  return _provider;
+}
+
 export class UnwindExecutor {
   private wstrcIface = new ethers.Interface(wSTRCABI);
 
@@ -167,7 +173,7 @@ export class UnwindExecutor {
       if (!wReceipt.success) throw new Error('Withdraw reverted');
 
       // 2. Get STRC amount
-      const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      const provider = getProvider();
       const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
       const strcAmount: bigint = await wstrcContract.wstrcToStrc(withdrawWstrc);
       if (strcAmount <= STRC_DUST) throw new Error('Unwrap returned dust');

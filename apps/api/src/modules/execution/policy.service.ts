@@ -54,9 +54,9 @@ export class PolicyService {
       throw new PolicyViolation(`Unwind target must be one of: ${UNWIND_TARGETS.join(', ')}`);
     }
 
-    // Check no concurrent active execution
+    // Check no concurrent active execution (FOR UPDATE prevents race condition)
     const { rows: loops } = await query(
-      `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+      `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
       [params.privyId],
     );
     if (loops.length > 0) {
@@ -64,7 +64,7 @@ export class PolicyService {
     }
 
     const { rows: unwinds } = await query(
-      `SELECT id FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+      `SELECT id FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
       [params.privyId],
     );
     if (unwinds.length > 0) {
