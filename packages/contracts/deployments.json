@@ -1,0 +1,49 @@
+{
+  "network": "INK Mainnet",
+  "chainId": 57073,
+  "deployedAt": "2026-03-31",
+  "contracts": {
+    "wSTRC": {
+      "address": "0x3b172e9c5488B17A0F4dc6fF4dc798055CC77281",
+      "description": "Non-rebasing wrapper for STRC. Exchange rate grows as STRC dividends rebase."
+    },
+    "PythOracleAdapter": {
+      "address": "0xDf50EF4D86f056546208c66F9d348b003605eb8E",
+      "description": "Active oracle. Morpho oracle adapter. Reads STRC/USD from Pyth and adjusts for wSTRC/STRC exchange rate. maxStaleness = 7 days (works through weekends and afterhours).",
+      "pythFeedId": "0x27c7bbc9755d847f7fc63620c2edcc6a91d2c0c67a28c7999907b59c505b3c17",
+      "maxStaleness": 604800
+    },
+    "PythOracleAdapterOld": {
+      "address": "0x7c415289c073C2Da7CCC071bb5f83eb1BC20cd88",
+      "description": "DEPRECATED. maxStaleness = 24h, causes staleness errors on weekends/afterhours.",
+      "maxStaleness": 86400
+    },
+    "Batcher": {
+      "address": "0x77a61ef5b7499bf0311b2a156efed79f380fd8fb",
+      "description": "Atomic wrap + supplyCollateral + borrow in one transaction. NOTE: deployed with 80% LLTV — needs redeployment with 86% to match active market."
+    }
+  },
+  "morpho": {
+    "address": "0x857f3EefE8cbda3Bc49367C996cd664A880d3042",
+    "irm": "0x9515407b1512F53388ffE699524100e7270Ee57B",
+    "activeMarket": {
+      "marketId": "0x036af40bfb700c865a67113be7033830b600eff68b12a8d06c1f57520fccf94a",
+      "lltv": "860000000000000000",
+      "marketParams": {
+        "loanToken": "0x2D270e6886d130D724215A266106e6832161EAEd",
+        "collateralToken": "0x3b172e9c5488B17A0F4dc6fF4dc798055CC77281",
+        "oracle": "0xDf50EF4D86f056546208c66F9d348b003605eb8E",
+        "irm": "0x9515407b1512F53388ffE699524100e7270Ee57B",
+        "lltv": "860000000000000000"
+      }
+    },
+    "oldMarket": {
+      "marketId": "0x8f6385fda560540caa3ba0eca12a398f9265cd5233513985153d076e7774f3f0",
+      "description": "DEPRECATED — uses 24h oracle, migrate positions to activeMarket"
+    }
+  },
+  "externalTokens": {
+    "STRC": "0x1Aad217B8F78dbA5E6693460e8470F8b1A3977f3",
+    "USDC": "0x2D270e6886d130D724215A266106e6832161EAEd"
+  }
+}
