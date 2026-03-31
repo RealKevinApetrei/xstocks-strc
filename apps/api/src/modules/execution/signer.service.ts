@@ -6,7 +6,14 @@ const privy = new PrivyClient({
   appSecret: config.privyAppSecret,
 });
 
-function getAuthContext(userJwt?: string) {
+// Store raw Privy access tokens per user (set during auth middleware)
+const userTokenStore = new Map<string, string>();
+
+export function storeUserToken(privyId: string, rawToken: string) {
+  userTokenStore.set(privyId, rawToken);
+}
+
+function getAuthContext(privyId?: string) {
   const ctx: {
     authorization_private_keys?: string[];
     user_jwts?: string[];
@@ -16,8 +23,10 @@ function getAuthContext(userJwt?: string) {
     ctx.authorization_private_keys = [config.privyAuthorizationPrivateKey];
   }
 
-  if (userJwt) {
-    ctx.user_jwts = [userJwt];
+  // Pass the user's raw Privy access token for user-owned embedded wallets
+  if (privyId) {
+    const jwt = userTokenStore.get(privyId);
+    if (jwt) ctx.user_jwts = [jwt];
   }
 
   if (!ctx.authorization_private_keys && !ctx.user_jwts) {
@@ -29,17 +38,6 @@ function getAuthContext(userJwt?: string) {
 }
 
 export class SignerService {
-  // Store user JWTs for signing (set during auth middleware)
-  private userTokens = new Map<string, string>();
-
-  setUserToken(privyId: string, token: string) {
-    this.userTokens.set(privyId, token);
-  }
-
-  getUserToken(privyId: string): string | undefined {
-    return this.userTokens.get(privyId);
-  }
-
   async getWalletForUser(privyId: string): Promise<{ address: string; walletId: string }> {
     const user = await (privy.users() as any)._get(privyId);
     const wallet = user.linked_accounts.find(
@@ -60,8 +58,6 @@ export class SignerService {
     tx: { to: string; data: string; value?: string; chainId: number },
     privyId?: string,
   ): Promise<string> {
-    const userJwt = privyId ? this.getUserToken(privyId) : undefined;
-
     const result = await privy.wallets().rpc(walletId, {
       method: 'eth_sendTransaction',
       params: {
@@ -73,7 +69,7 @@ export class SignerService {
       },
       caip2: `eip155:${tx.chainId}`,
       chain_type: 'ethereum',
-      authorization_context: getAuthContext(userJwt),
+      authorization_context: getAuthContext(privyId),
     });
 
     const data = result.data as any;
@@ -90,8 +86,6 @@ export class SignerService {
     message: Record<string, unknown>,
     privyId?: string,
   ): Promise<string> {
-    const userJwt = privyId ? this.getUserToken(privyId) : undefined;
-
     const result = await privy.wallets().rpc(walletId, {
       method: 'eth_signTypedData_v4',
       params: {
@@ -103,7 +97,7 @@ export class SignerService {
         },
       },
       chain_type: 'ethereum',
-      authorization_context: getAuthContext(userJwt),
+      authorization_context: getAuthContext(privyId),
     });
 
     const sig = (result.data as any).signature;
