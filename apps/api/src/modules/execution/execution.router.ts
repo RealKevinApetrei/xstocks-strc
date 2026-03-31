@@ -175,15 +175,15 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
         exchangeRate = rate.toString();
         collateralStrc = strcVal.toString();
 
-        // Leverage from health factor: L = 1 / (1 - 1/HF)
+        // Leverage from health factor using same formula as borrow executor (includes LLTV)
         if (position.healthFactor > 1) {
-          effectiveLeverage = 1 / (1 - 1 / position.healthFactor);
+          effectiveLeverage = borrowExecutor.calculateLeverage(position.healthFactor);
         }
 
         // Liquidation price: price at which HF = 1
-        // liqPrice = borrowed / (collateral * lltv)  (simplified, units depend on oracle scale)
+        // liqPrice = borrowed / (collateral * lltv)  — using 0.86 LLTV (Morpho market config)
         if (position.collateral > 0n && position.borrowed > 0n) {
-          liquidationPrice = Number(position.borrowed) / (Number(position.collateral) * 0.8);
+          liquidationPrice = Number(position.borrowed) / (Number(position.collateral) * 0.86);
         }
       } catch { /* contracts not deployed yet — use defaults */ }
     }

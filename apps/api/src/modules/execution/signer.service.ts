@@ -7,14 +7,12 @@ const privy = new PrivyClient({
 });
 
 function getAuthContext() {
-  const key = config.privyAuthorizationPrivateKey;
-  if (!key) {
+  if (!config.privyAuthorizationPrivateKey) {
     console.error('[SIGNER] No PRIVY_AUTHORIZATION_PRIVATE_KEY configured');
     return undefined;
   }
-  console.log(`[SIGNER] Auth key present: ${key.length} chars, starts with: ${key.substring(0, 30)}...`);
   return {
-    authorization_private_keys: [key],
+    authorization_private_keys: [config.privyAuthorizationPrivateKey],
   };
 }
 
