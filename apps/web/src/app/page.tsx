@@ -34,14 +34,14 @@ function AprCounter() {
 }
 
 const TICKER_ITEMS = [
-  { label: 'STRC Dividend', value: '11.5% APY' },
-  { label: 'Max Leverage', value: '5×' },
-  { label: 'Net APY @ 5×', value: '40%' },
-  { label: 'Borrow Rate', value: '4.2% Morpho' },
-  { label: 'Slippage', value: '0% · CoW RFQ' },
-  { label: 'Chain', value: 'INK Mainnet' },
-  { label: 'Protocol', value: 'Morpho Blue' },
-  { label: 'Asset', value: 'STRC / STRCx' },
+  { label: '❝', value: 'Bitcoin is the apex property of the human race.' },
+  { label: '❝', value: 'If you don\'t own Bitcoin, you don\'t understand it yet.' },
+  { label: '❝', value: 'Bitcoin is hope.' },
+  { label: '❝', value: 'The best time to buy Bitcoin was 10 years ago. The second best time is now.' },
+  { label: '❝', value: 'Bitcoin is a bank in cyberspace, run by incorruptible software.' },
+  { label: '❝', value: 'Buy Bitcoin. Ignore the noise.' },
+  { label: '❝', value: 'Bitcoin is digital gold, only better in every way.' },
+  { label: '❝', value: 'All the money in the world will eventually flow into Bitcoin.' },
 ];
 
 function Ticker() {
@@ -49,14 +49,14 @@ function Ticker() {
   return (
     <div className="absolute top-0 left-0 right-0 z-30 border-b border-black/8 bg-white/60 backdrop-blur-sm overflow-hidden">
       <div
-        className="flex items-center gap-0 py-2 whitespace-nowrap"
-        style={{ animation: 'ticker-scroll 28s linear infinite', width: 'max-content' }}
+        className="flex items-center gap-0 py-2.5 whitespace-nowrap"
+        style={{ animation: 'ticker-scroll 50s linear infinite', width: 'max-content' }}
       >
         {items.map((item, i) => (
-          <span key={i} className="flex items-center gap-3 px-6 text-[10px] font-mono tracking-widest">
-            <span className="text-gray-400 uppercase">{item.label}</span>
-            <span className="font-semibold text-gray-800">{item.value}</span>
-            <span className="text-gray-200 select-none">·</span>
+          <span key={i} className="flex items-center gap-3 px-8 text-[11px] font-mono">
+            <span className="text-gray-300">{item.label}</span>
+            <span className="italic text-gray-600">{item.value}</span>
+            <span className="text-gray-200 select-none mx-2">—</span>
           </span>
         ))}
       </div>
