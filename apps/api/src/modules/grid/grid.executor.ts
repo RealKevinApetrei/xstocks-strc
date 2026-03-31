@@ -8,7 +8,7 @@ import { signerService } from '../execution/signer.service';
 import { approvalExecutor } from '../execution/executors/approval.executor';
 import { borrowExecutor } from '../execution/executors/borrow.executor';
 import { ethers } from 'ethers';
-import wSTRCABI from '@xstocks/shared/src/abis/wSTRC.json';
+import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 
 interface GridStrategy {
   id: string;

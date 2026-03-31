@@ -2,8 +2,12 @@
   "name": "@xstocks/shared",
   "version": "0.0.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./abis/*": "./src/abis/*"
+  },
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit"

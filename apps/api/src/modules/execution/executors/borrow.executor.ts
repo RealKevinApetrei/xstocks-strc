@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import type { Call } from '../smart-account.service';
 import { config } from '../../../config';
-import MorphoABI from '@xstocks/shared/src/abis/MorphoBlue.json';
+import MorphoABI from '@xstocks/shared/abis/MorphoBlue.json';
 
 export interface MorphoPosition {
   collateral: bigint;

@@ -18,7 +18,10 @@ COPY packages/shared/ ./packages/shared/
 COPY packages/tsconfig/ ./packages/tsconfig/
 COPY apps/api/ ./apps/api/
 
-# Build the API
+# Build shared package first, then the API
+WORKDIR /app/packages/shared
+RUN npx tsc
+
 WORKDIR /app/apps/api
 RUN npx tsc
 

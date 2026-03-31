@@ -7,7 +7,7 @@ import { smartAccountService, type Call } from '../smart-account.service';
 import { cowSwapService } from '../../cowswap/cowswap.service';
 import { signerService } from '../signer.service';
 import { MAX_LEVERAGE } from '@xstocks/shared';
-import wSTRCABI from '@xstocks/shared/src/abis/wSTRC.json';
+import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 
 export class LoopExecutor {
   /**

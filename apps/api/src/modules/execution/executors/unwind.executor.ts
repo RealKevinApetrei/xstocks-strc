@@ -6,7 +6,7 @@ import { cowSwapService } from '../../cowswap/cowswap.service';
 import { signerService } from '../signer.service';
 import { approvalExecutor } from './approval.executor';
 import { ethers } from 'ethers';
-import wSTRCABI from '@xstocks/shared/src/abis/wSTRC.json';
+import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 
 export class UnwindExecutor {
   /**

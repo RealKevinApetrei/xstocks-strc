@@ -1,8 +1,8 @@
 import { ethers } from 'ethers';
 import type { Call } from '../execution/smart-account.service';
 import { config } from '../../config';
-import USDCVaultABI from '@xstocks/shared/src/abis/USDCVault.json';
-import ERC20ABI from '@xstocks/shared/src/abis/ERC20.json';
+import USDCVaultABI from '@xstocks/shared/abis/USDCVault.json';
+import ERC20ABI from '@xstocks/shared/abis/ERC20.json';
 
 export class VaultService {
   private vaultIface = new ethers.Interface(USDCVaultABI);
