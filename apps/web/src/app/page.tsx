@@ -92,9 +92,6 @@ export default function Home() {
           <span className="text-sm font-semibold tracking-widest uppercase">Spreads</span>
         </div>
 
-        {/* STRC logo */}
-        <img src="/strc-logo.png" alt="STRC" className="h-10 mb-8 select-none" />
-
         {/* Animated APR counter */}
         <AprCounter />
 
