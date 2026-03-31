@@ -220,24 +220,35 @@ export function DepositWithdrawModal({
                 ? 'Bridge any token from any chain to USDC on Ink. Funds go directly to your trading account.'
                 : 'Bridge USDC from your trading account to any chain.'}
             </p>
+            {mode === 'deposit' && depositAddress && (
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2 px-1">
+                <span>Recipient (embedded wallet)</span>
+                <span className="font-mono">{depositAddress.slice(0, 6)}...{depositAddress.slice(-4)}</span>
+              </div>
+            )}
             <div className="relay-widget-container rounded-lg overflow-hidden border border-border">
               {mode === 'deposit' ? (
-                <SwapWidget
-                  supportedWalletVMs={['evm']}
-                  toToken={toToken}
-                  setToToken={setToToken}
-                  fromToken={fromToken}
-                  setFromToken={setFromToken}
-                  lockToToken={true}
-                  defaultToAddress={(depositAddress ?? undefined) as `0x${string}` | undefined}
-                  disablePasteWalletAddressOption={true}
-                  defaultAmount="100"
-                  onSwapSuccess={() => {
-                    setSuccess('Deposit complete — USDC received in your trading account');
-                    refreshBalance();
-                  }}
-                  onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
-                />
+                depositAddress ? (
+                  <SwapWidget
+                    key={depositAddress}
+                    supportedWalletVMs={['evm']}
+                    toToken={toToken}
+                    setToToken={setToToken}
+                    fromToken={fromToken}
+                    setFromToken={setFromToken}
+                    lockToToken={true}
+                    defaultToAddress={depositAddress as `0x${string}`}
+                    disablePasteWalletAddressOption={true}
+                    defaultAmount="100"
+                    onSwapSuccess={() => {
+                      setSuccess('Deposit complete — USDC received in your trading account');
+                      refreshBalance();
+                    }}
+                    onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
+                  />
+                ) : (
+                  <div className="p-8 text-center text-xs text-muted-foreground">Loading wallet...</div>
+                )
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground mb-3">
