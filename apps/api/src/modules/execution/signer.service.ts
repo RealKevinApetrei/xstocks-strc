@@ -9,7 +9,11 @@ const privy = new PrivyClient({
 // Authorization context for server wallet signing
 // Uses the authorization private key registered in Privy Dashboard
 function getAuthContext() {
-  if (!config.privyAuthorizationPrivateKey) return undefined;
+  if (!config.privyAuthorizationPrivateKey) {
+    console.error('[SIGNER] No PRIVY_AUTHORIZATION_PRIVATE_KEY configured');
+    return undefined;
+  }
+  console.log('[SIGNER] Using authorization key, length:', config.privyAuthorizationPrivateKey.length);
   return {
     authorization_private_keys: [config.privyAuthorizationPrivateKey],
   };
