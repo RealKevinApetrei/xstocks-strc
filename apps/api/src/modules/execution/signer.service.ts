@@ -6,12 +6,17 @@ const privy = new PrivyClient({
   appSecret: config.privyAppSecret,
 });
 
+// Authorization context for server wallet signing
+// Uses the authorization private key registered in Privy Dashboard
+function getAuthContext() {
+  if (!config.privyAuthorizationPrivateKey) return undefined;
+  return {
+    authorization_private_keys: [config.privyAuthorizationPrivateKey],
+  };
+}
+
 export class SignerService {
-  /**
-   * Get the embedded wallet for a user.
-   */
   async getWalletForUser(privyId: string): Promise<{ address: string; walletId: string }> {
-    // Use the low-level API (inherited from Users base class)
     const user = await (privy.users() as any)._get(privyId);
     const wallet = user.linked_accounts.find(
       (a: any) => a.type === 'wallet' && a.wallet_client_type === 'privy',
@@ -26,9 +31,6 @@ export class SignerService {
     return { address: wallet.address, walletId };
   }
 
-  /**
-   * Send a transaction via Privy server wallet RPC.
-   */
   async sendTransaction(
     walletId: string,
     tx: { to: string; data: string; value?: string; chainId: number },
@@ -44,6 +46,7 @@ export class SignerService {
       },
       caip2: `eip155:${tx.chainId}`,
       chain_type: 'ethereum',
+      authorization_context: getAuthContext(),
     });
 
     const data = result.data as any;
@@ -52,9 +55,6 @@ export class SignerService {
     return hash;
   }
 
-  /**
-   * Sign EIP-712 typed data (needed for CoW Protocol orders).
-   */
   async signTypedData(
     walletId: string,
     domain: Record<string, unknown>,
@@ -73,6 +73,7 @@ export class SignerService {
         },
       },
       chain_type: 'ethereum',
+      authorization_context: getAuthContext(),
     });
 
     const sig = (result.data as any).signature;

@@ -54,6 +54,10 @@ export const config = {
   // Oracle updater
   oracleUpdaterKey: optional('ORACLE_UPDATER_PRIVATE_KEY', ''),
 
+  // Privy server wallet authorization
+  privyAuthorizationPrivateKey: optional('PRIVY_AUTHORIZATION_PRIVATE_KEY', ''),
+  privyAuthorizationKeyId: optional('PRIVY_AUTHORIZATION_KEY_ID', ''),
+
   // Execution safety limits
   maxLoopIterations: parseInt(optional('MAX_LOOP_ITERATIONS', '10'), 10),
   maxUnwindSteps: parseInt(optional('MAX_UNWIND_STEPS', '20'), 10),
