@@ -25,11 +25,11 @@ export default function Dashboard() {
             STRC Dividend Yield
           </p>
           <p className="text-xl font-mono font-semibold text-success">+{STRC_APY}%</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Base APY · fixed</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Base APY</p>
         </div>
         <div className="bg-card px-5 py-4">
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-1">
-            Max APY @ 5x
+            Net APY @ 5x
           </p>
           <p className="text-xl font-mono font-semibold text-success">
             +{(STRC_APY * 5 - MORPHO_RATE * 4).toFixed(1)}%

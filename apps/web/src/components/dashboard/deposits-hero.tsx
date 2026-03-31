@@ -86,7 +86,6 @@ export function DepositsHero() {
             <span className="text-sm font-mono text-muted-foreground">.00</span>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground font-mono pb-1">No active position</p>
       </div>
     );
   }
