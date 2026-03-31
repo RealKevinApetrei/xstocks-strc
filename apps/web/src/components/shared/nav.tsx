@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DepositWithdrawModal } from './deposit-withdraw-modal';
+import { useSmartWallet } from '@/hooks/use-smart-wallet';
 
 const navItems = [
   { href: '/dashboard', label: 'Loop' },
@@ -13,7 +14,8 @@ const navItems = [
 ];
 
 export function Nav() {
-  const { logout, user } = usePrivy();
+  const { logout } = usePrivy();
+  const { address: smartWalletAddress } = useSmartWallet();
   const pathname = usePathname();
   const [modalMode, setModalMode] = useState<'deposit' | 'withdraw' | null>(null);
 
@@ -59,10 +61,10 @@ export function Nav() {
             WITHDRAW
           </button>
 
-          {/* Wallet address */}
+          {/* Smart wallet address */}
           <span className="text-xs text-muted-foreground font-mono border border-border rounded-md px-2.5 py-1.5">
-            {user?.wallet?.address
-              ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}`
+            {smartWalletAddress
+              ? `${smartWalletAddress.slice(0, 6)}...${smartWalletAddress.slice(-4)}`
               : 'No wallet'}
           </span>
 

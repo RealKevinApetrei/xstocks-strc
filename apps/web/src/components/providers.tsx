@@ -25,7 +25,7 @@ export function Providers({ children }: { children: ReactNode }) {
           accentColor: '#3b82f6',
         },
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
+          createOnLogin: 'all-users',
         },
         defaultChain: ink,
         supportedChains: [ink],

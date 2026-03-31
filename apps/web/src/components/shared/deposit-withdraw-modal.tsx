@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
-import { cn, formatUsd } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { useSmartWallet } from '@/hooks/use-smart-wallet';
 
 type Mode = 'deposit' | 'withdraw';
 type DepositTab = 'ink-chain' | 'qr-code';
 
-// Mock balance — will wire to real Privy smart wallet balance
+// TODO: Wire to real balance reads from Privy smart wallet
 const MOCK_WALLET_USDC_BALANCE = 0;
 const MOCK_PLATFORM_USDC_BALANCE = 0;
 
@@ -18,12 +18,12 @@ export function DepositWithdrawModal({
   mode: Mode;
   onClose: () => void;
 }) {
-  const { user } = usePrivy();
-  const [tab, setTab] = useState<DepositTab>('ink-chain');
+  const { address: smartWalletAddress } = useSmartWallet();
+  const [tab, setTab] = useState<DepositTab>('qr-code');
   const [amount, setAmount] = useState('');
+  const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const smartWalletAddress = user?.wallet?.address ?? '';
   const availableBalance = mode === 'deposit' ? MOCK_WALLET_USDC_BALANCE : MOCK_PLATFORM_USDC_BALANCE;
   const amountNum = parseFloat(amount) || 0;
 
@@ -32,13 +32,18 @@ export function DepositWithdrawModal({
     setIsSubmitting(true);
     try {
       // TODO: Wire to backend API
-      // Deposit: transfer USDC from user's external wallet → Privy smart wallet
-      // Withdraw: transfer USDC from Privy smart wallet → user's external wallet
       console.log(`${mode}:`, { amount, smartWalletAddress });
       onClose();
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCopy = async () => {
+    if (!smartWalletAddress) return;
+    await navigator.clipboard.writeText(smartWalletAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const setPercentage = (pct: number) => {
@@ -47,10 +52,8 @@ export function DepositWithdrawModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
       <div className="relative w-full max-w-md mx-4 rounded-lg border border-border bg-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -82,40 +85,64 @@ export function DepositWithdrawModal({
             </div>
 
             {tab === 'qr-code' ? (
-              /* QR Code tab — show smart wallet address */
               <div className="p-6 space-y-4">
-                {/* QR Code placeholder */}
+                {/* QR Code — encode the smart wallet address */}
                 <div className="flex justify-center">
-                  <div className="h-48 w-48 rounded-lg bg-white p-3 flex items-center justify-center">
-                    <div className="text-black text-[10px] font-mono text-center break-all">
-                      {/* TODO: Generate real QR code with a library */}
-                      <div className="h-36 w-36 bg-muted rounded grid grid-cols-8 grid-rows-8 gap-0.5 p-1">
-                        {Array.from({ length: 64 }).map((_, i) => (
-                          <div key={i} className={cn('rounded-sm', Math.random() > 0.5 ? 'bg-black' : 'bg-white')} />
-                        ))}
+                  <div className="h-52 w-52 rounded-xl bg-white p-4 flex items-center justify-center shadow-lg">
+                    {smartWalletAddress ? (
+                      /* Simple visual representation — real QR needs a library like qrcode.react */
+                      <div className="h-full w-full flex flex-col items-center justify-center gap-2">
+                        <svg viewBox="0 0 100 100" className="h-36 w-36">
+                          {/* Generate a deterministic pattern from the address */}
+                          {Array.from({ length: 10 }).map((_, row) =>
+                            Array.from({ length: 10 }).map((_, col) => {
+                              const charCode = smartWalletAddress.charCodeAt((row * 10 + col) % smartWalletAddress.length);
+                              const filled = charCode % 3 !== 0;
+                              // Keep corners for finder patterns
+                              const isCorner = (row < 3 && col < 3) || (row < 3 && col > 6) || (row > 6 && col < 3);
+                              return (
+                                <rect
+                                  key={`${row}-${col}`}
+                                  x={col * 10}
+                                  y={row * 10}
+                                  width="9"
+                                  height="9"
+                                  rx="1"
+                                  fill={isCorner || filled ? '#000' : '#fff'}
+                                />
+                              );
+                            })
+                          )}
+                        </svg>
+                        <p className="text-[8px] text-gray-400 font-mono">Install qrcode.react for real QR</p>
                       </div>
-                    </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">No wallet connected</p>
+                    )}
                   </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center">Trading account deposit address</p>
 
                 {/* Address with copy */}
-                <div className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2">
+                <div
+                  className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2.5 cursor-pointer hover:border-foreground/20 transition-colors"
+                  onClick={handleCopy}
+                >
                   <span className="text-xs font-mono text-muted-foreground flex-1 truncate">
-                    {smartWalletAddress || '0x...'}
+                    {smartWalletAddress || 'Connecting...'}
                   </span>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(smartWalletAddress)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    title="Copy address"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <button className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                    {copied ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-success"><path d="M20 6 9 17l-5-5"/></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    )}
                   </button>
                 </div>
 
                 {/* Info */}
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Network</span>
                     <span className="font-medium">Ink</span>
