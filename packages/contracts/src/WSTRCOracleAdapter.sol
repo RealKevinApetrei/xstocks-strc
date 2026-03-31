@@ -3,132 +3,95 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IwSTRC} from "./interfaces/IwSTRC.sol";
-import {IVerifierProxy, ChainlinkReport} from "./interfaces/IChainlinkVerifier.sol";
+import {IPyth, PythPrice} from "./interfaces/IPyth.sol";
 
 /**
  * @title WSTRCOracleAdapter
- * @notice Oracle adapter for Morpho Blue that returns the price of wSTRC in USDC.
- *         Reads STRCx/USD price from Chainlink Data Streams, combines with the
- *         wSTRC→STRCx exchange rate to produce a wSTRC/USDC price.
+ * @notice Oracle adapter for Morpho Blue — wSTRC/USDC price.
+ *         Reads STRCx/USD from Pyth Network pull oracle on-chain,
+ *         combines with wSTRC→STRCx exchange rate.
  *
- *         Supports two modes:
- *         1. Chainlink Data Streams — verified on-chain via IVerifierProxy
- *         2. Manual override — owner-settable price for testing/fallback
- *
- *         Morpho Blue calls price() which returns the cached price multiplied
- *         by the current wSTRC exchange rate.
+ *         Two modes:
+ *         1. Pyth on-chain — verified price from Pyth EVM contract
+ *         2. Manual override — owner-settable for testing/fallback
  */
 contract WSTRCOracleAdapter is Ownable {
     IwSTRC public immutable wstrc;
-    IVerifierProxy public immutable verifier;
-    bytes32 public immutable chainlinkStreamId;
+    IPyth public immutable pyth;
+    bytes32 public immutable pythPriceFeedId;
 
-    /// @notice Cached STRCx/USD price (18 decimals).
-    uint256 public strcxPriceUsd;
-
-    /// @notice Timestamp of the last price update.
-    uint256 public lastPriceUpdate;
-
-    /// @notice Maximum age of a price before it's considered stale (1 hour).
     uint256 public constant MAX_PRICE_AGE = 3600;
 
-    /// @notice Whether manual price override is active.
+    uint256 public manualPrice; // 18 decimals
     bool public manualOverride;
 
-    event PriceUpdated(uint256 price, uint256 timestamp, bool fromChainlink);
+    event ManualPriceSet(uint256 price);
     event ManualOverrideSet(bool enabled);
 
     constructor(
         address _wstrc,
-        address _verifier,
-        bytes32 _streamId,
-        uint256 _initialPrice
+        address _pyth,
+        bytes32 _priceFeedId,
+        uint256 _initialManualPrice
     ) Ownable(msg.sender) {
         require(_wstrc != address(0), "Oracle: zero wstrc");
         wstrc = IwSTRC(_wstrc);
-        verifier = IVerifierProxy(_verifier);
-        chainlinkStreamId = _streamId;
-
-        // Set initial price (for bootstrapping before first Chainlink update)
-        strcxPriceUsd = _initialPrice;
-        lastPriceUpdate = block.timestamp;
-        manualOverride = _verifier == address(0); // Auto-enable manual if no verifier
+        pyth = IPyth(_pyth);
+        pythPriceFeedId = _priceFeedId;
+        manualPrice = _initialManualPrice;
+        manualOverride = _pyth == address(0);
     }
 
     /**
-     * @notice Verify a Chainlink Data Streams signed report and update the cached price.
-     * @param signedReport The signed report bytes from Chainlink Data Streams API.
-     */
-    function updatePriceFromChainlink(bytes calldata signedReport) external {
-        require(address(verifier) != address(0), "Oracle: no verifier configured");
-
-        bytes memory decoded = verifier.verify(signedReport);
-
-        ChainlinkReport memory report = abi.decode(decoded, (ChainlinkReport));
-
-        require(report.feedId == chainlinkStreamId, "Oracle: wrong feed");
-        require(report.expiresAt > block.timestamp, "Oracle: report expired");
-
-        // Use tokenizedPrice — available 24/7 including weekends/market-closed hours.
-        // Falls back to market price only if tokenizedPrice is zero (shouldn't happen for tokenized assets).
-        int192 selectedPrice = report.tokenizedPrice > 0 ? report.tokenizedPrice : report.price;
-        require(selectedPrice > 0, "Oracle: negative or zero price");
-
-        // Chainlink Data Streams prices are in 18 decimals
-        strcxPriceUsd = uint256(int256(selectedPrice));
-        lastPriceUpdate = block.timestamp;
-
-        emit PriceUpdated(strcxPriceUsd, block.timestamp, true);
-    }
-
-    /**
-     * @notice Manually set the STRCx/USD price (owner only, for testing/fallback).
-     * @param _price STRCx price in USD, 18 decimals.
-     */
-    function setManualPrice(uint256 _price) external onlyOwner {
-        require(_price > 0, "Oracle: zero price");
-        strcxPriceUsd = _price;
-        lastPriceUpdate = block.timestamp;
-        manualOverride = true;
-
-        emit PriceUpdated(_price, block.timestamp, false);
-        emit ManualOverrideSet(true);
-    }
-
-    /**
-     * @notice Toggle manual override mode.
-     */
-    function setManualOverride(bool _enabled) external onlyOwner {
-        manualOverride = _enabled;
-        emit ManualOverrideSet(_enabled);
-    }
-
-    /**
-     * @notice Returns the price of wSTRC in USDC for Morpho Blue.
-     * @dev Morpho expects: price * 1e36 / 1e(collateralDecimals - loanDecimals)
-     *      For wSTRC (18 dec) / USDC (6 dec): multiply by 1e36 / 1e12 = 1e24
-     *      Since strcxPriceUsd is in 18 decimals, and strcPerWstrc() is in 18 decimals:
-     *      wstrcPriceUsd = strcPerWstrc * strcxPriceUsd / 1e18  (in 18 decimals)
-     *      morphoPrice = wstrcPriceUsd * 1e24  (scale to Morpho precision)
+     * @notice wSTRC/USDC price for Morpho Blue.
+     * @dev Morpho scale: price * 1e36 / 1e(collateralDec - loanDec)
+     *      wSTRC(18) / USDC(6) → multiply by 1e24
      */
     function price() external view returns (uint256) {
-        require(strcxPriceUsd > 0, "Oracle: no price set");
-        require(
-            manualOverride || block.timestamp <= lastPriceUpdate + MAX_PRICE_AGE,
-            "Oracle: price stale"
-        );
-
-        uint256 rate = wstrc.strcPerWstrc(); // 18 decimals
-        // wstrcPriceUsd (18 dec) = rate (18 dec) * strcxPriceUsd (18 dec) / 1e18
+        uint256 strcxPriceUsd = _getStrcxPrice();
+        uint256 rate = wstrc.strcPerWstrc();
         uint256 wstrcPriceUsd = (rate * strcxPriceUsd) / 1e18;
-        // Scale to Morpho precision: * 1e24 (for 18-dec collateral / 6-dec loan)
         return wstrcPriceUsd * 1e24;
     }
 
-    /**
-     * @notice Get the current STRCx/USD price in 18 decimals (for frontend/backend reads).
-     */
+    function _getStrcxPrice() internal view returns (uint256) {
+        if (manualOverride) {
+            require(manualPrice > 0, "Oracle: no manual price");
+            return manualPrice;
+        }
+
+        require(address(pyth) != address(0), "Oracle: no Pyth");
+        PythPrice memory p = pyth.getPriceNoOlderThan(pythPriceFeedId, MAX_PRICE_AGE);
+        require(p.price > 0, "Oracle: zero price");
+
+        // Convert Pyth price to 18 decimals
+        uint256 rawPrice = uint256(uint64(p.price));
+        if (p.expo < 0) {
+            uint256 dec = uint256(uint32(-p.expo));
+            if (dec < 18) rawPrice = rawPrice * (10 ** (18 - dec));
+            else if (dec > 18) rawPrice = rawPrice / (10 ** (dec - 18));
+        } else {
+            rawPrice = rawPrice * (10 ** (uint256(uint32(p.expo)) + 18));
+        }
+        return rawPrice;
+    }
+
     function getStrcxPrice() external view returns (uint256 _price, uint256 _timestamp) {
-        return (strcxPriceUsd, lastPriceUpdate);
+        if (manualOverride) return (manualPrice, block.timestamp);
+        PythPrice memory p = pyth.getPrice(pythPriceFeedId);
+        return (_getStrcxPrice(), p.publishTime);
+    }
+
+    function setManualPrice(uint256 _price) external onlyOwner {
+        require(_price > 0, "Oracle: zero price");
+        manualPrice = _price;
+        manualOverride = true;
+        emit ManualPriceSet(_price);
+        emit ManualOverrideSet(true);
+    }
+
+    function setManualOverride(bool _enabled) external onlyOwner {
+        manualOverride = _enabled;
+        emit ManualOverrideSet(_enabled);
     }
 }

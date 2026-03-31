@@ -217,7 +217,7 @@ executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
   const history = Array.from({ length: 30 }, (_, i) => ({
     timestamp: new Date(now - (29 - i) * 86400000).toISOString(),
     baseApy: baseApy + (Math.random() - 0.5) * 2,
-    leveraged3xApy: (baseApy + (Math.random() - 0.5) * 2) * 3 * 0.85, // ~85% efficiency
+    leveraged3xApy: (baseApy + (Math.random() - 0.5) * 2) * 3 * 0.85,
   }));
 
   res.json({
@@ -230,4 +230,13 @@ executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
     },
     history,
   });
+});
+
+// GET /api/apy/aave — Aave USDC lending yield data
+executionRouter.get('/apy/aave', async (req: Request, res: Response) => {
+  // Lazy import to avoid circular deps
+  const mod = require('../aave/aave-yield.service');
+  const days = parseInt((req.query.days as string) ?? '90', 10);
+  const data = await mod.aaveYieldService.getYieldData(days);
+  res.json(data);
 });

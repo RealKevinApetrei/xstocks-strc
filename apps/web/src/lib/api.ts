@@ -88,4 +88,8 @@ export const api = {
   // Price (Chainlink Data Streams — STRCx/USD)
   getStrcxPrice: () =>
     request<{ price: number; timestamp: number; stale: boolean; source: string }>('/api/grid/price'),
+
+  // Aave USDC yield (real data from subgraph)
+  getAaveYield: (days: number = 90) =>
+    request<{ currentSupplyApy: number; history: Array<{ timestamp: string; supplyApy: number }> }>(`/api/apy/aave?days=${days}`),
 };

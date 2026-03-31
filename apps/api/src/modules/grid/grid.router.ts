@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { privyAuth, type AuthenticatedRequest } from '../../middleware/privyAuth';
 import { gridExecutor } from './grid.executor';
-import { chainlinkPriceService } from '../chainlink/chainlink-price.service';
+import { pythPriceService } from '../pyth/pyth-price.service';
 import { policyService, PolicyViolation } from '../execution/policy.service';
 import { smartAccountService } from '../execution/smart-account.service';
 import { vaultService } from '../vault/vault.service';
@@ -157,7 +157,7 @@ gridRouter.get('/events/:strategyId', privyAuth, async (req: Request, res: Respo
 // GET /api/grid/price — Current STRCx/USD price from Chainlink
 gridRouter.get('/price', async (_req: Request, res: Response) => {
   try {
-    const price = await chainlinkPriceService.getPrice();
+    const price = await pythPriceService.getPrice();
     res.json({
       price: price.price,
       timestamp: price.timestamp,

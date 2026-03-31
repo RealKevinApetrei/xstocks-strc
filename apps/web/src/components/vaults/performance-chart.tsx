@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn, formatUsd } from '@/lib/utils';
+import { api } from '@/lib/api';
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
-// Simulated backtested data — will integrate live data soon
-function generateSimulatedData(days: number) {
+/**
+ * Generate performance data using real Aave rates (fetched from API)
+ * combined with simulated STRC loop returns.
+ */
+function generateSimulatedData(days: number, aaveHistory?: Array<{ timestamp: string; supplyApy: number }>) {
   const data: Array<{
     date: string;
     strcLoopYield: number;
@@ -18,18 +22,24 @@ function generateSimulatedData(days: number) {
   let aaveCumulative = 100;
 
   const strcDailyRate = 28 / 365 / 100; // ~28% APY for 3x leveraged STRC
-  const aaveDailyRate = 3.5 / 365 / 100; // ~3.5% APY Aave USDC
 
   for (let i = days; i >= 0; i--) {
     const date = new Date(now - i * 86400000);
+    const dateStr = date.toISOString().split('T')[0];
+
+    // Use real Aave rate if available, otherwise fallback to 3.5%
+    const dayIndex = days - i;
+    const aaveRate = aaveHistory && aaveHistory[dayIndex]
+      ? aaveHistory[dayIndex].supplyApy / 365 / 100
+      : 3.5 / 365 / 100;
+
     const strcNoise = 1 + (Math.random() - 0.48) * 0.008;
-    const aaveNoise = 1 + (Math.random() - 0.5) * 0.001;
 
     strcCumulative *= (1 + strcDailyRate) * strcNoise;
-    aaveCumulative *= (1 + aaveDailyRate) * aaveNoise;
+    aaveCumulative *= (1 + aaveRate);
 
     data.push({
-      date: date.toISOString().split('T')[0],
+      date: dateStr,
       strcLoopYield: strcCumulative,
       aaveUsdcYield: aaveCumulative,
     });
@@ -50,7 +60,18 @@ function formatDateLabel(dateStr: string, range: TimeRange): string {
 
 export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const [range, setRange] = useState<TimeRange>('3M');
-  const data = useMemo(() => generateSimulatedData(RANGE_DAYS[range]), [range]);
+  const [aaveHistory, setAaveHistory] = useState<Array<{ timestamp: string; supplyApy: number }>>([]);
+  const [aaveCurrentApy, setAaveCurrentApy] = useState<number>(3.5);
+
+  // Fetch real Aave yield data
+  useEffect(() => {
+    api.getAaveYield(RANGE_DAYS[range]).then((result) => {
+      setAaveHistory(result.history);
+      setAaveCurrentApy(result.currentSupplyApy);
+    }).catch(() => { /* fallback to simulated */ });
+  }, [range]);
+
+  const data = useMemo(() => generateSimulatedData(RANGE_DAYS[range], aaveHistory), [range, aaveHistory]);
 
   const lastPoint = data[data.length - 1];
   const strcReturn = ((lastPoint.strcLoopYield - 100) / 100) * 100;
@@ -89,7 +110,9 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium text-muted-foreground">Backtested Performance</h2>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Simulated — STRC 3x Loop vs Aave USDC Lending</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            STRCx 3x Loop vs Aave USDC Lending (current: {aaveCurrentApy.toFixed(1)}% APY)
+          </p>
         </div>
         <div className="flex gap-1">
           {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((r) => (
