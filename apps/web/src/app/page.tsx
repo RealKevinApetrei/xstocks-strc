@@ -2,7 +2,7 @@
 
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 function AprCounter() {
   const [display, setDisplay] = useState(0);
@@ -33,9 +33,64 @@ function AprCounter() {
   );
 }
 
+const TICKER_ITEMS = [
+  { label: 'STRC Dividend', value: '11.5% APY' },
+  { label: 'Max Leverage', value: '5×' },
+  { label: 'Net APY @ 5×', value: '40%' },
+  { label: 'Borrow Rate', value: '4.2% Morpho' },
+  { label: 'Slippage', value: '0% · CoW RFQ' },
+  { label: 'Chain', value: 'INK Mainnet' },
+  { label: 'Protocol', value: 'Morpho Blue' },
+  { label: 'Asset', value: 'STRC / STRCx' },
+];
+
+function Ticker() {
+  const items = [...TICKER_ITEMS, ...TICKER_ITEMS]; // duplicate for seamless loop
+  return (
+    <div className="absolute top-0 left-0 right-0 z-30 border-b border-black/8 bg-white/60 backdrop-blur-sm overflow-hidden">
+      <div
+        className="flex items-center gap-0 py-2 whitespace-nowrap"
+        style={{ animation: 'ticker-scroll 28s linear infinite', width: 'max-content' }}
+      >
+        {items.map((item, i) => (
+          <span key={i} className="flex items-center gap-3 px-6 text-[10px] font-mono tracking-widest">
+            <span className="text-gray-400 uppercase">{item.label}</span>
+            <span className="font-semibold text-gray-800">{item.value}</span>
+            <span className="text-gray-200 select-none">·</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// A floating pill card
+function FloatCard({
+  children,
+  className,
+  floatClass,
+  style,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  floatClass: 'float-a' | 'float-b' | 'float-c';
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      className={`absolute pointer-events-none select-none rounded-xl border border-black/8 bg-white/80 backdrop-blur-sm shadow-sm px-4 py-3 ${floatClass} ${className ?? ''}`}
+      style={style}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function Home() {
   const { login, authenticated, ready } = usePrivy();
   const router = useRouter();
+  const containerRef = useRef<HTMLElement>(null);
+  const [parallax, setParallax] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (ready && authenticated) {
@@ -43,40 +98,126 @@ export default function Home() {
     }
   }, [ready, authenticated, router]);
 
-  return (
-    <main className="relative min-h-screen overflow-hidden flex items-center justify-center" style={{
-      background: '#f5f4f0',
-      backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
-      backgroundSize: '52px 52px',
-      fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-    }}>
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setParallax({
+      x: (e.clientX - rect.left - rect.width / 2) / rect.width,
+      y: (e.clientY - rect.top - rect.height / 2) / rect.height,
+    });
+  }, []);
 
-      {/* Michael Saylor cutout — right side. Add saylor.png to apps/web/public/ */}
+  return (
+    <main
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      className="relative min-h-screen overflow-hidden flex items-center justify-center"
+      style={{
+        background: '#f5f4f0',
+        backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
+        backgroundSize: '52px 52px',
+        fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+      }}
+    >
+      {/* Scrolling ticker */}
+      <Ticker />
+
+      {/* ── Floating stat cards ── */}
+
+      {/* Top-left: STRC yield */}
+      <FloatCard
+        floatClass="float-a"
+        className="left-[6%] top-[22%]"
+        style={{ transform: `translate(${parallax.x * -18}px, ${parallax.y * -12}px)` }}
+      >
+        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">STRC Dividend</div>
+        <div className="text-xl font-mono font-bold" style={{ color: '#16a34a' }}>11.5%</div>
+        <div className="text-[9px] text-gray-400 mt-0.5">Annual Yield</div>
+      </FloatCard>
+
+      {/* Mid-left: leverage */}
+      <FloatCard
+        floatClass="float-b"
+        className="left-[4%] top-[52%]"
+        style={{ transform: `translate(${parallax.x * -24}px, ${parallax.y * -8}px)` }}
+      >
+        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">Max Leverage</div>
+        <div className="text-2xl font-mono font-bold">5×</div>
+        <div className="text-[9px] text-gray-400 mt-0.5">Morpho Blue</div>
+      </FloatCard>
+
+      {/* Bottom-left: CoW Swap */}
+      <FloatCard
+        floatClass="float-c"
+        className="left-[8%] bottom-[20%]"
+        style={{ transform: `translate(${parallax.x * -14}px, ${parallax.y * -6}px)` }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+          <span className="text-[9px] font-mono text-gray-500 tracking-wide">0% slippage · CoW RFQ</span>
+        </div>
+      </FloatCard>
+
+      {/* Top-right: net APY */}
+      <FloatCard
+        floatClass="float-b"
+        className="right-[22%] top-[18%]"
+        style={{ transform: `translate(${parallax.x * 20}px, ${parallax.y * -10}px)`, animationDelay: '-3s' }}
+      >
+        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">Net APY @ 5×</div>
+        <div className="text-xl font-mono font-bold" style={{ color: '#e05c00' }}>40%</div>
+        <div className="text-[9px] text-gray-400 mt-0.5">After borrow costs</div>
+      </FloatCard>
+
+      {/* Mid-right: Morpho */}
+      <FloatCard
+        floatClass="float-a"
+        className="right-[18%] bottom-[32%]"
+        style={{ transform: `translate(${parallax.x * 16}px, ${parallax.y * 14}px)`, animationDelay: '-5s' }}
+      >
+        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">Borrow Rate</div>
+        <div className="text-xl font-mono font-bold">4.2%</div>
+        <div className="text-[9px] text-gray-400 mt-0.5">Variable · Morpho</div>
+      </FloatCard>
+
+      {/* Michael Saylor cutout — right side */}
       <img
         src="/saylor.png"
         alt="Michael Saylor"
-        className="absolute right-0 bottom-0 h-[90vh] object-contain object-bottom select-none pointer-events-none"
-        style={{ filter: 'drop-shadow(-12px 0 40px rgba(0,0,0,0.10))' }}
+        className="absolute right-0 bottom-0 h-[88vh] object-contain object-bottom select-none pointer-events-none"
+        style={{
+          filter: 'drop-shadow(-12px 0 40px rgba(0,0,0,0.10))',
+          transform: `translate(${parallax.x * 12}px, ${parallax.y * 6}px)`,
+          transition: 'transform 0.15s ease-out',
+        }}
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Bitcoin stack — bottom left. Add bitcoin-stack.png to apps/web/public/ */}
+      {/* Bitcoin stack — bottom left */}
       <img
         src="/bitcoin-stack.png"
         alt=""
         aria-hidden="true"
-        className="absolute left-4 bottom-0 h-[40vh] object-contain object-bottom select-none pointer-events-none"
-        style={{ filter: 'drop-shadow(4px 0 20px rgba(0,0,0,0.10))' }}
+        className="absolute left-4 bottom-0 h-[38vh] object-contain object-bottom select-none pointer-events-none"
+        style={{
+          filter: 'drop-shadow(4px 0 20px rgba(0,0,0,0.10))',
+          transform: `translate(${parallax.x * -8}px, ${parallax.y * 4}px)`,
+          transition: 'transform 0.15s ease-out',
+        }}
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Chart going up — top left. Add chart-up.png to apps/web/public/ */}
+      {/* Chart going up — top left */}
       <img
         src="/chart-up.png"
         alt=""
         aria-hidden="true"
-        className="absolute left-[10%] top-[6%] h-[26vh] object-contain select-none pointer-events-none opacity-75"
-        style={{ transform: 'rotate(-5deg)', filter: 'drop-shadow(2px 2px 12px rgba(0,0,0,0.08))' }}
+        className="absolute left-[10%] top-[12%] h-[22vh] object-contain select-none pointer-events-none opacity-60"
+        style={{
+          transform: `rotate(-5deg) translate(${parallax.x * -20}px, ${parallax.y * -10}px)`,
+          transition: 'transform 0.15s ease-out',
+          filter: 'drop-shadow(2px 2px 12px rgba(0,0,0,0.08))',
+        }}
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
