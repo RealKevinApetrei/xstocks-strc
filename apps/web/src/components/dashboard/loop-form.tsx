@@ -10,6 +10,7 @@ import { LoopStatus } from './loop-status';
 const STRC_BASE_APY = 11.5;
 const MORPHO_BORROW_RATE = 4.2;
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
+const MIN_DEPOSIT: Record<number, number> = { 2: 30, 3: 40, 5: 70 };
 
 function netApy(leverage: number) {
   return (STRC_BASE_APY * leverage - MORPHO_BORROW_RATE * (leverage - 1)).toFixed(1);
@@ -137,6 +138,10 @@ export function LoopForm() {
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Est. debt</span>
             <span className="font-mono">{formatUsd(debtUsdc)} USDC</span>
+          </div>
+          <div className="flex justify-between text-xs pt-1 border-t border-border/50">
+            <span className="text-muted-foreground">Min. deposit ({leverage}x)</span>
+            <span className="font-mono">${MIN_DEPOSIT[leverage]}</span>
           </div>
         </div>
       )}
