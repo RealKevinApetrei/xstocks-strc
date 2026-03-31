@@ -25,6 +25,7 @@ Thumbs.db
 # Foundry
 packages/contracts/cache/
 packages/contracts/out/
+packages/contracts/lib/
 
 # Misc
 *.log
