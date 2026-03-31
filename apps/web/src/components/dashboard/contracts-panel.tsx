@@ -3,15 +3,15 @@
 const INK_EXPLORER = 'https://explorer.inkonchain.com';
 
 const CONTRACTS = [
-  { label: 'STRC Token', address: '0x1aad217b8f78dba5e6693460e8470f8b1a3977f3' },
-  { label: 'wSTRC (Wrapped)', address: '0x3b172e9c5488B17A0F4dc6fF4dc798055CC77281' },
-  { label: 'USDC', address: '0x2D270e6886d130D724215A266106e6832161EAEd' },
-  { label: 'Morpho Blue', address: '0x857f3EefE8cbda3Bc49367C996cd664A880d3042' },
-  { label: 'Morpho Oracle', address: '0xDf50EF4D86f056546208c66F9d348b003605eb8E' },
-  { label: 'Morpho IRM', address: '0x9515407b1512F53388ffE699524100e7270Ee57B' },
-] as const;
+  { label: 'STRC Token', address: process.env.NEXT_PUBLIC_STRC_ADDRESS },
+  { label: 'wSTRC (Wrapped)', address: process.env.NEXT_PUBLIC_WSTRC_ADDRESS },
+  { label: 'USDC', address: process.env.NEXT_PUBLIC_USDC_ADDRESS },
+  { label: 'Morpho Blue', address: process.env.NEXT_PUBLIC_MORPHO_ADDRESS },
+  { label: 'Morpho Oracle', address: process.env.NEXT_PUBLIC_MORPHO_ORACLE_ADDRESS },
+  { label: 'Morpho IRM', address: process.env.NEXT_PUBLIC_MORPHO_IRM_ADDRESS },
+].filter((c) => c.address) as Array<{ label: string; address: string }>;
 
-const MARKET_ID = '0x036af40bfb700c865a67113be7033830b600eff68b12a8d06c1f57520fccf94a';
+const MARKET_ID = process.env.NEXT_PUBLIC_MORPHO_MARKET_ID ?? '';
 
 export function ContractsPanel() {
   return (
@@ -39,17 +39,19 @@ export function ContractsPanel() {
           </div>
         ))}
 
-        <div className="flex items-center justify-between pt-2 border-t border-border/50">
-          <span className="text-xs text-muted-foreground">Morpho Market</span>
-          <a
-            href={`https://app.morpho.org/ink/market?id=${MARKET_ID}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-mono text-foreground hover:underline underline-offset-2"
-          >
-            {MARKET_ID.slice(0, 10)}...{MARKET_ID.slice(-4)}
-          </a>
-        </div>
+        {MARKET_ID && (
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <span className="text-xs text-muted-foreground">Morpho Market</span>
+            <a
+              href={`https://app.morpho.org/ink/market?id=${MARKET_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-mono text-foreground hover:underline underline-offset-2"
+            >
+              {MARKET_ID.slice(0, 10)}...{MARKET_ID.slice(-4)}
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
