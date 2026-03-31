@@ -4,8 +4,7 @@ import { PositionCard } from '@/components/dashboard/position-card';
 import { LoopForm } from '@/components/dashboard/loop-form';
 import { UnwindButton } from '@/components/dashboard/unwind-button';
 import { LoopHistory } from '@/components/dashboard/loop-history';
-import { AccountOverview } from '@/components/dashboard/account-overview';
-import { LivePriceTicker } from '@/components/dashboard/live-price-ticker';
+import { DepositsHero } from '@/components/dashboard/deposits-hero';
 import { PerformanceChart } from '@/components/vaults/performance-chart';
 import { usePosition } from '@/hooks/use-position';
 
@@ -17,8 +16,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5">
-      {/* Live price ticker */}
-      <LivePriceTicker />
+      {/* Hero — animated deposits + APY */}
+      <DepositsHero />
 
       {/* Top stat bar */}
       <div className="grid grid-cols-3 gap-px border border-border rounded-lg overflow-hidden bg-border">
