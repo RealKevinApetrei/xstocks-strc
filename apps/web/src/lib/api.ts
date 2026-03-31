@@ -89,7 +89,11 @@ export const api = {
   getStrcxPrice: () =>
     request<{ price: number; timestamp: number; stale: boolean; source: string }>('/api/grid/price'),
 
-  // Aave USDC yield (real data from subgraph)
+  // Aave USDC yield (real data from DeFi Llama)
   getAaveYield: (days: number = 90) =>
     request<{ currentSupplyApy: number; history: Array<{ timestamp: string; supplyApy: number }> }>(`/api/apy/aave?days=${days}`),
+
+  // Historical STRC prices (Pyth Benchmarks)
+  getStrcPriceHistory: (days: number = 90) =>
+    request<{ history: Array<{ price: number; timestamp: number }>; count: number; source: string }>(`/api/grid/price/history?days=${days}`),
 };
