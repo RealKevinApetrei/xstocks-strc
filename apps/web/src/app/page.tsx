@@ -25,10 +25,10 @@ function AprCounter() {
 
   return (
     <div className="mb-6">
-      <div className="text-[5rem] font-mono font-bold leading-none" style={{ color: '#16a34a' }}>
+      <div className="text-[8rem] font-mono font-bold leading-none" style={{ color: '#16a34a' }}>
         {display}%
       </div>
-      <div className="text-xs font-mono text-gray-400 tracking-widest uppercase mt-1">APR</div>
+      <div className="text-xs font-mono text-gray-400 tracking-widest uppercase mt-2">APR</div>
     </div>
   );
 }
@@ -145,11 +145,11 @@ export default function Home() {
         <AprCounter />
 
         {/* Headline */}
-        <h1 className="text-[2.8rem] font-bold tracking-tight leading-[1.1] mb-4">
+        <h1 className="text-[3.8rem] font-bold tracking-tight leading-[1.05] mb-5">
           <span style={{ color: '#e05c00' }}>Stretch</span> Your Yield
         </h1>
 
-        <p className="text-sm text-gray-400 mb-8 leading-relaxed">
+        <p className="text-base text-gray-400 mb-8 leading-relaxed">
           Turn your STRC dividend into up to 5× more — automatically.
         </p>
 
