@@ -32,8 +32,10 @@ export function LoopForm() {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
+      // Convert human-readable USDC to 6-decimal on-chain format
+      const usdcRaw = BigInt(Math.round(parseFloat(usdcAmount) * 1e6)).toString();
       const result = await api.startLoop(token, {
-        strcAmount: usdcAmount,
+        strcAmount: usdcRaw,
         targetLeverage: leverage,
         maxSlippageBps: 0, // CoW RFQ — no slippage
       });
