@@ -1,3 +1,5 @@
+/* @import rules must come first */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme inline {
@@ -36,11 +38,9 @@
   --radius-lg: 0.625rem;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
-
 body {
   background-color: var(--color-background);
-  /* Graph paper grid — matches Spreads reference exactly */
+  /* Graph paper grid — matches Spreads reference */
   background-image:
     linear-gradient(rgba(0, 0, 0, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 0, 0, 0.055) 1px, transparent 1px);
