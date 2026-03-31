@@ -5,7 +5,6 @@ import { LoopForm } from '@/components/dashboard/loop-form';
 import { UnwindButton } from '@/components/dashboard/unwind-button';
 import { LoopHistory } from '@/components/dashboard/loop-history';
 import { DepositsHero } from '@/components/dashboard/deposits-hero';
-import { PerformanceChart } from '@/components/vaults/performance-chart';
 import { usePosition } from '@/hooks/use-position';
 
 const STRC_APY = 11.5;
@@ -58,8 +57,6 @@ export default function Dashboard() {
         <LoopForm />
       </div>
 
-      {/* Performance + History */}
-      <PerformanceChart />
       <LoopHistory />
     </div>
   );
