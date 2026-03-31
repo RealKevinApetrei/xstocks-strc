@@ -2,24 +2,25 @@
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { usePrivy, useSendTransaction } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
+import { SwapWidget } from '@relayprotocol/relay-kit-ui';
 import { cn } from '@/lib/utils';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { api, ApiError } from '@/lib/api';
 
 type Mode = 'deposit' | 'withdraw';
-type DepositTab = 'ink-chain' | 'qr-code';
+type DepositTab = 'bridge' | 'qr-code';
 
-const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '';
-
-// ERC20 transfer function selector + encoding
-function encodeTransfer(to: string, amount: bigint): string {
-  const selector = '0xa9059cbb';
-  const paddedTo = to.toLowerCase().replace('0x', '').padStart(64, '0');
-  const paddedAmount = amount.toString(16).padStart(64, '0');
-  return selector + paddedTo + paddedAmount;
-}
+// USDC on Ink mainnet
+const INK_USDC = {
+  chainId: 57073,
+  address: '0x2d270e6886d130d724215a266106e6832161eaed' as const,
+  decimals: 6,
+  name: 'USDC',
+  symbol: 'USDC',
+  logoURI: 'https://coin-images.coingecko.com/coins/images/6319/large/usdc.png',
+};
 
 export function DepositWithdrawModal({
   mode,
@@ -29,10 +30,9 @@ export function DepositWithdrawModal({
   onClose: () => void;
 }) {
   const { getAccessToken, user } = usePrivy();
-  const { sendTransaction } = useSendTransaction();
   const { address: smartWalletAddress } = useSmartWallet();
   const { balance: platformBalance, refresh: refreshBalance } = useUsdcBalance();
-  const [tab, setTab] = useState<DepositTab>('qr-code');
+  const [tab, setTab] = useState<DepositTab>('bridge');
   const [amount, setAmount] = useState('');
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,48 +40,16 @@ export function DepositWithdrawModal({
   const [success, setSuccess] = useState<string | null>(null);
 
   const amountNum = parseFloat(amount) || 0;
-  const availableBalance = mode === 'withdraw' ? platformBalance : 0;
 
-  // Get the user's external wallet address (for withdraw destination)
+  // Relay SwapWidget token state
+  const [toToken, setToToken] = useState<any>(INK_USDC);
+  const [fromToken, setFromToken] = useState<any>(undefined);
+
+  // Get the user's embedded wallet address (for withdraw destination)
   const externalWallet = user?.linkedAccounts.find(
     (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
   );
   const externalAddress = externalWallet && 'address' in externalWallet ? externalWallet.address as string : null;
-
-  const handleDeposit = async () => {
-    if (!amount || amountNum <= 0 || isSubmitting || !smartWalletAddress) return;
-    setIsSubmitting(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const amountRaw = BigInt(Math.round(amountNum * 1e6));
-      const data = encodeTransfer(smartWalletAddress, amountRaw);
-
-      const receipt = await sendTransaction({
-        to: USDC_ADDRESS as `0x${string}`,
-        data: data as `0x${string}`,
-        chainId: 57073,
-      });
-
-      setSuccess(`Deposited $${amountNum.toFixed(2)} USDC`);
-      setAmount('');
-      refreshBalance();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Deposit failed';
-      if (msg.includes('intrinsic gas too low') || msg.includes('insufficient funds for gas')) {
-        setError('Your wallet needs a small amount of ETH on Ink to cover gas fees. Send ETH to your wallet address first, or use the QR Code tab to deposit USDC directly.');
-      } else if (msg.includes('insufficient balance') || msg.includes('transfer amount exceeds')) {
-        setError('Insufficient USDC balance in your wallet.');
-      } else if (msg.includes('rejected') || msg.includes('denied')) {
-        setError('Transaction was cancelled.');
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleWithdraw = async () => {
     if (!amount || amountNum <= 0 || isSubmitting || !externalAddress) return;
@@ -110,8 +78,6 @@ export function DepositWithdrawModal({
     }
   };
 
-  const handleSubmit = mode === 'deposit' ? handleDeposit : handleWithdraw;
-
   const handleCopy = async () => {
     if (!smartWalletAddress) return;
     await navigator.clipboard.writeText(smartWalletAddress);
@@ -120,18 +86,16 @@ export function DepositWithdrawModal({
   };
 
   const setPercentage = (pct: number) => {
-    if (mode === 'withdraw') {
-      setAmount(((platformBalance * pct) / 100).toFixed(2));
-    }
+    setAmount(((platformBalance * pct) / 100).toFixed(2));
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-md mx-4 rounded-lg border border-border bg-card shadow-2xl">
+      <div className="relative w-full max-w-md mx-4 rounded-lg border border-border bg-card shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-sm">&larr;</button>
             <h2 className="text-sm font-semibold uppercase tracking-wider">
@@ -157,7 +121,7 @@ export function DepositWithdrawModal({
           <>
             {/* Deposit tabs */}
             <div className="grid grid-cols-2 mx-4 mt-4 border border-border rounded-md overflow-hidden">
-              {([['ink-chain', 'INK CHAIN'], ['qr-code', 'QR CODE']] as const).map(([value, label]) => (
+              {([['bridge', 'CROSS-CHAIN'], ['qr-code', 'QR CODE']] as const).map(([value, label]) => (
                 <button
                   key={value}
                   onClick={() => setTab(value)}
@@ -171,8 +135,34 @@ export function DepositWithdrawModal({
               ))}
             </div>
 
-            {tab === 'qr-code' ? (
+            {tab === 'bridge' ? (
+              <div className="p-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Bridge any token from any chain to USDC on Ink. Funds go directly to your trading account.
+                </p>
+                <div className="relay-widget-container rounded-lg overflow-hidden border border-border">
+                  <SwapWidget
+                    supportedWalletVMs={['evm']}
+                    toToken={toToken}
+                    setToToken={setToToken}
+                    fromToken={fromToken}
+                    setFromToken={setFromToken}
+                    lockToToken={true}
+                    defaultToAddress={(smartWalletAddress ?? undefined) as `0x${string}` | undefined}
+                    defaultAmount="100"
+                    onSwapSuccess={() => {
+                      setSuccess('Deposit complete — USDC received in your trading account');
+                      refreshBalance();
+                    }}
+                    onSwapError={(err: any) => {
+                      setError(err?.message ?? 'Bridge transaction failed');
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
               <div className="p-6 space-y-4">
+                {/* QR Code — encode the smart wallet address */}
                 <div className="flex justify-center">
                   <div className="rounded-xl bg-white p-4 shadow-lg">
                     {smartWalletAddress ? (
@@ -193,6 +183,7 @@ export function DepositWithdrawModal({
 
                 <p className="text-xs text-muted-foreground text-center">Trading account deposit address</p>
 
+                {/* Address with copy */}
                 <div
                   className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2.5 cursor-pointer hover:border-foreground/20 transition-colors"
                   onClick={handleCopy}
@@ -209,6 +200,7 @@ export function DepositWithdrawModal({
                   </button>
                 </div>
 
+                {/* Info */}
                 <div className="space-y-2.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Network</span>
@@ -224,9 +216,10 @@ export function DepositWithdrawModal({
                   </div>
                 </div>
 
+                {/* Warning */}
                 <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
                   <p className="text-xs text-warning">
-                    Only send <span className="font-semibold">USDC</span> on the <span className="font-semibold">Ink</span> network. Deposits of other assets or from other networks will be lost.
+                    Only send <span className="font-semibold">USDC</span> on the <span className="font-semibold">Ink</span> network. For other chains or tokens, use the Cross-Chain tab.
                   </p>
                 </div>
 
@@ -237,79 +230,55 @@ export function DepositWithdrawModal({
                   DONE
                 </button>
               </div>
-            ) : (
-              /* Ink Chain tab — transfer USDC from embedded wallet to smart wallet */
-              <div className="p-6 space-y-4">
-                <p className="text-xs text-muted-foreground">
-                  Transfer USDC from your embedded wallet to your trading account.
-                </p>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
-                    placeholder="0.00"
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <span className="flex items-center text-xs text-muted-foreground px-1">USDC</span>
-                </div>
-
-                <button
-                  onClick={handleDeposit}
-                  disabled={amountNum <= 0 || isSubmitting}
-                  className="w-full rounded-md bg-primary py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? 'Processing...' : `DEPOSIT $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
-                </button>
-              </div>
             )}
           </>
         ) : (
-          /* Withdraw mode */
-          <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Available to withdraw</span>
-              <span className="text-xs font-mono">{platformBalance.toFixed(2)} USDC</span>
-            </div>
+          /* Withdraw mode — two options: Ink USDC or cross-chain */
+          <div className="p-4">
+            <div className="space-y-4 mb-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Available to withdraw</span>
+                <span className="text-xs font-mono">{platformBalance.toFixed(2)} USDC</span>
+              </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
-                placeholder="0.00"
-                className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder="0.00"
+                  className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  onClick={() => setPercentage(50)}
+                  className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                >
+                  50%
+                </button>
+                <button
+                  onClick={() => setPercentage(100)}
+                  className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                >
+                  MAX
+                </button>
+              </div>
+
+              {amountNum > platformBalance && platformBalance > 0 && (
+                <p className="text-[10px] text-destructive">Amount exceeds available balance</p>
+              )}
+
+              <p className="text-[10px] text-muted-foreground">
+                USDC will be sent to your wallet{externalAddress ? ` (${externalAddress.slice(0, 6)}...${externalAddress.slice(-4)})` : ''} on Ink.
+              </p>
+
               <button
-                onClick={() => setPercentage(50)}
-                className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                onClick={handleWithdraw}
+                disabled={amountNum <= 0 || amountNum > platformBalance || isSubmitting}
+                className="w-full rounded-md bg-primary py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                50%
-              </button>
-              <button
-                onClick={() => setPercentage(100)}
-                className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
-              >
-                MAX
+                {isSubmitting ? 'Processing...' : `WITHDRAW $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
               </button>
             </div>
-
-            {amountNum > platformBalance && platformBalance > 0 && (
-              <p className="text-[10px] text-destructive">Amount exceeds available balance</p>
-            )}
-
-            <p className="text-[10px] text-muted-foreground">
-              USDC will be sent to your embedded wallet{externalAddress ? ` (${externalAddress.slice(0, 6)}...${externalAddress.slice(-4)})` : ''} on Ink.
-            </p>
-
-            <button
-              onClick={handleWithdraw}
-              disabled={amountNum <= 0 || amountNum > platformBalance || isSubmitting}
-              className="w-full rounded-md bg-primary py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Processing...' : `WITHDRAW $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
-            </button>
           </div>
         )}
       </div>
