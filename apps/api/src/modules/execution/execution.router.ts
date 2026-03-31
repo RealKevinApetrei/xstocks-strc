@@ -1,0 +1,202 @@
+import { Router, type Request, type Response } from 'express';
+import { privyAuth, type AuthenticatedRequest } from '../../middleware/privyAuth';
+import { loopExecutor } from './executors/loop.executor';
+import { unwindExecutor } from './executors/unwind.executor';
+import { borrowExecutor } from './executors/borrow.executor';
+import { policyService, PolicyViolation } from './policy.service';
+import { smartAccountService } from './smart-account.service';
+import { vaultService } from '../vault/vault.service';
+import { query } from '../../db/pool';
+import type { StartLoopRequest, StartUnwindRequest } from '@xstocks/shared';
+
+export const executionRouter = Router();
+
+// POST /api/execution/loop — Start a leveraged loop
+executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const { strcAmount, targetLeverage, maxSlippageBps } = req.body as StartLoopRequest;
+
+  try {
+    await policyService.validateLoop({
+      privyId,
+      strcAmount: BigInt(strcAmount),
+      targetLeverage,
+      maxSlippageBps,
+    });
+
+    const loopId = await loopExecutor.startLoop({
+      privyId,
+      strcAmount: BigInt(strcAmount),
+      targetLeverage,
+      maxSlippageBps,
+    });
+
+    res.status(201).json({
+      id: loopId,
+      status: 'PENDING',
+      strcAmount,
+      targetLeverage,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    if (err instanceof PolicyViolation) {
+      res.status(err.message.includes('active loop') ? 409 : 400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+// POST /api/execution/unwind — Unwind a position
+executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const { loopExecutionId } = req.body as StartUnwindRequest;
+
+  // Check loop exists
+  const { rows: [loop] } = await query(
+    `SELECT id, status FROM loop_executions WHERE id = $1 AND privy_id = $2`,
+    [loopExecutionId, privyId],
+  );
+  if (!loop) {
+    res.status(404).json({ error: 'Loop execution not found' });
+    return;
+  }
+
+  // Check no active unwind
+  const { rows: activeUnwinds } = await query(
+    `SELECT id FROM unwind_executions WHERE loop_execution_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+    [loopExecutionId],
+  );
+  if (activeUnwinds.length > 0) {
+    res.status(409).json({ error: 'Unwind already in progress' });
+    return;
+  }
+
+  const unwindId = await unwindExecutor.startUnwind({ privyId, loopExecutionId });
+
+  res.status(201).json({
+    id: unwindId,
+    loopExecutionId,
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
+  });
+});
+
+// GET /api/execution/loop/:id/status — Loop progress
+executionRouter.get('/loop/:id/status', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const id = req.params.id as string;
+
+  const { rows: [loop] } = await query(
+    `SELECT * FROM loop_executions WHERE id = $1 AND privy_id = $2`,
+    [id, privyId],
+  );
+  if (!loop) {
+    res.status(404).json({ error: 'Loop not found' });
+    return;
+  }
+
+  const { rows: iterations } = await query(
+    `SELECT iteration_number as number, step as status, strc_deposited, usdc_borrowed,
+            strc_received, actual_slippage_bps as slippage_bps, user_op_hash, cow_order_uid, completed_at
+     FROM loop_iterations WHERE loop_execution_id = $1 ORDER BY iteration_number`,
+    [id],
+  );
+
+  res.json({
+    id: loop.id,
+    status: loop.status,
+    strcAmount: loop.strc_amount,
+    targetLeverage: Number(loop.target_leverage),
+    effectiveLeverage: loop.effective_leverage ? Number(loop.effective_leverage) : null,
+    currentIteration: loop.current_iteration,
+    totalIterations: loop.status === 'IN_PROGRESS' ? null : loop.current_iteration,
+    healthFactor: loop.health_factor ? Number(loop.health_factor) : null,
+    iterations: iterations.map((i: any) => ({
+      number: i.number,
+      status: i.status,
+      strcDeposited: i.strc_deposited,
+      usdcBorrowed: i.usdc_borrowed,
+      strcReceived: i.strc_received,
+      slippageBps: i.slippage_bps,
+      userOpHash: i.user_op_hash,
+      cowOrderUid: i.cow_order_uid,
+      completedAt: i.completed_at?.toISOString() ?? null,
+    })),
+    error: loop.error,
+    createdAt: loop.created_at.toISOString(),
+    updatedAt: loop.updated_at.toISOString(),
+  });
+});
+
+// GET /api/positions/:address — Current Morpho position
+executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: Response) => {
+  const address = req.params.address as string;
+  const { privyId } = (req as AuthenticatedRequest).user;
+
+  try {
+    const position = await borrowExecutor.getPosition(address);
+    const hasPosition = position.collateral > 0n || position.borrowed > 0n;
+
+    // Check for active loop
+    const { rows: [activeLoop] } = await query(
+      `SELECT id, status FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') LIMIT 1`,
+      [privyId],
+    );
+
+    // Check for grid strategy
+    const { rows: [gridStrategy] } = await query(
+      `SELECT id, enabled FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
+      [privyId],
+    );
+
+    // Vault balance
+    let vaultBalance = null;
+    try {
+      const vb = await vaultService.getVaultBalance(address);
+      vaultBalance = { shares: vb.shares.toString(), assets: vb.assets.toString() };
+    } catch { /* vault not set up yet */ }
+
+    res.json({
+      address,
+      hasPosition,
+      position: hasPosition ? {
+        collateralWstrc: position.collateral.toString(),
+        collateralStrc: '0', // TODO: Convert via exchange rate
+        debtUsdc: position.borrowed.toString(),
+        healthFactor: position.healthFactor,
+        effectiveLeverage: 1, // TODO: Calculate
+        liquidationPrice: 0,  // TODO: Calculate
+        exchangeRate: '0',    // TODO: Read from wSTRC
+      } : null,
+      activeLoop: activeLoop ? { id: activeLoop.id, status: activeLoop.status } : null,
+      gridStrategy: gridStrategy ? { id: gridStrategy.id, enabled: gridStrategy.enabled } : null,
+      vaultBalance,
+    });
+  } catch {
+    // No position or contracts not deployed yet
+    res.json({ address, hasPosition: false, position: null, activeLoop: null, gridStrategy: null, vaultBalance: null });
+  }
+});
+
+// GET /api/apy/simulated — Simulated APY data
+executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
+  const baseApy = 8.5;
+  const now = Date.now();
+  const history = Array.from({ length: 30 }, (_, i) => ({
+    timestamp: new Date(now - (29 - i) * 86400000).toISOString(),
+    baseApy: baseApy + (Math.random() - 0.5) * 2,
+    leveraged3xApy: (baseApy + (Math.random() - 0.5) * 2) * 3 * 0.85, // ~85% efficiency
+  }));
+
+  res.json({
+    currentApy: baseApy,
+    leveragedApy: {
+      '1x': baseApy,
+      '2x': baseApy * 2 * 0.9,
+      '3x': baseApy * 3 * 0.85,
+      '5x': baseApy * 5 * 0.75,
+    },
+    history,
+  });
+});

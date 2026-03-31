@@ -1,0 +1,29 @@
+{
+  "name": "@xstocks/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit",
+    "db:migrate": "tsx src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@privy-io/server-auth": "^1.16.0",
+    "cors": "^2.8.5",
+    "express": "^5.0.0",
+    "ethers": "^6.13.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "pg": "^8.13.0",
+    "@xstocks/shared": "*"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.0",
+    "@xstocks/tsconfig": "*",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,12 @@
+[
+  "function wrap(uint256 strcAmount) external returns (uint256 wstrcAmount)",
+  "function unwrap(uint256 wstrcAmount) external returns (uint256 strcAmount)",
+  "function strcPerWstrc() external view returns (uint256)",
+  "function wstrcToStrc(uint256 wstrcAmount) external view returns (uint256)",
+  "function strcToWstrc(uint256 strcAmount) external view returns (uint256)",
+  "function balanceOf(address account) external view returns (uint256)",
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function totalSupply() external view returns (uint256)",
+  "event Wrapped(address indexed user, uint256 strcAmount, uint256 wstrcAmount)",
+  "event Unwrapped(address indexed user, uint256 wstrcAmount, uint256 strcAmount)"
+]
