@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
-
-// Mock price — will be replaced with real price feed
-const STRC_PRICE_USD = 105.42;
-const STRC_BASE_APY = 11;
-const MORPHO_BORROW_RATE = 4.2;
+import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { api, ApiError } from '@/lib/api';
+import { LoopStatus } from './loop-status';
 
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
 
@@ -15,28 +14,44 @@ function netApy(leverage: number) {
 }
 
 export function LoopForm() {
+  const { getAccessToken } = usePrivy();
+  const { price: strcPrice } = useStrcxPrice();
   const [usdcAmount, setUsdcAmount] = useState('');
   const [leverage, setLeverage] = useState<number>(2);
-  const [slippageBps, setSlippageBps] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeLoopId, setActiveLoopId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!usdcAmount || isSubmitting) return;
     setIsSubmitting(true);
+    setError(null);
     try {
-      // TODO: Wire to api.startLoop with Privy token
-      // Backend will swap USDC → STRC first, then loop
-      console.log('Starting loop:', { usdcAmount, leverage, slippageBps });
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      const result = await api.startLoop(token, {
+        strcAmount: usdcAmount,
+        targetLeverage: leverage,
+        maxSlippageBps: 0, // CoW RFQ — no slippage
+      });
+      setActiveLoopId(result.id);
+      setUsdcAmount('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to start loop');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const amountUsdc = parseFloat(usdcAmount) || 0;
-  const strcEquivalent = amountUsdc / STRC_PRICE_USD;
+  const strcEquivalent = strcPrice > 0 ? amountUsdc / strcPrice : 0;
   const totalExposureUsdc = amountUsdc * leverage;
-  const totalExposureStrc = totalExposureUsdc / STRC_PRICE_USD;
   const debtUsdc = totalExposureUsdc - amountUsdc;
+
+  // Show loop status if active
+  if (activeLoopId) {
+    return <LoopStatus loopId={activeLoopId} onClose={() => setActiveLoopId(null)} />;
+  }
 
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-5">
@@ -50,7 +65,6 @@ export function LoopForm() {
         </span>
       </div>
 
-      {/* Deposit Amount */}
       <div className="space-y-2">
         <label className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
           Deposit Amount
@@ -68,22 +82,14 @@ export function LoopForm() {
           </span>
         </div>
         {amountUsdc > 0 && (
-          <p className="text-[10px] text-muted-foreground font-mono text-right">
-            ≈ {strcEquivalent.toFixed(4)} STRC
-          </p>
+          <div className="text-[10px] text-muted-foreground font-mono text-right">
+            ~{strcEquivalent.toFixed(2)} STRCx at {formatUsd(strcPrice)}
+          </div>
         )}
       </div>
 
-      {/* Leverage — filled dark when active */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
-            Target Leverage
-          </label>
-          <span className="text-xs font-mono text-success font-semibold">
-            ~{netApy(leverage)}% APY
-          </span>
-        </div>
+      <div className="space-y-3">
+        <label className="text-xs text-muted-foreground">Target Leverage</label>
         <div className="grid grid-cols-3 gap-2">
           {LEVERAGE_OPTIONS.map((lev) => (
             <button
@@ -102,30 +108,12 @@ export function LoopForm() {
         </div>
       </div>
 
-      {/* Slippage — filled dark when active */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
-          Max Slippage
-        </label>
-        <div className="flex gap-2">
-          {[50, 100, 200, 500].map((bps) => (
-            <button
-              key={bps}
-              onClick={() => setSlippageBps(bps)}
-              className={cn(
-                'flex-1 rounded-md border py-2 text-xs font-mono transition-colors',
-                slippageBps === bps
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'bg-card border-border text-muted-foreground hover:border-foreground/30',
-              )}
-            >
-              {(bps / 100).toFixed(1)}%
-            </button>
-          ))}
+      {error && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+          <p className="text-xs text-destructive">{error}</p>
         </div>
-      </div>
+      )}
 
-      {/* CTA */}
       <button
         onClick={handleSubmit}
         disabled={!usdcAmount || isSubmitting}
@@ -134,23 +122,19 @@ export function LoopForm() {
         {isSubmitting ? 'Opening Position...' : `Deposit & Loop ${leverage}×`}
       </button>
 
-      {/* Position preview — only when amount entered */}
       {amountUsdc > 0 && (
         <div className="rounded-md border border-border bg-secondary p-3 space-y-1.5">
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">STRC exposure</span>
-            <span className="font-mono">
-              {formatUsd(totalExposureUsdc)}{' '}
-              <span className="text-muted-foreground">(~{totalExposureStrc.toFixed(2)} STRC)</span>
-            </span>
+            <span className="text-muted-foreground">STRCx purchased</span>
+            <span className="font-mono">~{strcEquivalent.toFixed(2)} STRCx</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">USDC debt</span>
-            <span className="font-mono text-destructive/70">{formatUsd(debtUsdc)}</span>
+            <span className="text-muted-foreground">Total exposure</span>
+            <span className="font-mono">{formatUsd(totalExposureUsdc)}</span>
           </div>
-          <div className="flex justify-between text-xs border-t border-border pt-1.5 mt-1">
-            <span className="text-muted-foreground">Est. net APY</span>
-            <span className="font-mono font-semibold text-success">+{netApy(leverage)}%</span>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Est. debt</span>
+            <span className="font-mono">{formatUsd(debtUsdc)} USDC</span>
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { ethers } from 'ethers';
 import { privyAuth, type AuthenticatedRequest } from '../../middleware/privyAuth';
 import { loopExecutor } from './executors/loop.executor';
 import { unwindExecutor } from './executors/unwind.executor';
@@ -7,7 +8,9 @@ import { policyService, PolicyViolation } from './policy.service';
 import { smartAccountService } from './smart-account.service';
 import { vaultService } from '../vault/vault.service';
 import { query } from '../../db/pool';
+import { config } from '../../config';
 import type { StartLoopRequest, StartUnwindRequest } from '@xstocks/shared';
+import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 
 export const executionRouter = Router();
 
@@ -157,17 +160,45 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
       vaultBalance = { shares: vb.shares.toString(), assets: vb.assets.toString() };
     } catch { /* vault not set up yet */ }
 
+    // Read wSTRC exchange rate + convert collateral to STRC value
+    let collateralStrc = '0';
+    let exchangeRate = '0';
+    let effectiveLeverage = 1;
+    let liquidationPrice = 0;
+
+    if (hasPosition) {
+      try {
+        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
+        const rate: bigint = await wstrcContract.strcPerWstrc();
+        const strcVal: bigint = await wstrcContract.wstrcToStrc(position.collateral);
+        exchangeRate = rate.toString();
+        collateralStrc = strcVal.toString();
+
+        // Leverage from health factor: L = 1 / (1 - 1/HF)
+        if (position.healthFactor > 1) {
+          effectiveLeverage = 1 / (1 - 1 / position.healthFactor);
+        }
+
+        // Liquidation price: price at which HF = 1
+        // liqPrice = borrowed / (collateral * lltv)  (simplified, units depend on oracle scale)
+        if (position.collateral > 0n && position.borrowed > 0n) {
+          liquidationPrice = Number(position.borrowed) / (Number(position.collateral) * 0.8);
+        }
+      } catch { /* contracts not deployed yet — use defaults */ }
+    }
+
     res.json({
       address,
       hasPosition,
       position: hasPosition ? {
         collateralWstrc: position.collateral.toString(),
-        collateralStrc: '0', // TODO: Convert via exchange rate
+        collateralStrc,
         debtUsdc: position.borrowed.toString(),
         healthFactor: position.healthFactor,
-        effectiveLeverage: 1, // TODO: Calculate
-        liquidationPrice: 0,  // TODO: Calculate
-        exchangeRate: '0',    // TODO: Read from wSTRC
+        effectiveLeverage,
+        liquidationPrice,
+        exchangeRate,
       } : null,
       activeLoop: activeLoop ? { id: activeLoop.id, status: activeLoop.status } : null,
       gridStrategy: gridStrategy ? { id: gridStrategy.id, enabled: gridStrategy.enabled } : null,
@@ -186,7 +217,7 @@ executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
   const history = Array.from({ length: 30 }, (_, i) => ({
     timestamp: new Date(now - (29 - i) * 86400000).toISOString(),
     baseApy: baseApy + (Math.random() - 0.5) * 2,
-    leveraged3xApy: (baseApy + (Math.random() - 0.5) * 2) * 3 * 0.85, // ~85% efficiency
+    leveraged3xApy: (baseApy + (Math.random() - 0.5) * 2) * 3 * 0.85,
   }));
 
   res.json({
@@ -199,4 +230,13 @@ executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
     },
     history,
   });
+});
+
+// GET /api/apy/aave — Aave USDC lending yield data
+executionRouter.get('/apy/aave', async (req: Request, res: Response) => {
+  // Lazy import to avoid circular deps
+  const mod = require('../aave/aave-yield.service');
+  const days = parseInt((req.query.days as string) ?? '90', 10);
+  const data = await mod.aaveYieldService.getYieldData(days);
+  res.json(data);
 });

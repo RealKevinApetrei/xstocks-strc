@@ -17,10 +17,14 @@ export const ADDRESSES = {
 
   // Morpho market ID (computed after market creation)
   MORPHO_MARKET_ID: process.env.MORPHO_MARKET_ID ?? '',
+
+  // CoW Protocol (deterministic across all EVM chains)
+  COW_SETTLEMENT: '0x9008d19f58aabd9ed0d60971565aa8510560ab41',
+  COW_VAULT_RELAYER: '0xc92e8bdf79f0507f65a392b0ab4667716bfe0110',
 } as const;
 
 export const CHAIN_ID = 57073;
-export const GRID_THRESHOLD_USD = 103;
+export const DEFAULT_GRID_HF_THRESHOLD = 1.5; // Trigger buy-the-dip when HF drops below this
 export const MAX_LEVERAGE = 5;
 export const MIN_LEVERAGE = 1.1;
 export const MAX_SLIPPAGE_BPS = 500; // 5%

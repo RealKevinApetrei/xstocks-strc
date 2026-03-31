@@ -10,13 +10,14 @@
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
-    "@privy-io/server-auth": "^1.16.0",
-    "cors": "^2.8.5",
-    "express": "^5.0.0",
-    "ethers": "^6.13.0",
+    "@privy-io/node": "^0.12.0",
     "@supabase/supabase-js": "^2.49.0",
-    "pg": "^8.13.0",
-    "@xstocks/shared": "*"
+    "@xstocks/shared": "*",
+    "cors": "^2.8.5",
+    "ethers": "^6.13.0",
+    "express": "^5.0.0",
+    "jose": "^4.15.9",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

@@ -4,6 +4,7 @@ import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
 import { executionRouter } from './modules/execution/execution.router';
 import { gridRouter } from './modules/grid/grid.router';
+import { pythPriceService } from './modules/pyth/pyth-price.service';
 
 const app = express();
 
@@ -29,4 +30,12 @@ app.use(errorHandler);
 app.listen(config.port, () => {
   console.log(`xStocks API running on port ${config.port}`);
   console.log(`Chain: Ink (${config.chainId})`);
+
+  // Start Pyth price polling (reads from Hermes every 30s for grid triggers)
+  // On-chain price updates are pushed on-demand before executions
+  if (config.pythPriceFeedId) {
+    pythPriceService.start();
+  } else {
+    console.log('Pyth feed ID not configured — price service disabled');
+  }
 });
