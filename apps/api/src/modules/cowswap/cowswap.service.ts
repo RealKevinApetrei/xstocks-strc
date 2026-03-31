@@ -1,5 +1,5 @@
 import { config } from '../../config';
-import { COW_POLL_INTERVAL_MS, COW_TIMEOUT_MS } from '@xstocks/shared';
+import { COW_POLL_INTERVAL_MS } from '@xstocks/shared';
 
 export interface CowQuote {
   order: Record<string, unknown>;
@@ -123,7 +123,7 @@ export class CowSwapService {
    * Polls every 30s, times out after 10 minutes.
    */
   async waitForFill(orderUid: string): Promise<{ buyAmount: bigint }> {
-    const deadline = Date.now() + COW_TIMEOUT_MS;
+    const deadline = Date.now() + config.cowTimeoutMs;
 
     while (Date.now() < deadline) {
       const status = await this.pollOrderStatus(orderUid);
@@ -145,7 +145,7 @@ export class CowSwapService {
       await new Promise((resolve) => setTimeout(resolve, COW_POLL_INTERVAL_MS));
     }
 
-    throw new Error(`CoW order timed out after ${COW_TIMEOUT_MS / 1000}s: ${orderUid}`);
+    throw new Error(`CoW order timed out after ${config.cowTimeoutMs / 1000}s: ${orderUid}`);
   }
 }
 

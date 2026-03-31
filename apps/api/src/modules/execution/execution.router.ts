@@ -17,21 +17,20 @@ export const executionRouter = Router();
 // POST /api/execution/loop — Start a leveraged loop
 executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
-  const { strcAmount, targetLeverage, maxSlippageBps } = req.body as StartLoopRequest;
+  const { strcAmount, targetLeverage } = req.body as StartLoopRequest;
 
   try {
     await policyService.validateLoop({
       privyId,
-      strcAmount: BigInt(strcAmount),
+      usdcAmount: BigInt(strcAmount), // Frontend sends as strcAmount field (USDC amount)
       targetLeverage,
-      maxSlippageBps,
     });
 
     const loopId = await loopExecutor.startLoop({
       privyId,
       strcAmount: BigInt(strcAmount),
       targetLeverage,
-      maxSlippageBps,
+      maxSlippageBps: 0, // CoW RFQ — no slippage
     });
 
     res.status(201).json({
