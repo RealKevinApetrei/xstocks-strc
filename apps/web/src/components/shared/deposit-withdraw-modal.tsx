@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { cn } from '@/lib/utils';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 
@@ -88,36 +89,19 @@ export function DepositWithdrawModal({
               <div className="p-6 space-y-4">
                 {/* QR Code — encode the smart wallet address */}
                 <div className="flex justify-center">
-                  <div className="h-52 w-52 rounded-xl bg-white p-4 flex items-center justify-center shadow-lg">
+                  <div className="rounded-xl bg-white p-4 shadow-lg">
                     {smartWalletAddress ? (
-                      /* Simple visual representation — real QR needs a library like qrcode.react */
-                      <div className="h-full w-full flex flex-col items-center justify-center gap-2">
-                        <svg viewBox="0 0 100 100" className="h-36 w-36">
-                          {/* Generate a deterministic pattern from the address */}
-                          {Array.from({ length: 10 }).map((_, row) =>
-                            Array.from({ length: 10 }).map((_, col) => {
-                              const charCode = smartWalletAddress.charCodeAt((row * 10 + col) % smartWalletAddress.length);
-                              const filled = charCode % 3 !== 0;
-                              // Keep corners for finder patterns
-                              const isCorner = (row < 3 && col < 3) || (row < 3 && col > 6) || (row > 6 && col < 3);
-                              return (
-                                <rect
-                                  key={`${row}-${col}`}
-                                  x={col * 10}
-                                  y={row * 10}
-                                  width="9"
-                                  height="9"
-                                  rx="1"
-                                  fill={isCorner || filled ? '#000' : '#fff'}
-                                />
-                              );
-                            })
-                          )}
-                        </svg>
-                        <p className="text-[8px] text-gray-400 font-mono">Install qrcode.react for real QR</p>
-                      </div>
+                      <QRCodeSVG
+                        value={smartWalletAddress}
+                        size={176}
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        level="M"
+                      />
                     ) : (
-                      <p className="text-xs text-gray-500">No wallet connected</p>
+                      <div className="h-44 w-44 flex items-center justify-center">
+                        <p className="text-xs text-gray-500">No wallet connected</p>
+                      </div>
                     )}
                   </div>
                 </div>

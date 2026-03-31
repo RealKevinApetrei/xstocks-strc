@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { cn, formatUsd } from '@/lib/utils';
 
-// Mock Pyth price
+// Mock price — will be replaced with real price feed
 const STRC_PRICE_USD = 105.42;
 
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;

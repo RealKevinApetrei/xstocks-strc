@@ -2,12 +2,12 @@
 
 import { cn, formatBigInt, formatUsd } from '@/lib/utils';
 
-// Mock Pyth price — will be replaced with real Pyth feed
+// Mock price — will be replaced with real price feed
 const STRC_PRICE_USD = 105.42;
 const MORPHO_BORROW_RATE_APY = 4.2; // Simulated Morpho USDC borrow rate
 const STRC_STAKING_APY = 12.5; // Simulated STRC staking/rebase yield
 
-// TODO: Wire to usePosition hook with real Pyth pricing
+// TODO: Wire to usePosition hook with real pricing
 const mockPosition = {
   hasPosition: true,
   collateralStrc: '5000000000000000000000', // 5000 STRC
@@ -80,7 +80,7 @@ export function PositionCard() {
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground font-mono">STRC/USD</span>
           <span className="text-sm font-mono font-semibold text-foreground">{formatUsd(strcPrice)}</span>
-          <span className="text-[9px] text-muted-foreground">via Pyth</span>
+          <span className="text-[9px] text-muted-foreground">live</span>
         </div>
       </div>
 

@@ -102,7 +102,7 @@ export function BuyTheDipVault() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium">Buy-the-Dip Strategy</h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Powered by Pyth price feeds</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Automated dip buying strategy</p>
             </div>
             <button
               onClick={() => setStrategyEnabled(!strategyEnabled)}
@@ -176,7 +176,7 @@ export function BuyTheDipVault() {
           <div className="flex items-center gap-2 text-xs">
             <span className={cn('h-2 w-2 rounded-full', strategyEnabled ? 'bg-success animate-pulse' : 'bg-muted-foreground')} />
             <span className="text-muted-foreground">
-              {strategyEnabled ? 'Monitoring STRC/USD via Pyth' : 'Strategy paused'}
+              {strategyEnabled ? 'Monitoring STRC/USD price' : 'Strategy paused'}
             </span>
           </div>
         </div>
