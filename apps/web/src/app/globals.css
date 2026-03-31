@@ -4,9 +4,9 @@
 
 @theme inline {
   /* ── Backgrounds ──────────────────────────────────── */
-  --color-background:            #eae8e2;
+  --color-background:            #f5f4f0;
   --color-card:                  #ffffff;
-  --color-secondary:             #f5f4f0;
+  --color-secondary:             #f0eeea;
 
   /* ── Text ─────────────────────────────────────────── */
   --color-foreground:            #0a0a0a;
@@ -16,7 +16,7 @@
   --color-muted-foreground:      #6b6866;
 
   /* ── Border / ring ────────────────────────────────── */
-  --color-border:                #dddbd4;
+  --color-border:                #e5e7eb;
   --color-ring:                  #2d2d2d;
 
   /* ── Interactive — dark charcoal for all buttons/CTAs */
@@ -25,7 +25,7 @@
 
   /* ── Semantic ─────────────────────────────────────── */
   --color-destructive:           #d93030;
-  --color-success:               #1a9e4a;
+  --color-success:               #16a34a;
   --color-warning:               #c47a1a;
 
   /* ── Typography ───────────────────────────────────── */
@@ -42,8 +42,8 @@ body {
   background-color: var(--color-background);
   /* Graph paper grid — matches Spreads reference */
   background-image:
-    linear-gradient(rgba(0, 0, 0, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.055) 1px, transparent 1px);
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 52px 52px;
   color: var(--color-foreground);
   font-family: var(--font-sans);
