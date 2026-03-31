@@ -1,20 +1,68 @@
 'use client';
 
 import { useState } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
+import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { usePosition } from '@/hooks/use-position';
+import { api } from '@/lib/api';
 
-// Mock data
-const STRC_PRICE_USD = 105.42;
-const VAULT_BALANCE_USDC = 10000;
-const VAULT_YIELD_USDC = 200;
 const TYDRO_APY = 5.2;
 
+// Derive from hooks
+function useVaultData() {
+  const { data: position } = usePosition();
+  const vb = position?.vaultBalance;
+  return {
+    balance: vb ? parseFloat(vb.assets) / 1e6 : 0,
+    yield: 0, // TODO: track deposits to calculate yield
+  };
+}
+
 export function BuyTheDipVault() {
+  const { getAccessToken } = usePrivy();
+  const { price: strcPrice } = useStrcxPrice();
+  const vaultData = useVaultData();
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
   const [gridBuyPct, setGridBuyPct] = useState(25);
   const [strategyEnabled, setStrategyEnabled] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const VAULT_BALANCE_USDC = vaultData.balance;
+  const VAULT_YIELD_USDC = vaultData.yield;
+  const STRC_PRICE_USD = strcPrice;
+
+  const handleDeposit = async () => {
+    if (!depositAmount || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await api.depositToVault(token, depositAmount);
+      setDepositAmount('');
+    } catch (err) {
+      console.error('Deposit failed:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!withdrawAmount || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await api.withdrawFromVault(token, withdrawAmount);
+      setWithdrawAmount('');
+    } catch (err) {
+      console.error('Withdraw failed:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -85,14 +133,16 @@ export function BuyTheDipVault() {
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">USDC</span>
             </div>
             <button
+              onClick={activeTab === 'deposit' ? handleDeposit : handleWithdraw}
+              disabled={isSubmitting}
               className={cn(
-                'w-full rounded-md py-2.5 text-sm font-medium transition-colors',
+                'w-full rounded-md py-2.5 text-sm font-medium transition-colors disabled:opacity-50',
                 activeTab === 'deposit'
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
               )}
             >
-              {activeTab === 'deposit' ? 'Deposit to Vault' : 'Withdraw from Vault'}
+              {isSubmitting ? 'Processing...' : activeTab === 'deposit' ? 'Deposit to Vault' : 'Withdraw from Vault'}
             </button>
           </div>
         </div>
