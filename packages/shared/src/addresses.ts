@@ -17,6 +17,10 @@ export const ADDRESSES = {
 
   // Morpho market ID (computed after market creation)
   MORPHO_MARKET_ID: process.env.MORPHO_MARKET_ID ?? '',
+
+  // CoW Protocol (deterministic across all EVM chains)
+  COW_SETTLEMENT: '0x9008d19f58aabd9ed0d60971565aa8510560ab41',
+  COW_VAULT_RELAYER: '0xc92e8bdf79f0507f65a392b0ab4667716bfe0110',
 } as const;
 
 export const CHAIN_ID = 57073;
