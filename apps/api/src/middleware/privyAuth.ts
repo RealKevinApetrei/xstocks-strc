@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { jwtVerify, createRemoteJWKSet, importSPKI } from 'jose';
+import { jwtVerify, createRemoteJWKSet, importSPKI, type KeyLike, type JWTVerifyGetKey } from 'jose';
 import { config } from '../config';
 
 export interface AuthenticatedRequest extends Request {
@@ -8,18 +8,16 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-async function getVerificationKey() {
+let cachedKey: KeyLike | JWTVerifyGetKey | null = null;
+
+async function initKey(): Promise<KeyLike | JWTVerifyGetKey> {
   let staticKey = process.env.PRIVY_VERIFICATION_KEY;
 
   if (staticKey) {
-    // Handle literal \n in env var (Railway may not convert them)
     staticKey = staticKey.replace(/\\n/g, '\n');
-
-    // If the key doesn't have PEM headers, wrap it
     if (!staticKey.includes('-----BEGIN')) {
       staticKey = `-----BEGIN PUBLIC KEY-----\n${staticKey}\n-----END PUBLIC KEY-----`;
     }
-
     console.log('[AUTH] Using static PRIVY_VERIFICATION_KEY');
     return importSPKI(staticKey, 'ES256');
   }
@@ -29,8 +27,6 @@ async function getVerificationKey() {
     new URL(`https://auth.privy.io/api/v1/apps/${config.privyAppId}/.well-known/jwks.json`),
   );
 }
-
-let verificationKey: Awaited<ReturnType<typeof getVerificationKey>> | null = null;
 
 export async function privyAuth(
   req: Request,
@@ -44,11 +40,9 @@ export async function privyAuth(
   }
 
   try {
-    if (!verificationKey) {
-      verificationKey = await getVerificationKey();
-    }
+    if (!cachedKey) cachedKey = await initKey();
 
-    const { payload } = await jwtVerify(token, verificationKey, {
+    const { payload } = await jwtVerify(token, cachedKey as any, {
       issuer: 'privy.io',
       audience: config.privyAppId,
     });
@@ -59,7 +53,7 @@ export async function privyAuth(
     (req as AuthenticatedRequest).user = { privyId: userId };
     next();
   } catch (err) {
-    verificationKey = null;
+    cachedKey = null;
     console.error('[AUTH] JWT verification failed:', err instanceof Error ? err.message : err);
     res.status(401).json({ error: 'Invalid or expired token' });
   }
