@@ -120,7 +120,7 @@ export default function Home() {
         src="/bitcoin-hand.png"
         alt=""
         aria-hidden="true"
-        className="absolute left-0 bottom-0 h-[72vh] object-contain object-bottom select-none pointer-events-none"
+        className="absolute -left-[12%] bottom-0 h-[72vh] object-contain object-bottom select-none pointer-events-none"
         style={{
           mixBlendMode: 'multiply',
           transform: `translate(${parallax.x * -16}px, ${parallax.y * 8}px)`,
