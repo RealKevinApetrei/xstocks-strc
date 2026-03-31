@@ -133,7 +133,7 @@ export class GridExecutor {
 
     const wallet = await signerService.getWalletForUser(strategy.privy_id);
     const signature = await signerService.signTypedData(
-      wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order,
+      wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order, strategy.privy_id,
     );
 
     const orderUid = await cowSwapService.createOrder(quote, signature);
