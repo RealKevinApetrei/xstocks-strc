@@ -26,8 +26,8 @@ export class GridExecutor {
   private wstrcIface = new ethers.Interface(wSTRCABI);
 
   /**
-   * Handle a Pyth price trigger.
-   * Called when STRC price drops below $103.
+   * Handle a Chainlink price trigger.
+   * Called when STRCx price drops below $103.
    */
   async handlePriceTrigger(params: { price: number; timestamp: number }): Promise<void> {
     if (params.price >= GRID_THRESHOLD_USD) {

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { privyAuth, type AuthenticatedRequest } from '../../middleware/privyAuth';
-import { pythWebhookAuth } from '../../middleware/pythAuth';
 import { gridExecutor } from './grid.executor';
+import { chainlinkPriceService } from '../chainlink/chainlink-price.service';
 import { policyService, PolicyViolation } from '../execution/policy.service';
 import { smartAccountService } from '../execution/smart-account.service';
 import { vaultService } from '../vault/vault.service';
@@ -154,17 +154,19 @@ gridRouter.get('/events/:strategyId', privyAuth, async (req: Request, res: Respo
   });
 });
 
-// POST /api/grid/trigger — Pyth price webhook
-gridRouter.post('/trigger', pythWebhookAuth, async (req: Request, res: Response) => {
-  const { price, timestamp } = req.body;
-  console.log(`Grid trigger received: price=$${price}, timestamp=${timestamp}`);
-
-  // Process in background
-  gridExecutor.handlePriceTrigger({ price, timestamp }).catch((err) => {
-    console.error('Grid trigger processing failed:', err);
-  });
-
-  res.json({ acknowledged: true });
+// GET /api/grid/price — Current STRCx/USD price from Chainlink
+gridRouter.get('/price', async (_req: Request, res: Response) => {
+  try {
+    const price = await chainlinkPriceService.getPrice();
+    res.json({
+      price: price.price,
+      timestamp: price.timestamp,
+      stale: price.stale,
+      source: 'chainlink-data-streams',
+    });
+  } catch {
+    res.json({ price: 0, timestamp: 0, stale: true, source: 'unavailable' });
+  }
 });
 
 // ============================================

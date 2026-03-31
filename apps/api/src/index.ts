@@ -4,6 +4,7 @@ import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
 import { executionRouter } from './modules/execution/execution.router';
 import { gridRouter } from './modules/grid/grid.router';
+import { chainlinkPriceService } from './modules/chainlink/chainlink-price.service';
 
 const app = express();
 
@@ -29,4 +30,11 @@ app.use(errorHandler);
 app.listen(config.port, () => {
   console.log(`xStocks API running on port ${config.port}`);
   console.log(`Chain: Ink (${config.chainId})`);
+
+  // Start Chainlink price polling (30s price check, 5m oracle update)
+  if (config.morphoOracle) {
+    chainlinkPriceService.start();
+  } else {
+    console.log('Oracle not configured — Chainlink price service disabled');
+  }
 });

@@ -10,11 +10,12 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 contract Deploy is Script {
     function run() external {
-        // Read addresses from environment
         address strc = vm.envAddress("STRC_ADDRESS");
         address usdc = vm.envAddress("USDC_ADDRESS");
         address tydro = vm.envAddress("TYDRO_VAULT_ADDRESS");
-        uint256 initialStrcPrice = vm.envUint("INITIAL_STRC_PRICE"); // Morpho precision
+        address chainlinkVerifier = vm.envOr("CHAINLINK_VERIFIER_PROXY", address(0));
+        bytes32 chainlinkStreamId = vm.envOr("CHAINLINK_STREAM_ID", bytes32(0));
+        uint256 initialStrcxPrice = vm.envUint("INITIAL_STRCX_PRICE"); // 18 decimals
 
         vm.startBroadcast();
 
@@ -22,8 +23,13 @@ contract Deploy is Script {
         wSTRC wrapper = new wSTRC(strc);
         console.log("wSTRC deployed at:", address(wrapper));
 
-        // 2. Deploy oracle adapter
-        WSTRCOracleAdapter oracle = new WSTRCOracleAdapter(address(wrapper), initialStrcPrice);
+        // 2. Deploy oracle adapter (Chainlink Data Streams + manual fallback)
+        WSTRCOracleAdapter oracle = new WSTRCOracleAdapter(
+            address(wrapper),
+            chainlinkVerifier,
+            chainlinkStreamId,
+            initialStrcxPrice
+        );
         console.log("Oracle deployed at:", address(oracle));
 
         // 3. Deploy USDC vault (wraps Tydro)
@@ -37,10 +43,12 @@ contract Deploy is Script {
         console.log("wSTRC:       ", address(wrapper));
         console.log("Oracle:      ", address(oracle));
         console.log("USDC Vault:  ", address(vault));
+        console.log("Chainlink Verifier:", chainlinkVerifier);
+        console.log("Stream ID:", vm.toString(chainlinkStreamId));
         console.log("");
         console.log("Next steps:");
-        console.log("1. Create Morpho market with wSTRC as collateral and USDC as loan token");
-        console.log("2. Set these addresses in .env");
-        console.log("3. Configure Pyth price feed for STRC price monitoring");
+        console.log("1. Create Morpho market with wSTRC as collateral");
+        console.log("2. Set addresses in .env");
+        console.log("3. Start backend oracle price updater");
     }
 }
