@@ -4,27 +4,23 @@ import { useState, useMemo, useEffect } from 'react';
 import { cn, formatUsd } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { useMarketRate } from '@/hooks/use-market-rate';
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
 const STRC_BASE_APY = 11.5;
-const MORPHO_BORROW_RATE = 4.2;
 const LEVERAGE = 3;
-const NET_DAILY_RATE = (STRC_BASE_APY * LEVERAGE - MORPHO_BORROW_RATE * (LEVERAGE - 1)) / 365 / 100;
 
-/**
- * Build performance data from real STRC prices (Pyth Benchmarks)
- * and real Aave rates (DeFi Llama).
- */
 function buildPerformanceData(
   days: number,
   strcPrices: Array<{ price: number; timestamp: number }>,
   aaveHistory: Array<{ timestamp: string; supplyApy: number }>,
+  borrowRate: number,
 ) {
   const data: Array<{ date: string; strcLoopYield: number; aaveUsdcYield: number }> = [];
-
   if (strcPrices.length === 0) return data;
 
+  const netDailyRate = (STRC_BASE_APY * LEVERAGE - borrowRate * (LEVERAGE - 1)) / 365 / 100;
   const basePrice = strcPrices[0].price;
   let aaveCumulative = 100;
 
@@ -32,13 +28,11 @@ function buildPerformanceData(
     const p = strcPrices[i];
     const dateStr = new Date(p.timestamp * 1000).toISOString().split('T')[0];
 
-    // STRC 3x loop: price return * leverage + yield accrual
     const priceReturn = (p.price - basePrice) / basePrice;
     const leveragedPriceReturn = priceReturn * LEVERAGE;
-    const yieldAccrued = NET_DAILY_RATE * i;
+    const yieldAccrued = netDailyRate * i;
     const strcLoopYield = 100 * (1 + leveragedPriceReturn + yieldAccrued);
 
-    // Aave: use real daily rate
     const aaveRate = aaveHistory[i]
       ? aaveHistory[i].supplyApy / 365 / 100
       : 2.5 / 365 / 100;
@@ -60,6 +54,34 @@ function formatDateLabel(dateStr: string, range: TimeRange): string {
   return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
 }
 
+function ChartSkeleton({ embedded }: { embedded: boolean }) {
+  return (
+    <div className={cn(embedded ? 'p-6' : 'rounded-lg border border-border bg-card p-6')}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="h-4 w-48 bg-secondary animate-pulse rounded" />
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-6 w-8 bg-secondary animate-pulse rounded" />
+          ))}
+        </div>
+      </div>
+      <div className="h-[240px] flex flex-col justify-end gap-1 px-12">
+        {[60, 45, 70, 35, 55, 40, 65].map((h, i) => (
+          <div key={i} className="w-full bg-secondary animate-pulse rounded" style={{ height: `${h}%`, opacity: 0.3 + i * 0.1 }} />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-4 pt-4 mt-4 border-t border-border">
+        {[1, 2, 3].map((i) => (
+          <div key={i}>
+            <div className="h-3 w-16 bg-secondary animate-pulse rounded mb-1" />
+            <div className="h-5 w-12 bg-secondary animate-pulse rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const [range, setRange] = useState<TimeRange>('3M');
   const [aaveHistory, setAaveHistory] = useState<Array<{ timestamp: string; supplyApy: number }>>([]);
@@ -67,8 +89,8 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const [strcPrices, setStrcPrices] = useState<Array<{ price: number; timestamp: number }>>([]);
   const [loading, setLoading] = useState(true);
   const { price: currentPrice } = useStrcxPrice();
+  const { borrowApy, loading: rateLoading } = useMarketRate();
 
-  // Fetch both data sources when range changes
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -82,20 +104,15 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
     });
   }, [range]);
 
+  const effectiveRate = borrowApy ?? 0;
+
   const data = useMemo(
-    () => buildPerformanceData(RANGE_DAYS[range], strcPrices, aaveHistory),
-    [range, strcPrices, aaveHistory],
+    () => buildPerformanceData(RANGE_DAYS[range], strcPrices, aaveHistory, effectiveRate),
+    [range, strcPrices, aaveHistory, effectiveRate],
   );
 
-  if (loading || data.length === 0) {
-    return (
-      <div className={cn(embedded ? 'p-6' : 'rounded-lg border border-border bg-card p-6')}>
-        <h2 className="text-sm font-medium text-muted-foreground mb-4">Performance</h2>
-        <div className="h-[240px] flex items-center justify-center">
-          <span className="text-xs text-muted-foreground font-mono animate-pulse">Loading Pyth price history...</span>
-        </div>
-      </div>
-    );
+  if (loading || rateLoading || data.length === 0) {
+    return <ChartSkeleton embedded={embedded} />;
   }
 
   const lastPoint = data[data.length - 1];
@@ -103,7 +120,6 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const aaveReturn = ((lastPoint.aaveUsdcYield - 100) / 100) * 100;
   const outperformance = strcReturn - aaveReturn;
 
-  // Convert to % returns (starts at 0%)
   const strcPcts = data.map(d => ((d.strcLoopYield - 100) / 100) * 100);
   const aavePcts = data.map(d => ((d.aaveUsdcYield - 100) / 100) * 100);
 
@@ -130,7 +146,6 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className={cn(embedded ? 'p-6 space-y-4' : 'rounded-lg border border-border bg-card p-6 space-y-4')}>
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 text-xs font-mono">
           <div className="flex items-center gap-2 text-muted-foreground">
@@ -163,7 +178,6 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
         </div>
       </div>
 
-      {/* SVG chart */}
       <div className="w-full overflow-hidden">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" style={{ display: 'block' }}>
           {yTicks.map((v) => (
@@ -185,7 +199,6 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
         </svg>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border">
         <div>
           <div className="text-[10px] text-muted-foreground mb-0.5">STRC {LEVERAGE}× Loop</div>
@@ -206,7 +219,7 @@ export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       <p className="text-[9px] text-muted-foreground">
-        Pyth Network · DeFi Llama · {LEVERAGE}× STRC loop at {STRC_BASE_APY}% yield minus Morpho borrow costs. Past performance does not guarantee future results.
+        Pyth Network · DeFi Llama · {LEVERAGE}× STRC loop at {STRC_BASE_APY}% yield minus {effectiveRate.toFixed(1)}% Morpho borrow. Past performance does not guarantee future results.
       </p>
     </div>
   );

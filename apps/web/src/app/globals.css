@@ -71,3 +71,64 @@ body {
 .float-a { animation: float-a 7s ease-in-out infinite; }
 .float-b { animation: float-b 9s ease-in-out infinite; }
 .float-c { animation: float-c 5.5s ease-in-out infinite; }
+
+/* ── Relay widget overrides — match xStocks branding ── */
+.relay-widget-container {
+  --relay-kit-primary-color: #2d2d2d !important;
+  --relay-kit-primary-color-hover: #404040 !important;
+}
+
+.relay-widget-container [data-relay-kit] {
+  font-family: 'IBM Plex Mono', monospace !important;
+}
+
+/* Card backgrounds — light to match our theme */
+.relay-widget-container [class*="TokenSelector"],
+.relay-widget-container [class*="AmountInput"],
+.relay-widget-container [class*="SwapWidgetRenderer"] > div > div {
+  background: #f5f4f0 !important;
+  border-color: #e5e7eb !important;
+  color: #0a0a0a !important;
+}
+
+/* Override purple buttons → dark charcoal */
+.relay-widget-container button[class*="primary"],
+.relay-widget-container button[class*="cta"],
+.relay-widget-container button[data-variant="primary"] {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+  border-radius: 0.375rem !important;
+}
+
+.relay-widget-container button[class*="primary"]:hover,
+.relay-widget-container button[class*="cta"]:hover {
+  background-color: #404040 !important;
+}
+
+/* Token selector pills — neutral instead of purple */
+.relay-widget-container [class*="badge"],
+.relay-widget-container [class*="Badge"],
+.relay-widget-container [class*="chip"],
+.relay-widget-container [class*="Chip"] {
+  background-color: #f0eeea !important;
+  color: #0a0a0a !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Remove all-caps from widget text */
+.relay-widget-container button,
+.relay-widget-container span {
+  text-transform: none !important;
+}
+
+/* Input fields */
+.relay-widget-container input {
+  background: transparent !important;
+  color: #0a0a0a !important;
+}
+
+/* Muted text */
+.relay-widget-container [class*="secondary"],
+.relay-widget-container [class*="subtitle"] {
+  color: #6b6866 !important;
+}
