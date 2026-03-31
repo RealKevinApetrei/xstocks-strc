@@ -5,6 +5,7 @@ import { LoopForm } from '@/components/dashboard/loop-form';
 import { UnwindButton } from '@/components/dashboard/unwind-button';
 import { LoopHistory } from '@/components/dashboard/loop-history';
 import { DepositsHero } from '@/components/dashboard/deposits-hero';
+import { ContractsPanel } from '@/components/dashboard/contracts-panel';
 import { usePosition } from '@/hooks/use-position';
 import { useMarketRate } from '@/hooks/use-market-rate';
 
@@ -50,7 +51,14 @@ export default function Dashboard() {
           ) : (
             <p className="text-xl font-mono font-semibold">{borrowApy}%</p>
           )}
-          <p className="text-[10px] text-muted-foreground mt-0.5">Morpho · variable</p>
+          <a
+            href="https://app.morpho.org/ink/market?id=0x036af40bfb700c865a67113be7033830b600eff68b12a8d06c1f57520fccf94a"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-muted-foreground mt-0.5 hover:text-foreground transition-colors underline underline-offset-2 block"
+          >
+            Morpho · variable
+          </a>
         </div>
       </div>
 
@@ -67,6 +75,8 @@ export default function Dashboard() {
       </div>
 
       <LoopHistory />
+
+      <ContractsPanel />
     </div>
   );
 }

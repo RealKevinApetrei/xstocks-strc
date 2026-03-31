@@ -216,6 +216,7 @@ export function DepositWithdrawModal({
                   setFromToken={setFromToken}
                   lockToToken={true}
                   defaultToAddress={(smartWalletAddress ?? undefined) as `0x${string}` | undefined}
+                  disablePasteWalletAddressOption={true}
                   defaultAmount="100"
                   onSwapSuccess={() => {
                     setSuccess('Deposit complete — USDC received in your trading account');
