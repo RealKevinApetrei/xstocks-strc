@@ -1,0 +1,37 @@
+{
+  "network": "INK Mainnet",
+  "chainId": 57073,
+  "deployedAt": "2026-03-31",
+  "contracts": {
+    "wSTRC": {
+      "address": "0x3b172e9c5488B17A0F4dc6fF4dc798055CC77281",
+      "description": "Non-rebasing wrapper for STRC. Exchange rate grows as STRC dividends rebase."
+    },
+    "PythOracleAdapter": {
+      "address": "0x7c415289c073C2Da7CCC071bb5f83eb1BC20cd88",
+      "description": "Morpho oracle adapter. Reads STRC/USD from Pyth and adjusts for wSTRC/STRC exchange rate.",
+      "pythFeedId": "0x27c7bbc9755d847f7fc63620c2edcc6a91d2c0c67a28c7999907b59c505b3c17",
+      "maxStaleness": 86400
+    },
+    "Batcher": {
+      "address": "0x77a61ef5b7499bf0311b2a156efed79f380fd8fb",
+      "description": "Atomic wrap + supplyCollateral + borrow in one transaction. Loop executor calls this."
+    }
+  },
+  "morpho": {
+    "address": "0x857f3EefE8cbda3Bc49367C996cd664A880d3042",
+    "irm": "0x9515407b1512F53388ffE699524100e7270Ee57B",
+    "lltv": "800000000000000000",
+    "marketParams": {
+      "loanToken": "0x2D270e6886d130D724215A266106e6832161EAEd",
+      "collateralToken": "0x3b172e9c5488B17A0F4dc6fF4dc798055CC77281",
+      "oracle": "0x7c415289c073C2Da7CCC071bb5f83eb1BC20cd88",
+      "irm": "0x9515407b1512F53388ffE699524100e7270Ee57B",
+      "lltv": "800000000000000000"
+    }
+  },
+  "externalTokens": {
+    "STRC": "0x1Aad217B8F78dbA5E6693460e8470F8b1A3977f3",
+    "USDC": "0x2D270e6886d130D724215A266106e6832161EAEd"
+  }
+}
