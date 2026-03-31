@@ -6,23 +6,46 @@ import { borrowExecutor } from './borrow.executor';
 import { smartAccountService, type Call } from '../smart-account.service';
 import { cowSwapService } from '../../cowswap/cowswap.service';
 import { signerService } from '../signer.service';
-import { MAX_LEVERAGE } from '@xstocks/shared';
+import { MAX_LEVERAGE, STRC_DUST } from '@xstocks/shared';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 import { pythPriceService } from '../../pyth/pyth-price.service';
-
-const MAX_CUMULATIVE_SLIPPAGE_BPS = 500; // 5%
-const LOOP_TARGET_HF = 1.5;
 
 export class LoopExecutor {
   private wstrcIface = new ethers.Interface(wSTRCABI);
 
+  /** Track active loops in memory for state awareness */
+  private activeLoops = new Map<string, { privyId: string; targetLeverage: number }>();
+
+  isActive(loopId: string): boolean {
+    return this.activeLoops.has(loopId);
+  }
+
+  /**
+   * Resume any IN_PROGRESS loops after server restart.
+   * Note: loops mid-iteration cannot be safely resumed (CoW orders may be stale).
+   * We mark them as COMPLETED_PARTIAL so users can start a new loop.
+   */
+  async resumeActiveLoops(): Promise<void> {
+    const { rows } = await query(
+      `SELECT id, privy_id, target_leverage, current_iteration FROM loop_executions WHERE status = 'IN_PROGRESS'`,
+    );
+    for (const row of rows) {
+      console.log(`[LOOP ${row.id}] Was IN_PROGRESS at restart — marking COMPLETED_PARTIAL (iteration ${row.current_iteration})`);
+      await query(
+        `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', error = 'Server restarted during execution — position is safe but loop stopped' WHERE id = $1`,
+        [row.id],
+      );
+    }
+    if (rows.length > 0) console.log(`Recovered ${rows.length} interrupted loop(s)`);
+  }
+
   /**
    * Start a leveraged loop.
-   * Entry: USDC → swap to STRC → then loop iterations.
+   * Entry: USDC → CoW swap to STRC → wrap → supply → borrow → repeat.
    */
   async startLoop(params: {
     privyId: string;
-    strcAmount: bigint; // Actually USDC amount (frontend sends USDC)
+    strcAmount: bigint; // USDC amount from frontend
     targetLeverage: number;
     maxSlippageBps: number;
   }): Promise<string> {
@@ -38,15 +61,20 @@ export class LoopExecutor {
       `INSERT INTO loop_executions
        (execution_request_id, privy_id, strc_amount, target_leverage, max_slippage_bps, status)
        VALUES ($1, $2, $3, $4, $5, 'PENDING') RETURNING id`,
-      [execReq.id, params.privyId, params.strcAmount.toString(), params.targetLeverage, params.maxSlippageBps],
+      [execReq.id, params.privyId, params.strcAmount.toString(), params.targetLeverage, 0],
     );
 
-    // Run in background
-    this.runLoop(loop.id, params.privyId, params.strcAmount, params.targetLeverage, params.maxSlippageBps)
+    // Track in memory + run in background
+    this.activeLoops.set(loop.id, { privyId: params.privyId, targetLeverage: params.targetLeverage });
+
+    this.runLoop(loop.id, params.privyId, params.strcAmount, params.targetLeverage)
       .catch((err) => {
-        console.error(`Loop ${loop.id} failed:`, err);
-        query(`UPDATE loop_executions SET status = 'FAILED', error = $2 WHERE id = $1`, [loop.id, err.message]);
-      });
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`[LOOP ${loop.id}] Fatal error:`, msg);
+        query(`UPDATE loop_executions SET status = 'FAILED', error = $2 WHERE id = $1`, [loop.id, msg.slice(0, 500)])
+          .catch((dbErr) => console.error(`[LOOP ${loop.id}] DB update also failed:`, dbErr));
+      })
+      .finally(() => this.activeLoops.delete(loop.id));
 
     return loop.id;
   }
@@ -56,105 +84,130 @@ export class LoopExecutor {
     privyId: string,
     usdcAmount: bigint,
     targetLeverage: number,
-    maxSlippageBps: number,
   ): Promise<void> {
     await query(`UPDATE loop_executions SET status = 'IN_PROGRESS' WHERE id = $1`, [loopId]);
 
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
 
-    // Push fresh Pyth price on-chain before execution
+    // Push fresh Pyth price on-chain before any execution
     await pythPriceService.ensureFreshPrice();
 
     // Step 0: Initial swap USDC → STRC via CoW
     let currentStrcAmount: bigint;
     try {
       currentStrcAmount = await this.initialSwap(privyId, smartAccountAddr, usdcAmount);
+      if (currentStrcAmount <= STRC_DUST) {
+        await this.failLoop(loopId, 'Initial swap returned dust amount — insufficient STRC received');
+        return;
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Initial USDC→STRC swap failed';
-      await query(`UPDATE loop_executions SET status = 'FAILED', error = $2 WHERE id = $1`, [loopId, msg]);
+      await this.failLoop(loopId, `Initial USDC→STRC swap failed: ${err instanceof Error ? err.message : 'Unknown'}`);
       return;
     }
 
-    let iteration = 0;
-    let cumulativeSlippageBps = 0;
+    // Loop iterations
+    for (let iteration = 1; iteration <= config.maxLoopIterations; iteration++) {
+      // Read fresh position before each iteration
+      const position = await borrowExecutor.getPosition(smartAccountAddr);
 
-    while (true) {
-      iteration++;
-
-      // Check leverage target (after first iteration)
-      if (iteration > 1) {
-        const position = await borrowExecutor.getPosition(smartAccountAddr);
-        const currentLeverage = this.calculateLeverage(position.healthFactor);
-
-        if (currentLeverage >= targetLeverage) {
-          await query(
-            `UPDATE loop_executions SET status = 'COMPLETED', effective_leverage = $2, health_factor = $3, current_iteration = $4 WHERE id = $1`,
-            [loopId, currentLeverage, position.healthFactor, iteration - 1],
-          );
-          return;
-        }
-
-        if (position.healthFactor > 0 && position.healthFactor < LOOP_TARGET_HF) {
-          await query(
-            `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', effective_leverage = $2, health_factor = $3, current_iteration = $4, error = 'Health factor too low to continue' WHERE id = $1`,
-            [loopId, currentLeverage, position.healthFactor, iteration - 1],
-          );
-          return;
-        }
-      }
-
-      // Cumulative slippage check
-      if (cumulativeSlippageBps > MAX_CUMULATIVE_SLIPPAGE_BPS) {
+      // Emergency stop: HF in liquidation danger zone
+      if (position.borrowed > 0n && position.healthFactor < config.emergencyHF) {
         await query(
-          `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, error = 'Cumulative slippage exceeded 5%' WHERE id = $1`,
-          [loopId, iteration - 1],
+          `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
+           effective_leverage = $4, error = 'Emergency stop: health factor below ${config.emergencyHF}' WHERE id = $1`,
+          [loopId, iteration - 1, position.healthFactor, borrowExecutor.calculateLeverage(position.healthFactor)],
         );
         return;
       }
 
-      // Execute one iteration (with auto-retry once on failure)
-      let result = await this.executeIteration(loopId, privyId, iteration, currentStrcAmount, maxSlippageBps);
-
-      if (!result.success) {
-        // Auto-retry once
-        console.log(`Loop ${loopId} iteration ${iteration} failed, retrying once...`);
-        result = await this.executeIteration(loopId, privyId, iteration, currentStrcAmount, maxSlippageBps);
-
-        if (!result.success) {
+      // Check if target leverage reached
+      if (iteration > 1) {
+        const currentLeverage = borrowExecutor.calculateLeverage(position.healthFactor);
+        if (currentLeverage >= targetLeverage) {
           await query(
-            `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, error = 'Iteration failed after retry' WHERE id = $1`,
-            [loopId, iteration],
+            `UPDATE loop_executions SET status = 'COMPLETED', current_iteration = $2, health_factor = $3,
+             effective_leverage = $4 WHERE id = $1`,
+            [loopId, iteration - 1, position.healthFactor, currentLeverage],
+          );
+          return;
+        }
+
+        // HF too low to continue safely
+        if (position.healthFactor < config.loopTargetHF && position.borrowed > 0n) {
+          await query(
+            `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
+             effective_leverage = $4, error = 'Health factor too low to add more leverage' WHERE id = $1`,
+            [loopId, iteration - 1, position.healthFactor, currentLeverage],
           );
           return;
         }
       }
 
-      cumulativeSlippageBps += result.actualSlippageBps;
-      currentStrcAmount = result.strcReceived;
+      // Execute iteration (with auto-retry once on failure)
+      let result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
 
+      if (!result.success) {
+        // Retry once with fresh position state
+        console.log(`[LOOP ${loopId}] Iteration ${iteration} failed, retrying once...`);
+        await pythPriceService.ensureFreshPrice(); // Refresh price before retry
+        result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+
+        if (!result.success) {
+          const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
+          await query(
+            `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
+             effective_leverage = $4, error = 'Iteration failed after retry' WHERE id = $1`,
+            [loopId, iteration, posAfter.healthFactor, borrowExecutor.calculateLeverage(posAfter.healthFactor)],
+          );
+          return;
+        }
+      }
+
+      // Validate CoW fill returned meaningful STRC
+      if (result.strcReceived <= STRC_DUST) {
+        const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
+        await query(
+          `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
+           effective_leverage = $4, error = 'CoW swap returned dust — stopping' WHERE id = $1`,
+          [loopId, iteration, posAfter.healthFactor, borrowExecutor.calculateLeverage(posAfter.healthFactor)],
+        );
+        return;
+      }
+
+      currentStrcAmount = result.strcReceived;
       await query(`UPDATE loop_executions SET current_iteration = $2 WHERE id = $1`, [loopId, iteration]);
     }
+
+    // Max iterations reached
+    const finalPos = await borrowExecutor.getPosition(smartAccountAddr);
+    const finalLev = borrowExecutor.calculateLeverage(finalPos.healthFactor);
+    await query(
+      `UPDATE loop_executions SET status = $2, current_iteration = $3, health_factor = $4, effective_leverage = $5,
+       error = $6 WHERE id = $1`,
+      [loopId,
+       finalLev >= targetLeverage ? 'COMPLETED' : 'COMPLETED_PARTIAL',
+       config.maxLoopIterations,
+       finalPos.healthFactor,
+       finalLev,
+       finalLev >= targetLeverage ? null : `Max ${config.maxLoopIterations} iterations reached`,
+      ],
+    );
   }
 
   /**
-   * Initial USDC → STRC swap before entering the loop.
+   * Initial USDC → STRC swap via CoW before entering the loop.
    */
   private async initialSwap(privyId: string, smartAccountAddr: string, usdcAmount: bigint): Promise<bigint> {
     // Approve USDC for CoW VaultRelayer
     const approveCalls = approvalExecutor.buildApproveCalls({
-      token: config.usdc,
-      spender: config.cowVaultRelayer,
-      amount: usdcAmount,
+      token: config.usdc, spender: config.cowVaultRelayer, amount: usdcAmount,
     });
     const approveHash = await smartAccountService.sendBatchUserOp(privyId, approveCalls);
     await smartAccountService.waitForReceipt(approveHash);
 
-    // Create CoW swap order
+    // CoW swap USDC → STRC
     const quote = await cowSwapService.getQuote({
-      sellToken: config.usdc,
-      buyToken: config.strc,
-      sellAmount: usdcAmount,
-      from: smartAccountAddr,
+      sellToken: config.usdc, buyToken: config.strc, sellAmount: usdcAmount, from: smartAccountAddr,
     });
 
     const wallet = await signerService.getWalletForUser(privyId);
@@ -165,6 +218,10 @@ export class LoopExecutor {
     const orderUid = await cowSwapService.createOrder(quote, signature);
     const fill = await cowSwapService.waitForFill(orderUid);
 
+    if (fill.buyAmount <= 0n) {
+      throw new Error('CoW swap returned 0 STRC');
+    }
+
     return fill.buyAmount;
   }
 
@@ -174,10 +231,10 @@ export class LoopExecutor {
   private async executeIteration(
     loopId: string,
     privyId: string,
+    smartAccountAddr: string,
     iterationNumber: number,
     strcAmount: bigint,
-    maxSlippageBps: number,
-  ): Promise<{ success: boolean; strcReceived: bigint; actualSlippageBps: number }> {
+  ): Promise<{ success: boolean; strcReceived: bigint }> {
     const { rows: [iter] } = await query(
       `INSERT INTO loop_iterations (loop_execution_id, iteration_number, step, strc_deposited, started_at)
        VALUES ($1, $2, 'PENDING', $3, NOW()) RETURNING id`,
@@ -185,37 +242,34 @@ export class LoopExecutor {
     );
 
     try {
-      const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
       const provider = new ethers.JsonRpcProvider(config.rpcUrl);
       const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
 
       // Calculate expected wSTRC from wrapping
       const wstrcAmount: bigint = await wstrcContract.strcToWstrc(strcAmount);
+      if (wstrcAmount <= 0n) {
+        throw new Error('wSTRC amount rounds to zero');
+      }
 
       // Calculate safe borrow amount
       const currentPosition = await borrowExecutor.getPosition(smartAccountAddr);
       const maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
-        wstrcAmount, currentPosition, LOOP_TARGET_HF,
+        wstrcAmount, currentPosition, config.loopTargetHF,
       );
 
       if (maxBorrowUsdc === 0n) {
         await query(`UPDATE loop_iterations SET step = 'COMPLETED', error = 'No safe borrow available', completed_at = NOW() WHERE id = $1`, [iter.id]);
-        return { success: false, strcReceived: 0n, actualSlippageBps: 0 };
+        return { success: false, strcReceived: 0n };
       }
 
-      // Build batch UserOp: approve → wrap → approve → supply → borrow
+      // Batch UserOp: approve STRC → wrap → approve wSTRC → supply → borrow
       await query(`UPDATE loop_iterations SET step = 'WRAPPING' WHERE id = $1`, [iter.id]);
 
       const calls: Call[] = [
-        // 1. Approve STRC → wSTRC wrapper
         ...approvalExecutor.buildApproveCalls({ token: config.strc, spender: config.wstrc, amount: strcAmount }),
-        // 2. Wrap STRC → wSTRC
         { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('wrap', [strcAmount]) },
-        // 3. Approve wSTRC → Morpho
         ...approvalExecutor.buildApproveCalls({ token: config.wstrc, spender: config.morpho, amount: wstrcAmount }),
-        // 4. Supply collateral
         ...borrowExecutor.buildSupplyCollateralCalls(wstrcAmount, smartAccountAddr),
-        // 5. Borrow USDC
         ...borrowExecutor.buildBorrowCalls(maxBorrowUsdc, smartAccountAddr, smartAccountAddr),
       ];
 
@@ -225,11 +279,11 @@ export class LoopExecutor {
 
       const receipt = await smartAccountService.waitForReceipt(userOpHash);
       if (!receipt.success) {
-        await query(`UPDATE loop_iterations SET step = 'FAILED', error = 'UserOp failed' WHERE id = $1`, [iter.id]);
-        return { success: false, strcReceived: 0n, actualSlippageBps: 0 };
+        await query(`UPDATE loop_iterations SET step = 'FAILED', error = 'UserOp reverted' WHERE id = $1`, [iter.id]);
+        return { success: false, strcReceived: 0n };
       }
 
-      // 6. Approve USDC for CoW VaultRelayer + swap USDC → STRC
+      // CoW swap: approve USDC → create order → wait for fill
       await query(`UPDATE loop_iterations SET step = 'SWAPPING', usdc_borrowed = $2, wstrc_minted = $3 WHERE id = $1`,
         [iter.id, maxBorrowUsdc.toString(), wstrcAmount.toString()]);
 
@@ -253,37 +307,29 @@ export class LoopExecutor {
 
       const fill = await cowSwapService.waitForFill(orderUid);
 
-      const actualSlippageBps = quote.expectedBuyAmount > 0n
-        ? Number((quote.expectedBuyAmount - fill.buyAmount) * 10000n / quote.expectedBuyAmount)
-        : 0;
-
-      // Update health factor after iteration
+      // Update position state after iteration
       const positionAfter = await borrowExecutor.getPosition(smartAccountAddr);
-      const leverageAfter = this.calculateLeverage(positionAfter.healthFactor);
+      const leverageAfter = borrowExecutor.calculateLeverage(positionAfter.healthFactor);
 
       await query(
-        `UPDATE loop_iterations SET step = 'COMPLETED', strc_received = $2, actual_slippage_bps = $3,
-         health_factor_after = $4, effective_leverage_after = $5, completed_at = NOW() WHERE id = $1`,
-        [iter.id, fill.buyAmount.toString(), actualSlippageBps, positionAfter.healthFactor, leverageAfter],
+        `UPDATE loop_iterations SET step = 'COMPLETED', strc_received = $2,
+         health_factor_after = $3, effective_leverage_after = $4, completed_at = NOW() WHERE id = $1`,
+        [iter.id, fill.buyAmount.toString(), positionAfter.healthFactor, leverageAfter],
       );
 
-      return { success: true, strcReceived: fill.buyAmount, actualSlippageBps };
+      return { success: true, strcReceived: fill.buyAmount };
 
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      await query(`UPDATE loop_iterations SET step = 'FAILED', error = $2 WHERE id = $1`, [iter.id, message]);
-      return { success: false, strcReceived: 0n, actualSlippageBps: 0 };
+      console.error(`[LOOP ${loopId}] Iteration ${iterationNumber} error:`, message);
+      await query(`UPDATE loop_iterations SET step = 'FAILED', error = $2 WHERE id = $1`, [iter.id, message.slice(0, 500)]);
+      return { success: false, strcReceived: 0n };
     }
   }
 
-  /**
-   * Calculate effective leverage from health factor.
-   * leverage ≈ 1 / (1 - 1/HF)
-   */
-  private calculateLeverage(healthFactor: number): number {
-    if (healthFactor <= 1) return MAX_LEVERAGE;
-    if (healthFactor >= 999) return 1;
-    return 1 / (1 - 1 / healthFactor);
+  private async failLoop(loopId: string, error: string): Promise<void> {
+    console.error(`[LOOP ${loopId}] Failed:`, error);
+    await query(`UPDATE loop_executions SET status = 'FAILED', error = $2 WHERE id = $1`, [loopId, error.slice(0, 500)]);
   }
 }
 

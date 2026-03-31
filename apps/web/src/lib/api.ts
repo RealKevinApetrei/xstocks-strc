@@ -85,11 +85,26 @@ export const api = {
   getSimulatedApy: () =>
     request<SimulatedApyResponse>('/api/apy/simulated'),
 
-  // Price (Chainlink Data Streams — STRCx/USD)
+  // Price (Pyth Hermes — STRCx/USD)
   getStrcxPrice: () =>
     request<{ price: number; timestamp: number; stale: boolean; source: string }>('/api/grid/price'),
 
-  // Aave USDC yield (real data from subgraph)
+  // Aave USDC yield (real data from DeFi Llama)
   getAaveYield: (days: number = 90) =>
     request<{ currentSupplyApy: number; history: Array<{ timestamp: string; supplyApy: number }> }>(`/api/apy/aave?days=${days}`),
+
+  // Historical STRC prices (Pyth Benchmarks)
+  getStrcPriceHistory: (days: number = 90) =>
+    request<{ history: Array<{ price: number; timestamp: number }>; count: number; source: string }>(`/api/grid/price/history?days=${days}`),
+
+  // Loop history (paginated)
+  getLoopHistory: (token: string, limit: number = 20, offset: number = 0) =>
+    request<{
+      loops: Array<{
+        id: string; strcAmount: string; targetLeverage: number; effectiveLeverage: number | null;
+        healthFactor: number | null; iterations: number; status: string; error: string | null;
+        createdAt: string; updatedAt: string;
+      }>;
+      total: number; limit: number; offset: number;
+    }>(`/api/execution/loops?limit=${limit}&offset=${offset}`, { token }),
 };

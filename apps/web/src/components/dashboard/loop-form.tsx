@@ -10,6 +10,8 @@ import { LoopStatus } from './loop-status';
 const STRC_BASE_APY = 11.5;
 const MORPHO_BORROW_RATE = 4.2;
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
+const STRC_BASE_APY = 11.5;
+const MORPHO_BORROW_RATE = 4.2;
 
 function netApy(leverage: number) {
   return (STRC_BASE_APY * leverage - MORPHO_BORROW_RATE * (leverage - 1)).toFixed(1);

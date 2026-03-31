@@ -4,7 +4,9 @@ import { PositionCard } from '@/components/dashboard/position-card';
 import { LoopForm } from '@/components/dashboard/loop-form';
 import { UnwindButton } from '@/components/dashboard/unwind-button';
 import { LoopHistory } from '@/components/dashboard/loop-history';
-import { DepositsHero } from '@/components/dashboard/deposits-hero';
+import { AccountOverview } from '@/components/dashboard/account-overview';
+import { LivePriceTicker } from '@/components/dashboard/live-price-ticker';
+import { PerformanceChart } from '@/components/vaults/performance-chart';
 import { usePosition } from '@/hooks/use-position';
 
 const STRC_APY = 11.5;
@@ -15,8 +17,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5">
-      {/* Hero — animated deposit total */}
-      <DepositsHero />
+      {/* Live price ticker */}
+      <LivePriceTicker />
 
       {/* Top stat bar */}
       <div className="grid grid-cols-3 gap-px border border-border rounded-lg overflow-hidden bg-border">
@@ -29,7 +31,7 @@ export default function Dashboard() {
         </div>
         <div className="bg-card px-5 py-4">
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-1">
-            Max APY @ 5×
+            Max APY @ 5x
           </p>
           <p className="text-xl font-mono font-semibold text-success">
             +{(STRC_APY * 5 - MORPHO_RATE * 4).toFixed(1)}%
@@ -49,12 +51,16 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <PositionCard />
-          <UnwindButton loopId={position?.activeLoop?.id ?? null} />
+          <UnwindButton
+            loopId={position?.activeLoop?.id ?? null}
+            currentLeverage={position?.position?.effectiveLeverage}
+          />
         </div>
         <LoopForm />
       </div>
 
-      {/* Loop History + Performance */}
+      {/* Performance + History */}
+      <PerformanceChart />
       <LoopHistory />
     </div>
   );
