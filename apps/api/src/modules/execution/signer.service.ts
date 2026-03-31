@@ -17,6 +17,9 @@ function getAuthContext() {
 }
 
 export class SignerService {
+  /**
+   * Get the user's embedded EOA wallet (used for signing).
+   */
   async getWalletForUser(privyId: string): Promise<{ address: string; walletId: string }> {
     const user = await (privy.users() as any)._get(privyId);
     const wallet = user.linked_accounts.find(
@@ -30,6 +33,25 @@ export class SignerService {
     const walletId = wallet.id ?? wallet.address;
     if (!walletId) throw new Error(`Wallet ID missing for user ${privyId}`);
     return { address: wallet.address, walletId };
+  }
+
+  /**
+   * Get the user's smart wallet (Kernel) — used for gas-sponsored transactions.
+   * Falls back to embedded wallet if no smart wallet exists.
+   */
+  async getSmartWalletForUser(privyId: string): Promise<{ address: string; walletId: string }> {
+    const user = await (privy.users() as any)._get(privyId);
+    const smartWallet = user.linked_accounts.find(
+      (a: any) => a.type === 'smart_wallet',
+    );
+
+    if (smartWallet?.address) {
+      const walletId = smartWallet.id ?? smartWallet.address;
+      return { address: smartWallet.address, walletId };
+    }
+
+    // Fallback to embedded EOA
+    return this.getWalletForUser(privyId);
   }
 
   async sendTransaction(

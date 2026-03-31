@@ -101,7 +101,14 @@ export class LoopExecutor {
         return;
       }
     } catch (err) {
-      await this.failLoop(loopId, `Initial USDC→STRC swap failed: ${err instanceof Error ? err.message : 'Unknown'}`);
+      const msg = err instanceof Error ? err.message : 'Unknown';
+      let userMsg = `Initial USDC→STRC swap failed: ${msg}`;
+      if (msg.includes('insufficient funds for gas')) {
+        userMsg = 'Transaction failed: wallet has no ETH for gas. Gas sponsorship may not be active — contact support.';
+      } else if (msg.includes('insufficient balance') || msg.includes('transfer amount exceeds')) {
+        userMsg = 'Insufficient USDC balance in wallet. Deposit more USDC before starting a loop.';
+      }
+      await this.failLoop(loopId, userMsg);
       return;
     }
 

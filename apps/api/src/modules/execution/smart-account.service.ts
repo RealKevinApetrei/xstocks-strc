@@ -55,11 +55,12 @@ export class SmartAccountService {
       if (!call.data || call.data.length < 10) throw new Error(`Invalid call data for ${call.to}`);
     }
 
-    const wallet = await signerService.getWalletForUser(privyId);
+    // Use smart wallet for gas-sponsored transactions
+    const smartWallet = await signerService.getSmartWalletForUser(privyId);
     const smartAccountAddr = await this.getSmartAccountAddress(privyId);
 
     if (calls.length === 1) {
-      return signerService.sendTransaction(wallet.walletId, {
+      return signerService.sendTransaction(smartWallet.walletId, {
         to: calls[0].to,
         data: calls[0].data,
         value: calls[0].value?.toString(),
@@ -71,7 +72,7 @@ export class SmartAccountService {
       calls.map((c) => ({ to: c.to, value: c.value ?? 0n, data: c.data })),
     ]);
 
-    return signerService.sendTransaction(wallet.walletId, {
+    return signerService.sendTransaction(smartWallet.walletId, {
       to: smartAccountAddr,
       data: batchCalldata,
       chainId: config.chainId,
