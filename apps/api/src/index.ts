@@ -5,6 +5,8 @@ import { errorHandler } from './middleware/errorHandler';
 import { executionRouter } from './modules/execution/execution.router';
 import { gridRouter } from './modules/grid/grid.router';
 import { pythPriceService } from './modules/pyth/pyth-price.service';
+import { loopExecutor } from './modules/execution/executors/loop.executor';
+import { unwindExecutor } from './modules/execution/executors/unwind.executor';
 
 const app = express();
 
@@ -34,6 +36,10 @@ app.listen(config.port, () => {
   console.log(`xStocks API running on port ${config.port}`);
   console.log(`Chain: Ink (${config.chainId})`);
   console.log(`Execution: ${isExecutionEnabled() ? 'ENABLED' : 'DISABLED (missing contract addresses)'}`);
+
+  // Resume any interrupted executions from DB
+  loopExecutor.resumeActiveLoops().catch(console.error);
+  unwindExecutor.resumeActiveUnwinds().catch(console.error);
 
   // Start Pyth price polling for grid triggers (reads from Hermes, no gas)
   if (config.pythPriceFeedId) {

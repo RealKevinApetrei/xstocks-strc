@@ -13,6 +13,32 @@ import { pythPriceService } from '../../pyth/pyth-price.service';
 export class LoopExecutor {
   private wstrcIface = new ethers.Interface(wSTRCABI);
 
+  /** Track active loops in memory for state awareness */
+  private activeLoops = new Map<string, { privyId: string; targetLeverage: number }>();
+
+  isActive(loopId: string): boolean {
+    return this.activeLoops.has(loopId);
+  }
+
+  /**
+   * Resume any IN_PROGRESS loops after server restart.
+   * Note: loops mid-iteration cannot be safely resumed (CoW orders may be stale).
+   * We mark them as COMPLETED_PARTIAL so users can start a new loop.
+   */
+  async resumeActiveLoops(): Promise<void> {
+    const { rows } = await query(
+      `SELECT id, privy_id, target_leverage, current_iteration FROM loop_executions WHERE status = 'IN_PROGRESS'`,
+    );
+    for (const row of rows) {
+      console.log(`[LOOP ${row.id}] Was IN_PROGRESS at restart — marking COMPLETED_PARTIAL (iteration ${row.current_iteration})`);
+      await query(
+        `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', error = 'Server restarted during execution — position is safe but loop stopped' WHERE id = $1`,
+        [row.id],
+      );
+    }
+    if (rows.length > 0) console.log(`Recovered ${rows.length} interrupted loop(s)`);
+  }
+
   /**
    * Start a leveraged loop.
    * Entry: USDC → CoW swap to STRC → wrap → supply → borrow → repeat.
@@ -38,14 +64,17 @@ export class LoopExecutor {
       [execReq.id, params.privyId, params.strcAmount.toString(), params.targetLeverage, 0],
     );
 
-    // Run in background — errors caught and persisted
+    // Track in memory + run in background
+    this.activeLoops.set(loop.id, { privyId: params.privyId, targetLeverage: params.targetLeverage });
+
     this.runLoop(loop.id, params.privyId, params.strcAmount, params.targetLeverage)
       .catch((err) => {
         const msg = err instanceof Error ? err.message : 'Unknown error';
         console.error(`[LOOP ${loop.id}] Fatal error:`, msg);
-        query(`UPDATE loop_executions SET status = 'FAILED', error = $2 WHERE id = $1`, [loop.id, msg])
+        query(`UPDATE loop_executions SET status = 'FAILED', error = $2 WHERE id = $1`, [loop.id, msg.slice(0, 500)])
           .catch((dbErr) => console.error(`[LOOP ${loop.id}] DB update also failed:`, dbErr));
-      });
+      })
+      .finally(() => this.activeLoops.delete(loop.id));
 
     return loop.id;
   }
