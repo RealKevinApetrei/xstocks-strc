@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '@privy-io/node';
+import { verifyAuthToken } from '@privy-io/node';
 import { createRemoteJWKSet } from 'jose';
 import { config } from '../config';
 
@@ -9,7 +9,6 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-// JWKS endpoint for Privy token verification
 const jwks = createRemoteJWKSet(
   new URL(`https://auth.privy.io/api/v1/apps/${config.privyAppId}/.well-known/jwks.json`),
 );
@@ -26,14 +25,16 @@ export async function privyAuth(
   }
 
   try {
-    const result = await verifyAccessToken({
-      access_token: token,
+    // Try verifyAuthToken first (matches Privy React SDK's getAccessToken)
+    const result = await verifyAuthToken({
+      auth_token: token,
       app_id: config.privyAppId,
       verification_key: jwks,
     });
     (req as AuthenticatedRequest).user = { privyId: result.user_id };
     next();
-  } catch {
+  } catch (err) {
+    console.error('[AUTH] Token verification failed:', err instanceof Error ? err.message : err);
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
