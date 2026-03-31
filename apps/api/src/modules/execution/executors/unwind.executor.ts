@@ -184,7 +184,7 @@ export class UnwindExecutor {
 
       const quote = await cowSwapService.getQuote({ sellToken: config.strc, buyToken: config.usdc, sellAmount: strcAmount, from: smartAccountAddr });
       const wallet = await signerService.getWalletForUser(privyId);
-      const sig = await signerService.signTypedData(wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order, privyId);
+      const sig = await signerService.signTypedData(wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order);
       const orderUid = await cowSwapService.createOrder(quote, sig);
       const fill = await cowSwapService.waitForFill(orderUid);
       if (fill.buyAmount <= 0n) throw new Error('CoW returned 0 USDC');

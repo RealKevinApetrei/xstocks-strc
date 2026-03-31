@@ -64,7 +64,7 @@ export class SmartAccountService {
         data: calls[0].data,
         value: calls[0].value?.toString(),
         chainId: config.chainId,
-      }, privyId);
+      });
     }
 
     const batchCalldata = KERNEL_ABI.encodeFunctionData('executeBatch', [
@@ -75,7 +75,7 @@ export class SmartAccountService {
       to: smartAccountAddr,
       data: batchCalldata,
       chainId: config.chainId,
-    }, privyId);
+    });
   }
 
   async waitForReceipt(txHash: string): Promise<{ txHash: string; success: boolean }> {

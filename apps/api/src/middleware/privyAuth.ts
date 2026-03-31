@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { jwtVerify, createRemoteJWKSet, importSPKI, type KeyLike, type JWTVerifyGetKey } from 'jose';
 import { config } from '../config';
-import { storeUserToken } from '../modules/execution/signer.service';
 
 export interface AuthenticatedRequest extends Request {
   user: {
@@ -52,8 +51,6 @@ export async function privyAuth(
     if (!userId) throw new Error('No sub claim in token');
 
     (req as AuthenticatedRequest).user = { privyId: userId };
-    // Store raw Privy access token for embedded wallet signing
-    storeUserToken(userId, token);
     next();
   } catch (err) {
     cachedKey = null;
