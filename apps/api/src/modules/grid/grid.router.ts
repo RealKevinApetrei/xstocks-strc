@@ -48,7 +48,7 @@ gridRouter.post('/strategy', privyAuth, async (req: Request, res: Response) => {
 
   const { rows: [strategy] } = await query(
     `INSERT INTO grid_strategies (privy_id, loop_execution_id, threshold, grid_buy_pct, vault_address, enabled)
-     VALUES ($1, $2, 103, $3, $4, true) RETURNING *`,
+     VALUES ($1, $2, 1.5, $3, $4, true) RETURNING *`,
     [privyId, loopExecutionId, gridBuyPct, config.usdcVault],
   );
 

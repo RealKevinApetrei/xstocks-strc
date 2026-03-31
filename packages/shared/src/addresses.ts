@@ -24,7 +24,7 @@ export const ADDRESSES = {
 } as const;
 
 export const CHAIN_ID = 57073;
-export const GRID_THRESHOLD_USD = 103;
+export const DEFAULT_GRID_HF_THRESHOLD = 1.5; // Trigger buy-the-dip when HF drops below this
 export const MAX_LEVERAGE = 5;
 export const MIN_LEVERAGE = 1.1;
 export const MAX_SLIPPAGE_BPS = 500; // 5%

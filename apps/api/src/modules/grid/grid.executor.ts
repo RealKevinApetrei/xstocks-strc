@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { query } from '../../db/pool';
 import { config } from '../../config';
-import { GRID_THRESHOLD_USD, MAX_LEVERAGE } from '@xstocks/shared';
+import { MAX_LEVERAGE } from '@xstocks/shared';
 import { vaultService } from '../vault/vault.service';
 import { cowSwapService } from '../cowswap/cowswap.service';
 import { smartAccountService } from '../execution/smart-account.service';
@@ -27,21 +27,25 @@ export class GridExecutor {
   private wstrcIface = new ethers.Interface(wSTRCABI);
 
   /**
-   * Handle a Chainlink price trigger.
-   * Called when STRCx price drops below $103.
+   * Handle a price trigger from the polling loop.
+   * Checks each enabled strategy's position health factor —
+   * triggers grid-buy when HF drops below the strategy's threshold.
    */
   async handlePriceTrigger(params: { price: number; timestamp: number }): Promise<void> {
-    if (params.price >= GRID_THRESHOLD_USD) {
-      console.log(`Price $${params.price} >= $${GRID_THRESHOLD_USD}, no action`);
-      return;
-    }
-
     const { rows: strategies } = await query<GridStrategy>(
       `SELECT * FROM grid_strategies WHERE enabled = true`,
     );
 
     for (const strategy of strategies) {
       try {
+        const smartAccountAddr = await smartAccountService.getSmartAccountAddress(strategy.privy_id);
+        const position = await borrowExecutor.getPosition(smartAccountAddr);
+
+        // Only trigger if position exists and HF is below threshold
+        if (position.borrowed === 0n) continue;
+        if (position.healthFactor >= strategy.threshold) continue;
+
+        console.log(`Grid trigger: HF ${position.healthFactor.toFixed(2)} < threshold ${strategy.threshold} for strategy ${strategy.id}`);
         await this.executeGridBuy(strategy, params.price);
       } catch (err) {
         console.error(`Grid buy failed for strategy ${strategy.id}:`, err);

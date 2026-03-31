@@ -168,16 +168,15 @@ export function BuyTheDipVault() {
             </button>
           </div>
 
-          {/* Trigger price */}
+          {/* Trigger condition */}
           <div className="rounded-md border border-border bg-background p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Trigger when STRC</span>
-              <span className="text-sm font-mono font-semibold">&lt; $103.00</span>
+              <span className="text-xs text-muted-foreground">Trigger when Health Factor</span>
+              <span className="text-sm font-mono font-semibold">&lt; 1.5</span>
             </div>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-muted-foreground">Current STRC price</span>
-              <span className="text-xs font-mono text-success">{formatUsd(STRC_PRICE_USD)}</span>
-            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              When your position health factor drops below this level, vault USDC is deployed to buy STRC and strengthen your position.
+            </p>
           </div>
 
           {/* Grid buy percentage */}
@@ -218,7 +217,7 @@ export function BuyTheDipVault() {
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Buys ~</span>
-              <span className="font-mono">{((VAULT_BALANCE_USDC * gridBuyPct / 100) / 103).toFixed(2)} STRC at $103</span>
+              <span className="font-mono">{STRC_PRICE_USD > 0 ? ((VAULT_BALANCE_USDC * gridBuyPct / 100) / STRC_PRICE_USD).toFixed(2) : '—'} STRC at current price</span>
             </div>
           </div>
 

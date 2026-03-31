@@ -94,7 +94,7 @@ export function VaultPanel() {
       </div>
 
       <p className="text-[10px] text-muted-foreground">
-        Idle USDC earns yield via Tydro. Vault funds are used for automated grid-buy when STRC drops below $103.
+        Idle USDC earns yield via Tydro. Vault funds are deployed automatically when your position health factor drops below threshold.
       </p>
     </div>
   );

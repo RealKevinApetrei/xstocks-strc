@@ -1,6 +1,5 @@
 import { ethers } from 'ethers';
 import { config } from '../../config';
-import { GRID_THRESHOLD_USD } from '@xstocks/shared';
 import { gridExecutor } from '../grid/grid.executor';
 
 /**
@@ -145,8 +144,8 @@ export class PythPriceService {
     this.pollInterval = setInterval(async () => {
       try {
         const price = await this.getPrice();
-        if (price.price > 0 && price.price < GRID_THRESHOLD_USD && !price.stale) {
-          console.log(`Grid trigger: STRCx $${price.price.toFixed(2)} < $${GRID_THRESHOLD_USD}`);
+        // Pass price to grid executor — it checks HF per strategy internally
+        if (price.price > 0 && !price.stale) {
           await gridExecutor.handlePriceTrigger({ price: price.price, timestamp: price.timestamp });
         }
       } catch (err) {

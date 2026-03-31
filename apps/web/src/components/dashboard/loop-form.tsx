@@ -14,7 +14,6 @@ export function LoopForm() {
   const { price: strcPrice } = useStrcxPrice();
   const [usdcAmount, setUsdcAmount] = useState('');
   const [leverage, setLeverage] = useState<number>(2);
-  const [slippageBps, setSlippageBps] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeLoopId, setActiveLoopId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +28,7 @@ export function LoopForm() {
       const result = await api.startLoop(token, {
         strcAmount: usdcAmount,
         targetLeverage: leverage,
-        maxSlippageBps: slippageBps,
+        maxSlippageBps: 0, // CoW RFQ — no slippage
       });
       setActiveLoopId(result.id);
       setUsdcAmount('');
@@ -74,10 +73,7 @@ export function LoopForm() {
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-muted-foreground">Target Leverage</label>
-          <span className="text-sm font-mono font-semibold text-primary">{leverage}x</span>
-        </div>
+        <label className="text-xs text-muted-foreground">Target Leverage</label>
         <div className="grid grid-cols-3 gap-2">
           {LEVERAGE_OPTIONS.map((lev) => (
             <button
@@ -91,26 +87,6 @@ export function LoopForm() {
               )}
             >
               {lev}x
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-xs text-muted-foreground">Max Slippage</label>
-        <div className="flex gap-2">
-          {[50, 100, 200, 500].map((bps) => (
-            <button
-              key={bps}
-              onClick={() => setSlippageBps(bps)}
-              className={cn(
-                'flex-1 rounded-md border px-2 py-1.5 text-xs font-mono transition-colors',
-                slippageBps === bps
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:border-foreground/20',
-              )}
-            >
-              {(bps / 100).toFixed(1)}%
             </button>
           ))}
         </div>

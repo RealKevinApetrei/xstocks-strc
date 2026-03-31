@@ -93,11 +93,6 @@ export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () =>
                     {iter.cowOrderUid && iter.status === 'SWAPPING' && ' (waiting for fill...)'}
                   </div>
                 </div>
-                {iter.slippageBps !== null && (
-                  <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                    {(iter.slippageBps / 100).toFixed(2)}% slip
-                  </span>
-                )}
               </div>
             ))}
 
