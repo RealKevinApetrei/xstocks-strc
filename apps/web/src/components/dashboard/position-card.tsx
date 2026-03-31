@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { cn, formatBigInt, formatUsd } from '@/lib/utils';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
@@ -8,7 +9,30 @@ const MORPHO_BORROW_RATE_APY = 4.2;
 const STRC_STAKING_APY = 11.5;
 
 function HealthFactorGauge({ hf }: { hf: number }) {
-  const percentage = Math.min(Math.max((hf - 1) / 2, 0), 1) * 100;
+  const targetPct = Math.min(Math.max((hf - 1) / 2, 0), 1) * 100;
+  const [displayPct, setDisplayPct] = useState(0);
+  const [displayHf, setDisplayHf] = useState(1);
+
+  useEffect(() => {
+    // Delay so the bar is visible before animating
+    const timeout = setTimeout(() => {
+      const start = performance.now();
+      const duration = 900;
+
+      function tick(now: number) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplayPct(eased * targetPct);
+        setDisplayHf(1 + eased * (hf - 1));
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    }, 200);
+
+    return () => clearTimeout(timeout);
+  }, [hf, targetPct]);
+
   const color = hf > 2 ? 'text-success' : hf > 1.5 ? 'text-warning' : 'text-destructive';
   const barColor = hf > 2 ? 'bg-success' : hf > 1.5 ? 'bg-warning' : 'bg-destructive';
   const glowColor = hf > 2 ? 'shadow-success/30' : hf > 1.5 ? 'shadow-warning/30' : 'shadow-destructive/30';
@@ -20,13 +44,13 @@ function HealthFactorGauge({ hf }: { hf: number }) {
         <span className="text-xs text-muted-foreground">Health Factor</span>
         <div className="flex items-center gap-2">
           <span className={cn('text-[10px] font-mono font-semibold uppercase tracking-wider', color)}>{label}</span>
-          <span className={cn('text-lg font-mono font-bold', color)}>{hf.toFixed(2)}</span>
+          <span className={cn('text-lg font-mono font-bold', color)}>{displayHf.toFixed(2)}</span>
         </div>
       </div>
       <div className="relative h-2 rounded-full bg-muted overflow-hidden">
         <div
-          className={cn('absolute left-0 top-0 h-full rounded-full transition-all duration-500 shadow-md', barColor, glowColor)}
-          style={{ width: `${percentage}%` }}
+          className={cn('absolute left-0 top-0 h-full rounded-full shadow-md', barColor, glowColor)}
+          style={{ width: `${displayPct}%`, transition: 'none' }}
         />
         <div className="absolute top-0 h-full w-px bg-warning/50" style={{ left: '25%' }} />
         <div className="absolute top-0 h-full w-px bg-success/50" style={{ left: '50%' }} />

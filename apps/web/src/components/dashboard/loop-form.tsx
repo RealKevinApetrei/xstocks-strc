@@ -7,6 +7,8 @@ import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { api, ApiError } from '@/lib/api';
 import { LoopStatus } from './loop-status';
 
+const STRC_BASE_APY = 11;
+const MORPHO_BORROW_RATE = 4.2;
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
 const STRC_BASE_APY = 11.5;
 const MORPHO_BORROW_RATE = 4.2;

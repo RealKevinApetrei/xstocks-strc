@@ -75,7 +75,7 @@ export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () =>
 
           {/* Iteration steps */}
           <div className="space-y-2">
-            {data.iterations.map((iter) => (
+            {data.iterations.map((iter: any) => (
               <div key={iter.number} className="flex items-center gap-3 text-xs">
                 <div className={cn(
                   'h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-mono font-bold shrink-0',

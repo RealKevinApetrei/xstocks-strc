@@ -46,7 +46,11 @@ export default function Dashboard() {
           <p className="text-[10px] text-muted-foreground mt-0.5">Morpho · variable</p>
         </div>
         <div className="bg-card px-5 py-4">
-          <AccountOverview />
+          <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-1">
+            Network
+          </p>
+          <p className="text-xl font-mono font-semibold">INK</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Chain ID 57073</p>
         </div>
       </div>
 
