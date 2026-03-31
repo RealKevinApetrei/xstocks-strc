@@ -5,7 +5,7 @@ import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 
 const MORPHO_BORROW_RATE_APY = 4.2;
-const STRC_STAKING_APY = 12.5;
+const STRC_STAKING_APY = 11.5;
 
 function HealthFactorGauge({ hf }: { hf: number }) {
   const percentage = Math.min(Math.max((hf - 1) / 2, 0), 1) * 100;

@@ -8,7 +8,7 @@ import { api, ApiError } from '@/lib/api';
 import { LoopStatus } from './loop-status';
 
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
-const STRC_BASE_APY = 12.5;
+const STRC_BASE_APY = 11.5;
 const MORPHO_BORROW_RATE = 4.2;
 
 function netApy(leverage: number) {
