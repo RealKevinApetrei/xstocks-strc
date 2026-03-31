@@ -2,7 +2,36 @@
 
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+function AprCounter() {
+  const [display, setDisplay] = useState(0);
+  const raf = useRef<number | null>(null);
+
+  useEffect(() => {
+    const target = 40;
+    const duration = 2000;
+    const start = performance.now();
+
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.floor(eased * target));
+      if (progress < 1) raf.current = requestAnimationFrame(tick);
+    }
+    raf.current = requestAnimationFrame(tick);
+    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+  }, []);
+
+  return (
+    <div className="mb-6">
+      <div className="text-[5rem] font-mono font-bold leading-none" style={{ color: '#16a34a' }}>
+        {display}%
+      </div>
+      <div className="text-xs font-mono text-gray-400 tracking-widest uppercase mt-1">APR</div>
+    </div>
+  );
+}
 
 export default function Home() {
   const { login, authenticated, ready } = usePrivy();
@@ -51,16 +80,6 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Floating stat labels — scattered like image 9's tickers */}
-      <div className="absolute top-[14%] left-[8%] text-xs font-mono text-gray-400 select-none">Base APR</div>
-      <div className="absolute top-[18%] left-[8%] text-2xl font-mono font-bold select-none" style={{ color: '#16a34a' }}>11.5%</div>
-
-      <div className="absolute top-[12%] right-[22%] text-xs font-mono text-gray-400 select-none">Max APR at 5×</div>
-      <div className="absolute top-[16%] right-[22%] text-2xl font-mono font-bold select-none" style={{ color: '#16a34a' }}>40.7%</div>
-
-      <div className="absolute bottom-[28%] left-[6%] text-xs font-mono text-gray-400 select-none">Dividend yield</div>
-      <div className="absolute bottom-[24%] left-[6%] text-sm font-mono font-semibold text-gray-600 select-none">STRC · on-chain</div>
-
       {/* Central card */}
       <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-[480px]">
 
@@ -74,19 +93,14 @@ export default function Home() {
         </div>
 
         {/* STRC logo */}
-        <img src="/strc-logo.png" alt="STRC" className="h-10 mb-6 select-none" />
+        <img src="/strc-logo.png" alt="STRC" className="h-10 mb-8 select-none" />
 
-        {/* APR hook */}
-        <div className="flex items-center gap-4 mb-6">
-          <span className="text-3xl font-mono font-bold text-gray-400">11.5%</span>
-          <span className="text-2xl text-gray-300 font-mono">→</span>
-          <span className="text-3xl font-mono font-bold" style={{ color: '#16a34a' }}>40%</span>
-        </div>
+        {/* Animated APR counter */}
+        <AprCounter />
 
         {/* Headline */}
         <h1 className="text-[2.8rem] font-bold tracking-tight leading-[1.1] mb-4">
-          Your yield,<br />
-          <span style={{ color: '#16a34a' }}>multiplied.</span>
+          <span style={{ color: '#e05c00' }}>Stretch</span> Your Yield
         </h1>
 
         <p className="text-sm text-gray-400 mb-8 leading-relaxed">
