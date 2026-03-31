@@ -142,6 +142,10 @@ export function LoopForm() {
             <span className="font-mono">{formatUsd(debtUsdc)} USDC</span>
           </div>
           <div className="flex justify-between text-xs pt-1 border-t border-border/50">
+            <span className="text-muted-foreground">Est. net APY</span>
+            <span className="font-mono text-success">+{netApy(leverage)}%</span>
+          </div>
+          <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Min. deposit ({leverage}x)</span>
             <span className="font-mono">${MIN_DEPOSIT[leverage]}</span>
           </div>

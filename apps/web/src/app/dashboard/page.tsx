@@ -41,7 +41,14 @@ export default function Dashboard() {
             Borrow Rate
           </p>
           <p className="text-xl font-mono font-semibold">{MORPHO_RATE}%</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Morpho · variable</p>
+          <a
+            href="https://app.morpho.org/?network=ink"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-muted-foreground mt-0.5 hover:text-foreground transition-colors underline underline-offset-2"
+          >
+            Morpho · variable
+          </a>
         </div>
       </div>
 
