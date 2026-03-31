@@ -41,7 +41,7 @@ export function Nav() {
 
   return (
     <>
-      <header className="border-b border-border px-6 py-3 flex items-center justify-between">
+      <header className="border-b border-border bg-card px-6 flex items-center justify-between h-[52px]">
         <div className="flex items-center gap-8">
           <Link href="/dashboard" className="flex items-center gap-2">
             {/* Official Spreads logo mark — polygon paths from master SVG */}
@@ -51,16 +51,17 @@ export function Nav() {
             </svg>
             <span className="text-sm font-semibold tracking-widest uppercase text-foreground">Spreads</span>
           </Link>
-          <nav className="flex items-center gap-1">
+          {/* Nav links — active state is underline, not a pill */}
+          <nav className="flex items-stretch h-[52px]">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  'flex items-center px-4 text-xs font-medium tracking-wide uppercase transition-colors border-b-2',
                   pathname === item.href
-                    ? 'bg-secondary text-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'text-foreground border-foreground'
+                    : 'text-muted-foreground border-transparent hover:text-foreground',
                 )}
               >
                 {item.label}

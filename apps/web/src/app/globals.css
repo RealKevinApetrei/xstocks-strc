@@ -1,8 +1,10 @@
+/* @import rules must come first */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme inline {
   /* ── Backgrounds ──────────────────────────────────── */
-  --color-background:            #eae8e2;   /* parchment — has grain texture */
+  --color-background:            #eae8e2;
   --color-card:                  #ffffff;
   --color-secondary:             #f5f4f0;
 
@@ -11,20 +13,22 @@
   --color-card-foreground:       #0a0a0a;
   --color-secondary-foreground:  #0a0a0a;
   --color-muted:                 #f5f4f0;
-  --color-muted-foreground:      #5c5956;
+  --color-muted-foreground:      #6b6866;
 
   /* ── Border / ring ────────────────────────────────── */
-  --color-border:                #e0ddd7;
-  --color-ring:                  #1a3520;
+  --color-border:                #dddbd4;
+  --color-ring:                  #2d2d2d;
+
+  /* ── Interactive — dark charcoal for all buttons/CTAs */
+  --color-primary:               #2d2d2d;
+  --color-primary-foreground:    #ffffff;
 
   /* ── Semantic ─────────────────────────────────────── */
-  --color-primary:               #1a3520;   /* dark forest green */
-  --color-primary-foreground:    #ffffff;
   --color-destructive:           #d93030;
   --color-success:               #1a9e4a;
-  --color-warning:               #d97706;
+  --color-warning:               #c47a1a;
 
-  /* ── Typography — monospace everywhere ───────────── */
+  /* ── Typography ───────────────────────────────────── */
   --font-sans: 'IBM Plex Mono', 'Courier New', monospace;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 
@@ -34,14 +38,13 @@
   --radius-lg: 0.625rem;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
-
 body {
   background-color: var(--color-background);
-  /* Grain texture — subtle paper/parchment feel matching Spreads brand */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 250px 250px;
+  /* Graph paper grid — matches Spreads reference */
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.055) 1px, transparent 1px);
+  background-size: 52px 52px;
   color: var(--color-foreground);
   font-family: var(--font-sans);
 }
