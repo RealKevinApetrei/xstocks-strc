@@ -15,32 +15,21 @@ export function useEnsureSigner() {
   const attempted = useRef(false);
 
   useEffect(() => {
-    console.log('[SIGNER] Hook check:', { ready, authenticated, hasUser: !!user, attempted: attempted.current, keyId: SIGNER_KEY_QUORUM_ID ?? 'NOT SET' });
-
     if (!ready || !authenticated || !user || attempted.current) return;
-    if (!SIGNER_KEY_QUORUM_ID) {
-      console.error('[SIGNER] NEXT_PUBLIC_PRIVY_AUTHORIZATION_KEY_ID is not set');
-      return;
-    }
+    if (!SIGNER_KEY_QUORUM_ID) return;
 
     const embedded = user.linkedAccounts.find(
       (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
     );
-    if (!embedded || !('address' in embedded)) {
-      console.warn('[SIGNER] No embedded wallet found in linked accounts:', user.linkedAccounts.map(a => a.type));
-      return;
-    }
+    if (!embedded || !('address' in embedded)) return;
 
-    console.log('[SIGNER] Adding signer to wallet:', embedded.address, 'keyQuorumId:', SIGNER_KEY_QUORUM_ID);
     attempted.current = true;
 
     addSessionSigners({
       address: embedded.address as string,
       signers: [{ signerId: SIGNER_KEY_QUORUM_ID }],
-    })
-      .then(() => console.log('[SIGNER] Authorization key added to wallet successfully'))
-      .catch((err) => {
-        console.error('[SIGNER] addSessionSigners failed:', err?.message ?? err, err);
-      });
+    }).catch(() => {
+      // Already added or non-fatal — ignore
+    });
   }, [ready, authenticated, user, addSessionSigners]);
 }
