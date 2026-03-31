@@ -4,13 +4,20 @@ import { PositionCard } from '@/components/dashboard/position-card';
 import { LoopForm } from '@/components/dashboard/loop-form';
 import { UnwindButton } from '@/components/dashboard/unwind-button';
 import { LoopHistory } from '@/components/dashboard/loop-history';
+import { DepositsHero } from '@/components/dashboard/deposits-hero';
 import { usePosition } from '@/hooks/use-position';
+
+const STRC_APY = 11;
+const MORPHO_RATE = 4.2;
 
 export default function Dashboard() {
   const { data: position } = usePosition();
 
   return (
     <div className="space-y-5">
+      {/* Hero — animated deposit total */}
+      <DepositsHero />
+
       {/* Top stat bar */}
       <div className="grid grid-cols-4 gap-px border border-border rounded-lg overflow-hidden bg-border">
         <div className="bg-card px-5 py-4">
