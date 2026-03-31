@@ -70,7 +70,13 @@ export function DepositWithdrawModal({
   const amountNum = parseFloat(amount) || 0;
 
   // Relay SwapWidget token state
-  const [toToken, setToToken] = useState<any>(INK_USDC);
+  // Deposit: toToken locked to USDC on Ink, fromToken user picks
+  // Withdraw: fromToken locked to USDC on Ink, toToken user picks (default USDC on Base)
+  const [toToken, setToToken] = useState<any>(
+    mode === 'withdraw'
+      ? { chainId: 8453, address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6, name: 'USDC', symbol: 'USDC', logoURI: 'https://coin-images.coingecko.com/coins/images/6319/large/usdc.png' }
+      : INK_USDC,
+  );
   const [fromToken, setFromToken] = useState<any>(
     mode === 'withdraw' ? INK_USDC : undefined,
   );
@@ -233,18 +239,25 @@ export function DepositWithdrawModal({
                   onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
                 />
               ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    To bridge USDC to another chain, first withdraw to your wallet using the Ink tab, then bridge from your wallet using any bridge.
+                <>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Bridge USDC from Ink to any chain. Funds are first moved to your wallet, then bridged automatically.
                   </p>
-                  <div className="rounded-md border border-border bg-secondary/50 p-4 space-y-2">
-                    <p className="text-xs font-medium">Steps:</p>
-                    <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                      <li>Switch to the <span className="font-medium text-foreground">Ink</span> tab and withdraw USDC to your wallet</li>
-                      <li>Use <a href="https://relay.link/bridge" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">relay.link/bridge</a> to bridge from Ink to your desired chain</li>
-                    </ol>
-                  </div>
-                </div>
+                  <SwapWidget
+                    supportedWalletVMs={['evm']}
+                    fromToken={fromToken}
+                    setFromToken={setFromToken}
+                    toToken={toToken}
+                    setToToken={setToToken}
+                    lockFromToken={true}
+                    defaultAmount={platformBalance > 0 ? platformBalance.toFixed(0) : '100'}
+                    onSwapSuccess={() => {
+                      setSuccess('Withdrawal bridged successfully');
+                      refreshBalance();
+                    }}
+                    onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
+                  />
+                </>
               )}
             </div>
           </div>
