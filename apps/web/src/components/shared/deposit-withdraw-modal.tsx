@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { usePrivy, useSendTransaction } from '@privy-io/react-auth';
+import { usePrivy, useSendTransaction, useWallets } from '@privy-io/react-auth';
 import { SwapWidget } from '@relayprotocol/relay-kit-ui';
+import { adaptViemWallet } from '@relayprotocol/relay-sdk';
+import { createWalletClient, custom } from 'viem';
 import { cn } from '@/lib/utils';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
@@ -50,6 +52,7 @@ export function DepositWithdrawModal({
 }) {
   const { getAccessToken, user } = usePrivy();
   const { sendTransaction } = useSendTransaction();
+  const { wallets } = useWallets();
   const { address: smartWalletAddress } = useSmartWallet();
 
   // Embedded wallet address for deposits (where Relay/QR sends USDC)
@@ -59,6 +62,20 @@ export function DepositWithdrawModal({
   const depositAddress = embeddedWallet && 'address' in embeddedWallet
     ? embeddedWallet.address as string
     : smartWalletAddress;
+
+  // Adapt Privy embedded wallet for Relay SwapWidget
+  const [relayWallet, setRelayWallet] = useState<any>(undefined);
+  useEffect(() => {
+    const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+    if (!privyWallet) return;
+    privyWallet.getEthereumProvider().then((provider) => {
+      const walletClient = createWalletClient({
+        account: privyWallet.address as `0x${string}`,
+        transport: custom(provider),
+      });
+      setRelayWallet(adaptViemWallet(walletClient));
+    }).catch(() => {});
+  }, [wallets]);
   const { balance: platformBalance, refresh: refreshBalance } = useUsdcBalance();
   const [tab, setTab] = useState<Tab>(mode === 'deposit' ? 'bridge' : 'ink');
   const [amount, setAmount] = useState('');
@@ -232,6 +249,7 @@ export function DepositWithdrawModal({
                   <SwapWidget
                     key={depositAddress}
                     supportedWalletVMs={['evm']}
+                    wallet={relayWallet}
                     toToken={toToken}
                     setToToken={setToToken}
                     fromToken={fromToken}
@@ -256,6 +274,7 @@ export function DepositWithdrawModal({
                   </p>
                   <SwapWidget
                     supportedWalletVMs={['evm']}
+                    wallet={relayWallet}
                     fromToken={fromToken}
                     setFromToken={setFromToken}
                     toToken={toToken}
