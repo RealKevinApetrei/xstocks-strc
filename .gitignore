@@ -30,3 +30,4 @@ packages/contracts/lib/
 # Misc
 *.log
 coverage/
+.claude/worktrees/
