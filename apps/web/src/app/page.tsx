@@ -64,27 +64,6 @@ function Ticker() {
   );
 }
 
-// A floating pill card
-function FloatCard({
-  children,
-  className,
-  floatClass,
-  style,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  floatClass: 'float-a' | 'float-b' | 'float-c';
-  style?: React.CSSProperties;
-}) {
-  return (
-    <div
-      className={`absolute pointer-events-none select-none rounded-xl border border-black/8 bg-white/80 backdrop-blur-sm shadow-sm px-4 py-3 ${floatClass} ${className ?? ''}`}
-      style={style}
-    >
-      {children}
-    </div>
-  );
-}
 
 export default function Home() {
   const { login, authenticated, ready } = usePrivy();
@@ -122,63 +101,6 @@ export default function Home() {
       {/* Scrolling ticker */}
       <Ticker />
 
-      {/* ── Floating stat cards ── */}
-
-      {/* Top-left: STRC yield */}
-      <FloatCard
-        floatClass="float-a"
-        className="left-[6%] top-[22%]"
-        style={{ transform: `translate(${parallax.x * -18}px, ${parallax.y * -12}px)` }}
-      >
-        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">STRC Dividend</div>
-        <div className="text-xl font-mono font-bold" style={{ color: '#16a34a' }}>11.5%</div>
-        <div className="text-[9px] text-gray-400 mt-0.5">Annual Yield</div>
-      </FloatCard>
-
-      {/* Mid-left: leverage */}
-      <FloatCard
-        floatClass="float-b"
-        className="left-[4%] top-[52%]"
-        style={{ transform: `translate(${parallax.x * -24}px, ${parallax.y * -8}px)` }}
-      >
-        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">Max Leverage</div>
-        <div className="text-2xl font-mono font-bold">5×</div>
-        <div className="text-[9px] text-gray-400 mt-0.5">Morpho Blue</div>
-      </FloatCard>
-
-      {/* Bottom-left: CoW Swap */}
-      <FloatCard
-        floatClass="float-c"
-        className="left-[8%] bottom-[20%]"
-        style={{ transform: `translate(${parallax.x * -14}px, ${parallax.y * -6}px)` }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="text-[9px] font-mono text-gray-500 tracking-wide">0% slippage · CoW RFQ</span>
-        </div>
-      </FloatCard>
-
-      {/* Top-right: net APY */}
-      <FloatCard
-        floatClass="float-b"
-        className="right-[22%] top-[18%]"
-        style={{ transform: `translate(${parallax.x * 20}px, ${parallax.y * -10}px)`, animationDelay: '-3s' }}
-      >
-        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">Net APY @ 5×</div>
-        <div className="text-xl font-mono font-bold" style={{ color: '#e05c00' }}>40%</div>
-        <div className="text-[9px] text-gray-400 mt-0.5">After borrow costs</div>
-      </FloatCard>
-
-      {/* Mid-right: Morpho */}
-      <FloatCard
-        floatClass="float-a"
-        className="right-[18%] bottom-[32%]"
-        style={{ transform: `translate(${parallax.x * 16}px, ${parallax.y * 14}px)`, animationDelay: '-5s' }}
-      >
-        <div className="text-[9px] text-gray-400 tracking-widest uppercase mb-1">Borrow Rate</div>
-        <div className="text-xl font-mono font-bold">4.2%</div>
-        <div className="text-[9px] text-gray-400 mt-0.5">Variable · Morpho</div>
-      </FloatCard>
 
       {/* Michael Saylor cutout — right side */}
       <img
