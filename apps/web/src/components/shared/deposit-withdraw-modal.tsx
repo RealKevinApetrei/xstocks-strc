@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useSendTransaction } from '@privy-io/react-auth';
 import { SwapWidget } from '@relayprotocol/relay-kit-ui';
 import { cn } from '@/lib/utils';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
@@ -10,17 +10,36 @@ import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { api, ApiError } from '@/lib/api';
 
 type Mode = 'deposit' | 'withdraw';
-type DepositTab = 'bridge' | 'qr-code';
+type Tab = 'bridge' | 'ink' | 'qr-code';
 
-// USDC on Ink mainnet
+const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '0x2d270e6886d130d724215a266106e6832161eaed';
+
 const INK_USDC = {
   chainId: 57073,
-  address: '0x2d270e6886d130d724215a266106e6832161eaed' as const,
+  address: USDC_ADDRESS,
   decimals: 6,
   name: 'USDC',
   symbol: 'USDC',
   logoURI: 'https://coin-images.coingecko.com/coins/images/6319/large/usdc.png',
 };
+
+function encodeTransfer(to: string, amount: bigint): string {
+  const selector = '0xa9059cbb';
+  const paddedTo = to.toLowerCase().replace('0x', '').padStart(64, '0');
+  const paddedAmount = amount.toString(16).padStart(64, '0');
+  return selector + paddedTo + paddedAmount;
+}
+
+const DEPOSIT_TABS: { value: Tab; label: string }[] = [
+  { value: 'bridge', label: 'CROSS-CHAIN' },
+  { value: 'ink', label: 'INK' },
+  { value: 'qr-code', label: 'QR CODE' },
+];
+
+const WITHDRAW_TABS: { value: Tab; label: string }[] = [
+  { value: 'ink', label: 'INK' },
+  { value: 'bridge', label: 'CROSS-CHAIN' },
+];
 
 export function DepositWithdrawModal({
   mode,
@@ -30,9 +49,10 @@ export function DepositWithdrawModal({
   onClose: () => void;
 }) {
   const { getAccessToken, user } = usePrivy();
+  const { sendTransaction } = useSendTransaction();
   const { address: smartWalletAddress } = useSmartWallet();
   const { balance: platformBalance, refresh: refreshBalance } = useUsdcBalance();
-  const [tab, setTab] = useState<DepositTab>('bridge');
+  const [tab, setTab] = useState<Tab>(mode === 'deposit' ? 'bridge' : 'ink');
   const [amount, setAmount] = useState('');
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,19 +63,59 @@ export function DepositWithdrawModal({
 
   // Relay SwapWidget token state
   const [toToken, setToToken] = useState<any>(INK_USDC);
-  const [fromToken, setFromToken] = useState<any>(undefined);
+  const [fromToken, setFromToken] = useState<any>(
+    mode === 'withdraw' ? INK_USDC : undefined,
+  );
 
-  // Get the user's embedded wallet address (for withdraw destination)
   const externalWallet = user?.linkedAccounts.find(
     (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
   );
   const externalAddress = externalWallet && 'address' in externalWallet ? externalWallet.address as string : null;
 
-  const handleWithdraw = async () => {
+  const tabs = mode === 'deposit' ? DEPOSIT_TABS : WITHDRAW_TABS;
+
+  const resetStatus = () => { setError(null); setSuccess(null); };
+
+  // Deposit: transfer USDC from embedded wallet → smart wallet on Ink
+  const handleInkDeposit = async () => {
+    if (!amount || amountNum <= 0 || isSubmitting || !smartWalletAddress) return;
+    setIsSubmitting(true);
+    resetStatus();
+
+    try {
+      const amountRaw = BigInt(Math.round(amountNum * 1e6));
+      const data = encodeTransfer(smartWalletAddress, amountRaw);
+
+      await sendTransaction({
+        to: USDC_ADDRESS as `0x${string}`,
+        data: data as `0x${string}`,
+        chainId: 57073,
+      });
+
+      setSuccess(`Deposited $${amountNum.toFixed(2)} USDC`);
+      setAmount('');
+      refreshBalance();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Deposit failed';
+      if (msg.includes('intrinsic gas too low') || msg.includes('insufficient funds for gas')) {
+        setError('Your wallet needs ETH on Ink for gas fees. Use the Cross-Chain or QR Code tab instead.');
+      } else if (msg.includes('insufficient balance') || msg.includes('transfer amount exceeds')) {
+        setError('Insufficient USDC balance in your wallet.');
+      } else if (msg.includes('rejected') || msg.includes('denied')) {
+        setError('Transaction was cancelled.');
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Withdraw: transfer USDC from smart wallet → embedded wallet on Ink
+  const handleInkWithdraw = async () => {
     if (!amount || amountNum <= 0 || isSubmitting || !externalAddress) return;
     setIsSubmitting(true);
-    setError(null);
-    setSuccess(null);
+    resetStatus();
 
     try {
       const token = await getAccessToken();
@@ -102,7 +162,12 @@ export function DepositWithdrawModal({
               {mode === 'deposit' ? 'Deposit' : 'Withdraw'}
             </h2>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground font-mono">
+              Balance: {platformBalance.toFixed(2)} USDC
+            </span>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+          </div>
         </div>
 
         {/* Status messages */}
@@ -117,168 +182,212 @@ export function DepositWithdrawModal({
           </div>
         )}
 
-        {mode === 'deposit' ? (
-          <>
-            {/* Deposit tabs */}
-            <div className="grid grid-cols-2 mx-4 mt-4 border border-border rounded-md overflow-hidden">
-              {([['bridge', 'CROSS-CHAIN'], ['qr-code', 'QR CODE']] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => setTab(value)}
-                  className={cn(
-                    'py-2 text-xs font-mono font-medium tracking-wider transition-colors',
-                    tab === value ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
+        {/* Tabs */}
+        <div className={cn('grid mx-4 mt-4 border border-border rounded-md overflow-hidden', `grid-cols-${tabs.length}`)}>
+          {tabs.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => { setTab(value); resetStatus(); }}
+              className={cn(
+                'py-2 text-xs font-mono font-medium tracking-wider transition-colors',
+                tab === value ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* === BRIDGE TAB (deposit or withdraw) === */}
+        {tab === 'bridge' && (
+          <div className="p-4">
+            <p className="text-xs text-muted-foreground mb-3">
+              {mode === 'deposit'
+                ? 'Bridge any token from any chain to USDC on Ink. Funds go directly to your trading account.'
+                : 'Bridge USDC from your trading account to any chain.'}
+            </p>
+            <div className="relay-widget-container rounded-lg overflow-hidden border border-border">
+              {mode === 'deposit' ? (
+                <SwapWidget
+                  supportedWalletVMs={['evm']}
+                  toToken={toToken}
+                  setToToken={setToToken}
+                  fromToken={fromToken}
+                  setFromToken={setFromToken}
+                  lockToToken={true}
+                  defaultToAddress={(smartWalletAddress ?? undefined) as `0x${string}` | undefined}
+                  defaultAmount="100"
+                  onSwapSuccess={() => {
+                    setSuccess('Deposit complete — USDC received in your trading account');
+                    refreshBalance();
+                  }}
+                  onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
+                />
+              ) : (
+                <SwapWidget
+                  supportedWalletVMs={['evm']}
+                  fromToken={fromToken}
+                  setFromToken={setFromToken}
+                  toToken={toToken}
+                  setToToken={setToToken}
+                  lockFromToken={true}
+                  defaultAmount={platformBalance > 0 ? platformBalance.toFixed(0) : '100'}
+                  onSwapSuccess={() => {
+                    setSuccess('Withdrawal bridged successfully');
+                    refreshBalance();
+                  }}
+                  onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
+                />
+              )}
             </div>
+          </div>
+        )}
 
-            {tab === 'bridge' ? (
-              <div className="p-4">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Bridge any token from any chain to USDC on Ink. Funds go directly to your trading account.
+        {/* === INK TAB (direct transfer on Ink) === */}
+        {tab === 'ink' && (
+          <div className="p-6 space-y-4">
+            {mode === 'deposit' ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Transfer USDC from your wallet to your trading account on Ink.
                 </p>
-                <div className="relay-widget-container rounded-lg overflow-hidden border border-border">
-                  <SwapWidget
-                    supportedWalletVMs={['evm']}
-                    toToken={toToken}
-                    setToToken={setToToken}
-                    fromToken={fromToken}
-                    setFromToken={setFromToken}
-                    lockToToken={true}
-                    defaultToAddress={(smartWalletAddress ?? undefined) as `0x${string}` | undefined}
-                    defaultAmount="100"
-                    onSwapSuccess={() => {
-                      setSuccess('Deposit complete — USDC received in your trading account');
-                      refreshBalance();
-                    }}
-                    onSwapError={(err: any) => {
-                      setError(err?.message ?? 'Bridge transaction failed');
-                    }}
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                    placeholder="0.00"
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   />
-                </div>
-              </div>
-            ) : (
-              <div className="p-6 space-y-4">
-                {/* QR Code — encode the smart wallet address */}
-                <div className="flex justify-center">
-                  <div className="rounded-xl bg-white p-4 shadow-lg">
-                    {smartWalletAddress ? (
-                      <QRCodeSVG
-                        value={smartWalletAddress}
-                        size={176}
-                        bgColor="#ffffff"
-                        fgColor="#000000"
-                        level="M"
-                      />
-                    ) : (
-                      <div className="h-44 w-44 flex items-center justify-center">
-                        <p className="text-xs text-gray-500">No wallet connected</p>
-                      </div>
-                    )}
-                  </div>
+                  <span className="flex items-center text-xs text-muted-foreground px-1">USDC</span>
                 </div>
 
-                <p className="text-xs text-muted-foreground text-center">Trading account deposit address</p>
-
-                {/* Address with copy */}
-                <div
-                  className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2.5 cursor-pointer hover:border-foreground/20 transition-colors"
-                  onClick={handleCopy}
+                <button
+                  onClick={handleInkDeposit}
+                  disabled={amountNum <= 0 || isSubmitting}
+                  className="w-full rounded-md bg-primary py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <span className="text-xs font-mono text-muted-foreground flex-1 truncate">
-                    {smartWalletAddress || 'Connecting...'}
-                  </span>
-                  <button className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                    {copied ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-success"><path d="M20 6 9 17l-5-5"/></svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                    )}
+                  {isSubmitting ? 'Processing...' : `DEPOSIT $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
+                </button>
+
+                <div className="rounded-md border border-border/50 bg-secondary/50 p-3">
+                  <p className="text-[10px] text-muted-foreground">
+                    Requires USDC + small ETH for gas in your wallet on Ink. No gas needed? Use the Cross-Chain tab.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Available to withdraw</span>
+                  <span className="text-xs font-mono">{platformBalance.toFixed(2)} USDC</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                    placeholder="0.00"
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    onClick={() => setPercentage(50)}
+                    className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                  >
+                    50%
+                  </button>
+                  <button
+                    onClick={() => setPercentage(100)}
+                    className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                  >
+                    MAX
                   </button>
                 </div>
 
-                {/* Info */}
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Network</span>
-                    <span className="font-medium">Ink</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Accepted token</span>
-                    <span className="font-medium">USDC</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Current balance</span>
-                    <span className="font-mono">{platformBalance.toFixed(2)} USDC</span>
-                  </div>
-                </div>
+                {amountNum > platformBalance && platformBalance > 0 && (
+                  <p className="text-[10px] text-destructive">Amount exceeds available balance</p>
+                )}
 
-                {/* Warning */}
-                <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
-                  <p className="text-xs text-warning">
-                    Only send <span className="font-semibold">USDC</span> on the <span className="font-semibold">Ink</span> network. For other chains or tokens, use the Cross-Chain tab.
-                  </p>
-                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  USDC will be sent to your wallet{externalAddress ? ` (${externalAddress.slice(0, 6)}...${externalAddress.slice(-4)})` : ''} on Ink.
+                </p>
 
                 <button
-                  onClick={onClose}
-                  className="w-full rounded-md border border-border bg-secondary py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                  onClick={handleInkWithdraw}
+                  disabled={amountNum <= 0 || amountNum > platformBalance || isSubmitting}
+                  className="w-full rounded-md bg-primary py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  DONE
+                  {isSubmitting ? 'Processing...' : `WITHDRAW $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
                 </button>
-              </div>
+              </>
             )}
-          </>
-        ) : (
-          /* Withdraw mode — two options: Ink USDC or cross-chain */
-          <div className="p-4">
-            <div className="space-y-4 mb-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Available to withdraw</span>
-                <span className="text-xs font-mono">{platformBalance.toFixed(2)} USDC</span>
+          </div>
+        )}
+
+        {/* === QR CODE TAB (deposit only) === */}
+        {tab === 'qr-code' && (
+          <div className="p-6 space-y-4">
+            <div className="flex justify-center">
+              <div className="rounded-xl bg-white p-4 shadow-lg">
+                {smartWalletAddress ? (
+                  <QRCodeSVG
+                    value={smartWalletAddress}
+                    size={176}
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    level="M"
+                  />
+                ) : (
+                  <div className="h-44 w-44 flex items-center justify-center">
+                    <p className="text-xs text-gray-500">No wallet connected</p>
+                  </div>
+                )}
               </div>
+            </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
-                  placeholder="0.00"
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <button
-                  onClick={() => setPercentage(50)}
-                  className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
-                >
-                  50%
-                </button>
-                <button
-                  onClick={() => setPercentage(100)}
-                  className="rounded-md border border-border px-3 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
-                >
-                  MAX
-                </button>
-              </div>
+            <p className="text-xs text-muted-foreground text-center">Trading account deposit address</p>
 
-              {amountNum > platformBalance && platformBalance > 0 && (
-                <p className="text-[10px] text-destructive">Amount exceeds available balance</p>
-              )}
-
-              <p className="text-[10px] text-muted-foreground">
-                USDC will be sent to your wallet{externalAddress ? ` (${externalAddress.slice(0, 6)}...${externalAddress.slice(-4)})` : ''} on Ink.
-              </p>
-
-              <button
-                onClick={handleWithdraw}
-                disabled={amountNum <= 0 || amountNum > platformBalance || isSubmitting}
-                className="w-full rounded-md bg-primary py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Processing...' : `WITHDRAW $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
+            <div
+              className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2.5 cursor-pointer hover:border-foreground/20 transition-colors"
+              onClick={handleCopy}
+            >
+              <span className="text-xs font-mono text-muted-foreground flex-1 truncate">
+                {smartWalletAddress || 'Connecting...'}
+              </span>
+              <button className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                {copied ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-success"><path d="M20 6 9 17l-5-5"/></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                )}
               </button>
             </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Network</span>
+                <span className="font-medium">Ink</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Accepted token</span>
+                <span className="font-medium">USDC</span>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
+              <p className="text-xs text-warning">
+                Only send <span className="font-semibold">USDC</span> on the <span className="font-semibold">Ink</span> network. For other chains or tokens, use the Cross-Chain tab.
+              </p>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-full rounded-md border border-border bg-secondary py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
+            >
+              DONE
+            </button>
           </div>
         )}
       </div>
