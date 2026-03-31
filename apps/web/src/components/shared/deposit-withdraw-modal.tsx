@@ -51,6 +51,14 @@ export function DepositWithdrawModal({
   const { getAccessToken, user } = usePrivy();
   const { sendTransaction } = useSendTransaction();
   const { address: smartWalletAddress } = useSmartWallet();
+
+  // Embedded wallet address for deposits (where Relay/QR sends USDC)
+  const embeddedWallet = user?.linkedAccounts.find(
+    (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
+  );
+  const depositAddress = embeddedWallet && 'address' in embeddedWallet
+    ? embeddedWallet.address as string
+    : smartWalletAddress;
   const { balance: platformBalance, refresh: refreshBalance } = useUsdcBalance();
   const [tab, setTab] = useState<Tab>(mode === 'deposit' ? 'bridge' : 'ink');
   const [amount, setAmount] = useState('');
@@ -78,13 +86,13 @@ export function DepositWithdrawModal({
 
   // Deposit: transfer USDC from embedded wallet → smart wallet on Ink
   const handleInkDeposit = async () => {
-    if (!amount || amountNum <= 0 || isSubmitting || !smartWalletAddress) return;
+    if (!amount || amountNum <= 0 || isSubmitting || !depositAddress) return;
     setIsSubmitting(true);
     resetStatus();
 
     try {
       const amountRaw = BigInt(Math.round(amountNum * 1e6));
-      const data = encodeTransfer(smartWalletAddress, amountRaw);
+      const data = encodeTransfer(depositAddress, amountRaw);
 
       await sendTransaction({
         to: USDC_ADDRESS as `0x${string}`,
@@ -139,8 +147,8 @@ export function DepositWithdrawModal({
   };
 
   const handleCopy = async () => {
-    if (!smartWalletAddress) return;
-    await navigator.clipboard.writeText(smartWalletAddress);
+    if (!depositAddress) return;
+    await navigator.clipboard.writeText(depositAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -215,7 +223,7 @@ export function DepositWithdrawModal({
                   fromToken={fromToken}
                   setFromToken={setFromToken}
                   lockToToken={true}
-                  defaultToAddress={(smartWalletAddress ?? undefined) as `0x${string}` | undefined}
+                  defaultToAddress={(depositAddress ?? undefined) as `0x${string}` | undefined}
                   disablePasteWalletAddressOption={true}
                   defaultAmount="100"
                   onSwapSuccess={() => {
@@ -332,9 +340,9 @@ export function DepositWithdrawModal({
           <div className="p-6 space-y-4">
             <div className="flex justify-center">
               <div className="rounded-xl bg-white p-4 shadow-lg">
-                {smartWalletAddress ? (
+                {depositAddress ? (
                   <QRCodeSVG
-                    value={smartWalletAddress}
+                    value={depositAddress}
                     size={176}
                     bgColor="#ffffff"
                     fgColor="#000000"
@@ -355,7 +363,7 @@ export function DepositWithdrawModal({
               onClick={handleCopy}
             >
               <span className="text-xs font-mono text-muted-foreground flex-1 truncate">
-                {smartWalletAddress || 'Connecting...'}
+                {depositAddress || 'Connecting...'}
               </span>
               <button className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
                 {copied ? (
