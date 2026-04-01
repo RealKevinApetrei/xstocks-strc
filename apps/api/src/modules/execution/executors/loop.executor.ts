@@ -288,6 +288,15 @@ export class LoopExecutor {
 
     try {
       const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+
+      // Verify STRC is actually in the wallet before trying to wrap
+      const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
+      const actualStrcBalance: bigint = await strcContract.balanceOf(smartAccountAddr);
+      console.log(`[LOOP ${loopId}] Iteration ${iterationNumber}: STRC balance=${actualStrcBalance}, expected=${strcAmount}`);
+      if (actualStrcBalance < strcAmount) {
+        throw new Error(`STRC balance ${Number(actualStrcBalance) / 1e18} < expected ${Number(strcAmount) / 1e18}. CoW swap may not have filled.`);
+      }
+
       const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
 
       // Calculate expected wSTRC from wrapping
