@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { cn, formatBigInt, formatUsd } from '@/lib/utils';
+import { cn, formatBigInt, formatUsd, aprToApy } from '@/lib/utils';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
@@ -193,9 +193,10 @@ export function PositionCard() {
   const debtUsd = parseFloat(formatBigInt(p.debtUsdc, 6, 2));
   const equityUsd = collateralUsd - debtUsd;
   const leverage = p.effectiveLeverage;
-  const netYield = borrowApy !== null
+  const netApr = borrowApy !== null
     ? (STRC_STAKING_APY * leverage) - (borrowApy * (leverage - 1))
     : 0;
+  const netYield = aprToApy(netApr);
 
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-5">

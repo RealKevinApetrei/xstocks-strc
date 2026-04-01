@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { cn, formatUsd } from '@/lib/utils';
+import { cn, formatUsd, aprToApy } from '@/lib/utils';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
@@ -14,7 +14,8 @@ const LEVERAGE_OPTIONS = [2, 3, 3.5] as const;
 const MIN_DEPOSIT: Record<number, number> = { 2: 36, 3: 73, 3.5: 40 };
 
 function netApy(leverage: number, borrowRate: number) {
-  return (STRC_BASE_APY * leverage - borrowRate * (leverage - 1)).toFixed(1);
+  const apr = STRC_BASE_APY * leverage - borrowRate * (leverage - 1);
+  return aprToApy(apr).toFixed(1);
 }
 
 export function LoopForm() {

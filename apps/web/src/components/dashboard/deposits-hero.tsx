@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { cn, formatBigInt } from '@/lib/utils';
+import { cn, formatBigInt, aprToApy } from '@/lib/utils';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
@@ -49,9 +49,10 @@ export function DepositsHero() {
   const debtUsd = hasPosition ? parseFloat(formatBigInt(position.debtUsdc, 6, 2)) : 0;
   const equityUsd = collateralUsd - debtUsd;
   const leverage = hasPosition ? position.effectiveLeverage : 0;
-  const netApy = leverage > 0 && borrowApy !== null
+  const netApr = leverage > 0 && borrowApy !== null
     ? STRC_BASE_APY * leverage - borrowApy * (leverage - 1)
     : 0;
+  const netApy = aprToApy(netApr);
 
   // 24h P&L on equity from price movement
   const change24hUsd = (change24h !== null && collateralStrc > 0)
@@ -63,7 +64,8 @@ export function DepositsHero() {
   const displayApy = useCountUp(netApy, 1400, 1);
   const maxLev = 3.5;
   const effBorrow = borrowApy ?? 0.89;
-  const maxYield = Math.round(STRC_BASE_APY * maxLev - effBorrow * (maxLev - 1));
+  const maxApr = STRC_BASE_APY * maxLev - effBorrow * (maxLev - 1);
+  const maxYield = Math.round(aprToApy(maxApr));
   const displayMaxYield = useCountUp(maxYield, 1800, 0);
 
   const isPositive = (change24hUsd ?? 0) >= 0;

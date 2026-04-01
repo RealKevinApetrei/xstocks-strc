@@ -18,6 +18,12 @@ export function formatUsd(value: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
+/** Convert APR (%) to APY (%) with daily compounding */
+export function aprToApy(apr: number): number {
+  if (apr <= 0) return 0;
+  return (Math.pow(1 + apr / 100 / 365, 365) - 1) * 100;
+}
+
 export function formatPercent(value: number): string {
   return `${value.toFixed(2)}%`;
 }

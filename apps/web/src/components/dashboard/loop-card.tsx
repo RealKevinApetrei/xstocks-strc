@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { cn, formatUsd, formatBigInt } from '@/lib/utils';
+import { cn, formatUsd, formatBigInt, aprToApy } from '@/lib/utils';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
@@ -71,7 +71,8 @@ function LoopTab() {
   const totalExposureUsdc = amountUsdc * leverage;
   const debtUsdc = totalExposureUsdc - amountUsdc;
   const effectiveBorrow = borrowApy ?? 4.2;
-  const netApy = (STRC_BASE_APY * leverage - effectiveBorrow * (leverage - 1)).toFixed(1);
+  const netApr = STRC_BASE_APY * leverage - effectiveBorrow * (leverage - 1);
+  const netApy = aprToApy(netApr).toFixed(1);
 
   if (activeLoopId) {
     return <LoopStatus loopId={activeLoopId} onClose={() => setActiveLoopId(null)} />;

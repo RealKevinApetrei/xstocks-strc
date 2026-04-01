@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { cn, formatUsd, formatBigInt } from '@/lib/utils';
+import { cn, formatUsd, formatBigInt, aprToApy } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
@@ -167,7 +167,8 @@ function PositionTab() {
   const debtUsd = p ? parseFloat(formatBigInt(p.debtUsdc, 6, 2)) : 0;
   const equityUsd = collateralUsd - debtUsd;
   const leverage = p ? p.effectiveLeverage : 0;
-  const netYield = leverage > 0 ? (STRC_STAKING_APY * leverage) - (effectiveBorrowApy * (leverage - 1)) : 0;
+  const netApr = leverage > 0 ? (STRC_STAKING_APY * leverage) - (effectiveBorrowApy * (leverage - 1)) : 0;
+  const netYield = aprToApy(netApr);
 
   return (
     <div className="p-6 space-y-5">
