@@ -80,7 +80,6 @@ export function LendUsdcVault() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showMarket, setShowMarket] = useState(false);
 
   const LEND_BALANCE = lendData.assets;
   const SUPPLY_APY = apyData?.supplyApy;
@@ -129,7 +128,7 @@ export function LendUsdcVault() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div className="rounded-lg border border-border bg-card overflow-hidden h-full flex flex-col">
       {/* Header */}
       <div className="p-5 border-b border-border">
         <div className="flex items-center justify-between">
@@ -213,43 +212,39 @@ export function LendUsdcVault() {
           </button>
         </div>
 
-        {/* Market Overview Toggle */}
-        <button onClick={() => setShowMarket(!showMarket)}
-          className="flex items-center justify-between w-full text-[10px] text-muted-foreground hover:text-foreground transition-colors pt-1">
-          <span>Market Overview</span>
-          <span>{showMarket ? '▲' : '▼'}</span>
-        </button>
-        {showMarket && (
-          <div className="rounded-md border border-border bg-background p-3 space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Supply APY</span>
-              <span className="font-mono text-success">{formatApy(SUPPLY_APY)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Borrow APY</span>
-              <span className="font-mono">{apyData?.borrowApy != null ? `${apyData.borrowApy.toFixed(2)}%` : '—'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Utilization</span>
-              <span className="font-mono">{UTILIZATION.toFixed(1)}%</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-1">
-              <div className="bg-primary h-1 rounded-full transition-all" style={{ width: `${Math.min(UTILIZATION, 100)}%` }} />
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Supplied</span>
-              <span className="font-mono">{formatUsd(TOTAL_SUPPLY)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Borrowed</span>
-              <span className="font-mono">{formatUsd(TOTAL_BORROW)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Available</span>
-              <span className="font-mono">{formatUsd(TOTAL_SUPPLY - TOTAL_BORROW)}</span>
-            </div>
+        {/* Market Overview */}
+        <div className="pt-1">
+          <span className="text-[10px] text-muted-foreground">Market Overview</span>
+        </div>
+        <div className="rounded-md border border-border bg-background p-3 space-y-2 text-xs">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Supply APY</span>
+            <span className="font-mono text-success">{formatApy(SUPPLY_APY)}</span>
           </div>
-        )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Borrow APY</span>
+            <span className="font-mono">{apyData?.borrowApy != null ? `${apyData.borrowApy.toFixed(2)}%` : '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Utilization</span>
+            <span className="font-mono">{UTILIZATION.toFixed(1)}%</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-1">
+            <div className="bg-primary h-1 rounded-full transition-all" style={{ width: `${Math.min(UTILIZATION, 100)}%` }} />
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total Supplied</span>
+            <span className="font-mono">{formatUsd(TOTAL_SUPPLY)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total Borrowed</span>
+            <span className="font-mono">{formatUsd(TOTAL_BORROW)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Available</span>
+            <span className="font-mono">{formatUsd(TOTAL_SUPPLY - TOTAL_BORROW)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

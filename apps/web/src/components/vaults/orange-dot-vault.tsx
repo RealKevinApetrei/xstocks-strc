@@ -136,7 +136,7 @@ export function OrangeDotVault() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div className="rounded-lg border border-border bg-card overflow-hidden h-full flex flex-col">
       {/* Header */}
       <div className="p-5 border-b border-border">
         <div className="flex items-center justify-between">
