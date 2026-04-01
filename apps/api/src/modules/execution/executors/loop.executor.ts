@@ -462,18 +462,11 @@ export class LoopExecutor {
         maxBorrowUsdc = availableLiquidity * 95n / 100n; // 95% of available to leave buffer
       }
 
-      // Ensure minimum $10 for CoW swap
-      const COW_MIN = 10_000_000n; // $10 in 6-decimal USDC
-      if (maxBorrowUsdc > 0n && maxBorrowUsdc < COW_MIN) {
-        // Check if we CAN borrow $10 safely (enough collateral headroom)
-        const safeBorrow = await borrowExecutor.calculateSafeBorrowAmount(0n, currentPosition, config.loopTargetHF);
-        if (safeBorrow >= COW_MIN) {
-          console.log(`[LOOP ${loopId}] Bumping borrow from ${Number(maxBorrowUsdc) / 1e6} to $10 (CoW minimum)`);
-          maxBorrowUsdc = COW_MIN;
-        } else {
-          console.log(`[LOOP ${loopId}] Borrow ${Number(maxBorrowUsdc) / 1e6} too small for CoW and can't safely borrow $10 — stopping`);
-          return { success: false, strcReceived: 0n };
-        }
+      // Minimum deposit validation ensures every borrow >= $10, but
+      // if somehow we're under $10, stop gracefully
+      if (maxBorrowUsdc > 0n && maxBorrowUsdc < 10_000_000n) {
+        console.log(`[LOOP ${loopId}] Borrow ${Number(maxBorrowUsdc) / 1e6} USDC too small for CoW — stopping`);
+        return { success: false, strcReceived: 0n };
       }
 
       console.log(`[LOOP ${loopId}] Borrow+swap ${iteration}: borrowing ${Number(maxBorrowUsdc) / 1e6} USDC (current debt: ${Number(currentDebtUsdc) / 1e6}, target: ${Number(targetDebtUsdc) / 1e6})`);

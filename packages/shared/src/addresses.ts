@@ -43,12 +43,10 @@ export const STRC_DUST = 10n ** 14n; // 0.0001 STRC (18 decimals)
 // CoW Protocol minimum swap amount ($10 per swap)
 export const COW_MIN_SWAP_USDC = 10_000_000n; // $10 in 6-decimal USDC
 
-// Minimum deposit per leverage level
-// Constraint: initial swap >= $10, first borrow (deposit * 0.86) >= $10
-// → deposit >= $12 minimum. Using $15 with buffer for slippage.
-// Higher leverage needs more iterations but each borrow is bumped to $10 min.
+// Minimum deposit per leverage level — ensures every iteration borrow >= $10
+// Computed with 86% LLTV, 0.4% CoW slippage, no overshoot
 export const MIN_DEPOSIT_USDC: Record<number, bigint> = {
-  2: 15_000_000n,  // $15
-  3: 15_000_000n,  // $15
-  5: 15_000_000n,  // $15
+  2: 55_000_000n,  // $55 (2 iterations)
+  3: 21_000_000n,  // $21 (3 iterations)
+  5: 65_000_000n,  // $65 (8 iterations)
 };
