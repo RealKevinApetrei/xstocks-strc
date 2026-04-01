@@ -181,17 +181,19 @@ export function OrangeDotVault() {
           </div>
         )}
 
-        {/* DCA Config */}
+        {/* DCA Config — locked when vault has funds */}
         <div className="space-y-3">
           <div className="space-y-1.5">
             <label className="text-[10px] text-muted-foreground">Number of trades</label>
             <div className="flex gap-1.5">
               {DCA_TRADE_OPTIONS.map((n) => (
                 <button key={n}
-                  onClick={() => { setNumTrades(n); saveStrategy(n, intervalHours); }}
+                  onClick={() => { if (VAULT_BALANCE > 0) return; setNumTrades(n); saveStrategy(n, intervalHours); }}
+                  disabled={VAULT_BALANCE > 0}
                   className={cn(
                     'flex-1 py-1 text-xs font-mono rounded border transition-colors',
                     numTrades === n ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-border text-muted-foreground hover:text-foreground',
+                    VAULT_BALANCE > 0 && numTrades !== n && 'opacity-30 cursor-not-allowed',
                   )}>{n}</button>
               ))}
             </div>
@@ -201,14 +203,19 @@ export function OrangeDotVault() {
             <div className="flex gap-1.5">
               {DCA_INTERVAL_OPTIONS.map((h) => (
                 <button key={h}
-                  onClick={() => { setIntervalHours(h); saveStrategy(numTrades, h); }}
+                  onClick={() => { if (VAULT_BALANCE > 0) return; setIntervalHours(h); saveStrategy(numTrades, h); }}
+                  disabled={VAULT_BALANCE > 0}
                   className={cn(
                     'flex-1 py-1 text-xs font-mono rounded border transition-colors',
                     intervalHours === h ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-border text-muted-foreground hover:text-foreground',
+                    VAULT_BALANCE > 0 && intervalHours !== h && 'opacity-30 cursor-not-allowed',
                   )}>{h}h</button>
               ))}
             </div>
           </div>
+          {VAULT_BALANCE > 0 && (
+            <p className="text-[10px] text-muted-foreground">Withdraw all funds to change strategy settings.</p>
+          )}
 
           {belowMinimum && (
             <p className="text-[10px] text-destructive">Min $10/trade. Deposit at least {formatUsd(10 * numTrades)} or reduce trades.</p>
@@ -267,7 +274,7 @@ export function OrangeDotVault() {
         <div className="flex items-center gap-1.5 text-[10px]">
           <span className={cn('h-1.5 w-1.5 rounded-full', dcaState?.dcaActive ? 'bg-orange-500 animate-pulse' : VAULT_BALANCE > 0 ? 'bg-orange-500' : 'bg-muted-foreground')} />
           <span className="text-muted-foreground">
-            {dcaState?.dcaActive ? `DCA ${dcaState.tradesExecuted}/${dcaState.numTrades}` : VAULT_BALANCE > 0 ? 'Monitoring STRC price' : 'Deposit to activate'}
+            {dcaState?.dcaActive ? `DCA ${dcaState.tradesExecuted}/${dcaState.numTrades}` : VAULT_BALANCE > 0 ? 'Monitoring STRC price' : 'Configure strategy, then deposit to activate'}
           </span>
         </div>
       </div>
