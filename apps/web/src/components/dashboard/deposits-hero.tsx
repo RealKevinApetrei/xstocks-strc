@@ -108,7 +108,7 @@ export function DepositsHero() {
           </div>
         </div>
 
-        {/* Max Yield — hardcoded 40% */}
+        {/* Max Yield — computed APY at 3.5x leverage */}
         <div>
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
             Max Yield

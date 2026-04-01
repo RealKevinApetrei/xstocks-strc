@@ -801,24 +801,11 @@ export default function PitchPage() {
               <span style={{ color: '#e05c00' }}>Stretch</span> Your<br />STRC Yield
             </h1>
             <p className="text-base mb-3 leading-relaxed max-w-md" style={{ color: '#6b6866' }}>
-              Automated leveraged looping on Morpho Blue with smart liquidation protection.
+              Leverage. Trade. Save.
             </p>
             <p className="text-sm font-mono font-semibold mb-10" style={{ color: '#16a34a' }}>
-              Up to 40% APY on STRC &mdash; one click.
+              Up to 46% APY on STRC &mdash; one click.
             </p>
-            <div className="flex items-center gap-6 text-xs" style={{ color: '#6b6866' }}>
-              {[
-                { label: 'Morpho Blue', color: '#16a34a' },
-                { label: 'CoW Protocol', color: '#e05c00' },
-                { label: 'Ink Chain', color: '#2d2d2d' },
-                { label: 'Privy', color: '#7c3aed' },
-              ].map((p) => (
-                <span key={p.label} className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />
-                  {p.label}
-                </span>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -903,7 +890,7 @@ export default function PitchPage() {
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-6">
-                <StatCard label="Maximum APY" accent="#16a34a"><AnimatedCounter target={40} suffix="%" active={isActive(3)} /></StatCard>
+                <StatCard label="Maximum APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(3)} /></StatCard>
                 <StatCard label="Leverage Options">2x &middot; 3x &middot; 5x</StatCard>
               </div>
               <div className="space-y-6">
@@ -1058,7 +1045,7 @@ export default function PitchPage() {
             </div>
             <div className="grid md:grid-cols-4 gap-4">
               <StatCard label="Target Leverage" accent="#e05c00"><AnimatedCounter target={5} suffix="x" active={isActive(7)} /></StatCard>
-              <StatCard label="Max APY" accent="#16a34a"><AnimatedCounter target={40} suffix="%" active={isActive(7)} /></StatCard>
+              <StatCard label="Max APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(7)} /></StatCard>
               <StatCard label="Gas Cost" accent="#16a34a">$0</StatCard>
               <StatCard label="Time to Loop"><AnimatedCounter target={60} suffix="s" active={isActive(7)} /></StatCard>
             </div>
@@ -1078,7 +1065,7 @@ export default function PitchPage() {
             </p>
             <div className="grid md:grid-cols-3 gap-5 mb-16 text-left">
               {[
-                { val: <AnimatedCounter target={3} suffix="x" active={isActive(8)} />, color: '#16a34a', title: 'Yield Multiplication', desc: 'Turn 11.5% base APY into 30-40% effective yield through automated leveraged looping.' },
+                { val: <AnimatedCounter target={3} suffix="x" active={isActive(8)} />, color: '#16a34a', title: 'Yield Multiplication', desc: 'Turn 11.5% base APY into 35-46% effective yield through automated leveraged looping.' },
                 { val: <AnimatedCounter target={0} suffix=" txns" active={isActive(8)} />, color: '#e05c00', title: 'User Friction', desc: 'Gasless smart wallets eliminate every UX hurdle. No ETH for gas. No manual signing. No complexity.' },
                 { val: '24/7', color: '#7c3aed', title: 'Protection', desc: 'Buy the Dip Vault watches prices around the clock. When STRC dips, it buys automatically to protect your position.' },
               ].map((c) => (
