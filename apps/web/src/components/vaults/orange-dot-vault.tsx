@@ -183,13 +183,19 @@ export function OrangeDotVault() {
 
           {/* Claim STRC button */}
           {STRC_BALANCE > 0 && (
-            <button
-              onClick={handleClaimStrc}
-              disabled={isSubmitting}
-              className="w-full rounded-md py-2 text-sm font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? 'Claiming...' : `Claim ${STRC_BALANCE.toFixed(2)} STRC (~${formatUsd(STRC_BALANCE * STRC_PRICE_USD)})`}
-            </button>
+            <div className="rounded-md border border-orange-500/20 bg-orange-500/5 p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">STRC in wallet</span>
+                <span className="font-mono text-orange-400">{STRC_BALANCE.toFixed(2)} STRC (~{formatUsd(STRC_BALANCE * STRC_PRICE_USD)})</span>
+              </div>
+              <button
+                onClick={handleClaimStrc}
+                disabled={isSubmitting}
+                className="w-full rounded-md py-1.5 text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? 'Selling...' : 'Sell STRC → USDC'}
+              </button>
+            </div>
           )}
 
           {/* Deposit / Withdraw tabs */}
