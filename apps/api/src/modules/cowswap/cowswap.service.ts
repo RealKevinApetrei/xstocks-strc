@@ -79,7 +79,9 @@ export class CowSwapService {
 
     const validTo = Math.floor(Date.now() / 1000) + 600; // 10 min
 
-    const response = await this.fetchWithRetry(`${this.baseUrl}/api/v1/quote`, {
+    const quoteUrl = `${this.baseUrl}/api/v1/quote`;
+    console.log(`[COW] Quote URL: ${quoteUrl}`);
+    const response = await this.fetchWithRetry(quoteUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
