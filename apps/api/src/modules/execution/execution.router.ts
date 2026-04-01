@@ -163,9 +163,23 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
   const { loopExecutionId } = req.body as StartUnwindRequest;
   const targetLeverage = (req.body as any).targetLeverage ?? 0;
 
-  // Clear stale IN_PROGRESS unwinds that may be stuck from server restarts
+  // Clear stale loops and unwinds that are stuck (not actively running in memory)
+  const { rows: stuckLoops } = await query(
+    `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+    [privyId],
+  );
+  for (const sl of stuckLoops) {
+    if (!loopExecutor.isActive(sl.id)) {
+      await query(
+        `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', error = 'Cleared stale loop before unwind' WHERE id = $1`,
+        [sl.id],
+      );
+      console.log(`[UNWIND] Cleared stale loop ${sl.id}`);
+    }
+  }
+
   await query(
-    `UPDATE unwind_executions SET status = 'FAILED', error = 'Server restarted — marked stale'
+    `UPDATE unwind_executions SET status = 'FAILED', error = 'Cleared stale unwind'
      WHERE privy_id = $1 AND status = 'IN_PROGRESS'`,
     [privyId],
   );
