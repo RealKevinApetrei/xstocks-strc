@@ -197,7 +197,11 @@ export function PositionCard() {
       <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Leverage</span>
-          <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}x</span>
+          {positionData.activeLoop?.status === 'IN_PROGRESS' ? (
+            <span className="text-sm font-mono font-semibold text-primary animate-pulse">{leverage.toFixed(1)}x...</span>
+          ) : (
+            <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}x</span>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Liq. Price</span>
@@ -215,7 +219,7 @@ export function PositionCard() {
           )}
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">STRCx Yield ({leverage.toFixed(0)}x leveraged)</span>
+          <span className="text-xs text-muted-foreground">STRCx Yield ({leverage.toFixed(1)}x leveraged)</span>
           <span className="text-xs font-mono text-success">+{(STRC_STAKING_APY * leverage).toFixed(2)}%</span>
         </div>
         <div className="flex items-center justify-between border-t border-border pt-2">
