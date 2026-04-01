@@ -1,3 +1,4 @@
+import { ethers } from 'ethers';
 import { config } from '../../config';
 import { COW_POLL_INTERVAL_MS } from '@xstocks/shared';
 
@@ -117,21 +118,23 @@ export class CowSwapService {
   }
 
   async createOrder(quote: CowQuote, signature: string): Promise<string> {
-    if (!signature) throw new Error('CoW createOrder: missing signature');
-
     // Check quote hasn't expired
     const validTo = (quote.order as any).validTo;
     if (validTo && Math.floor(Date.now() / 1000) >= validTo) {
       throw new Error('CoW order: quote has expired (validTo passed)');
     }
 
+    const fromAddr = (quote.order as any).from;
+
+    // Use presign scheme — smart wallets can't do eip712 (signer != owner)
+    // Step 1: Submit order with presign scheme
     const orderPayload = {
       ...quote.order,
       feeAmount: '0',
-      signature,
-      signingScheme: 'eip712',
+      signature: fromAddr, // For presign, signature is the owner address
+      signingScheme: 'presign',
     };
-    console.log(`[COW] Order payload: from=${(orderPayload as any).from}, receiver=${(orderPayload as any).receiver}, sellAmount=${(orderPayload as any).sellAmount}, sellToken=${(orderPayload as any).sellToken}`);
+    console.log(`[COW] Order (presign): from=${fromAddr}, receiver=${(orderPayload as any).receiver}, sellAmount=${(orderPayload as any).sellAmount}`);
 
     const response = await this.fetchWithRetry(`${this.baseUrl}/api/v1/orders`, {
       method: 'POST',
@@ -149,7 +152,22 @@ export class CowSwapService {
       throw new Error(`CoW order returned invalid UID: ${JSON.stringify(orderUid)}`);
     }
 
+    console.log(`[COW] Order created (presign): ${orderUid}`);
     return orderUid;
+  }
+
+  /**
+   * Build calldata for setPreSignature on the CoW settlement contract.
+   * Must be called from the order owner (smart wallet) after createOrder.
+   */
+  buildPreSignatureCall(orderUid: string): { to: string; data: string } {
+    const iface = new ethers.Interface([
+      'function setPreSignature(bytes orderUid, bool signed)',
+    ]);
+    return {
+      to: config.cowSettlement,
+      data: iface.encodeFunctionData('setPreSignature', [orderUid, true]),
+    };
   }
 
   async pollOrderStatus(orderUid: string): Promise<OrderStatus> {
