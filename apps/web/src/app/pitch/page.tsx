@@ -859,15 +859,15 @@ export default function PitchPage() {
             <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-4 leading-tight" style={{ color: '#0a0a0a' }}>
               An <span style={{ color: '#16a34a' }}>ecosystem</span> of products<br />enriching what you can do with STRC.
             </h2>
-            <div className="grid grid-cols-3 gap-4 mt-10">
-              <div className="rounded-lg border-2 bg-white p-8 text-center" style={{ borderColor: '#e05c00' }}>
-                <div className="text-2xl font-bold tracking-tight" style={{ color: '#e05c00' }}>Leverage.</div>
+            <div className="grid grid-cols-3 gap-3 mt-10">
+              <div className="rounded-md border bg-white px-5 py-6 text-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-sm font-mono font-semibold tracking-widest uppercase" style={{ color: '#e05c00' }}>Leverage</div>
               </div>
-              <div className="rounded-lg border-2 bg-white p-8 text-center" style={{ borderColor: '#2d2d2d' }}>
-                <div className="text-2xl font-bold tracking-tight" style={{ color: '#2d2d2d' }}>Trading.</div>
+              <div className="rounded-md border bg-white px-5 py-6 text-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-sm font-mono font-semibold tracking-widest uppercase" style={{ color: '#2d2d2d' }}>Trading</div>
               </div>
-              <div className="rounded-lg border-2 bg-white p-8 text-center" style={{ borderColor: '#16a34a' }}>
-                <div className="text-2xl font-bold tracking-tight" style={{ color: '#16a34a' }}>Savings.</div>
+              <div className="rounded-md border bg-white px-5 py-6 text-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-sm font-mono font-semibold tracking-widest uppercase" style={{ color: '#16a34a' }}>Savings</div>
               </div>
             </div>
           </div>
