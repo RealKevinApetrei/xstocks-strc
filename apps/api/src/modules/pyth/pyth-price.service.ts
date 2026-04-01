@@ -67,59 +67,46 @@ export class PythPriceService {
   }
 
   /**
-   * Fetch historical daily prices from Pyth Benchmarks API.
-   * Samples one price per day for the given number of days.
+   * Fetch historical daily prices from Yahoo Finance.
    */
   async getHistoricalPrices(days: number): Promise<PricePoint[]> {
-    // Check cache (keyed by days, refreshed every 30min)
     const cached = this.historicalCache.get(days);
     if (cached) return cached;
 
-    if (!config.pythPriceFeedId) return [];
-
-    const feedId = config.pythPriceFeedId.replace('0x', '');
-    const now = Math.floor(Date.now() / 1000);
-    const points: PricePoint[] = [];
-
-    // Fetch prices in parallel batches (one per day)
-    const timestamps = Array.from({ length: days }, (_, i) => now - (days - i) * 86400);
-    const batchSize = 10;
-
-    for (let i = 0; i < timestamps.length; i += batchSize) {
-      const batch = timestamps.slice(i, i + batchSize);
-      const results = await Promise.allSettled(
-        batch.map(async (ts) => {
-          const url = `${BENCHMARKS_URL}/v1/updates/price/${ts}?ids=${feedId}&parsed=true`;
-          const res = await fetch(url);
-          if (!res.ok) {
-            if (i === 0) console.warn(`Pyth Benchmarks failed: ${res.status} for ${url.slice(0, 100)}`);
-            return null;
-          }
-          const data = (await res.json()) as {
-            parsed: Array<{ price: { price: string; expo: number; publish_time: number } }>;
-          };
-          if (!data.parsed?.[0]) return null;
-          const p = data.parsed[0].price;
-          return {
-            price: parseInt(p.price) * Math.pow(10, p.expo),
-            timestamp: p.publish_time,
-          };
-        }),
-      );
-
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) points.push(r.value);
+    try {
+      const range = days <= 30 ? '1mo' : days <= 90 ? '3mo' : days <= 180 ? '6mo' : '1y';
+      const url = `https://query2.finance.yahoo.com/v8/finance/chart/STRC?range=${range}&interval=1d`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (!res.ok) {
+        console.warn(`Yahoo Finance failed: ${res.status}`);
+        return [];
       }
-    }
 
-    if (points.length > 0) {
-      this.historicalCache.set(days, points);
-      // Expire cache after 30 min
-      setTimeout(() => this.historicalCache.delete(days), 30 * 60_000);
-    }
+      const data = await res.json() as any;
+      const result = data?.chart?.result?.[0];
+      if (!result) return [];
 
-    console.log(`Pyth Benchmarks: fetched ${points.length} historical prices for ${days} days`);
-    return points;
+      const timestamps: number[] = result.timestamp ?? [];
+      const closes: number[] = result.indicators?.quote?.[0]?.close ?? [];
+      const points: PricePoint[] = [];
+
+      for (let i = 0; i < timestamps.length; i++) {
+        if (closes[i] != null) {
+          points.push({ price: closes[i], timestamp: timestamps[i] });
+        }
+      }
+
+      if (points.length > 0) {
+        this.historicalCache.set(days, points);
+        setTimeout(() => this.historicalCache.delete(days), 30 * 60_000);
+      }
+
+      console.log(`Yahoo Finance: fetched ${points.length} historical STRC prices for ${days} days`);
+      return points;
+    } catch (err) {
+      console.warn('Yahoo Finance fetch error:', err instanceof Error ? err.message : err);
+      return [];
+    }
   }
 
   /**

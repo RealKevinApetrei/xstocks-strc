@@ -175,7 +175,7 @@ gridRouter.get('/price/history', async (req: Request, res: Response) => {
   const days = Number(req.query.days) || 0;
   if (days > 0) {
     const history = await pythPriceService.getHistoricalPrices(Math.min(days, 365));
-    res.json({ history, count: history.length, source: 'pyth-benchmarks' });
+    res.json({ history, count: history.length, source: 'yahoo-finance' });
     return;
   }
   const hours = Math.min(Number(req.query.hours) || 24, 24);
