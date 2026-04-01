@@ -13,7 +13,9 @@ export class ApprovalExecutor {
     amount: bigint;
   }): Call[] {
     const iface = new ethers.Interface(ERC20_ABI);
-    const data = iface.encodeFunctionData('approve', [params.spender, params.amount]);
+    // Always approve max to avoid stale allowance issues between separate UserOps
+    const MAX_UINT256 = 2n ** 256n - 1n;
+    const data = iface.encodeFunctionData('approve', [params.spender, MAX_UINT256]);
 
     return [{ to: params.token, data }];
   }
