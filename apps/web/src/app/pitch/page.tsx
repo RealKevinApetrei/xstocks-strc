@@ -815,6 +815,7 @@ const SECTIONS = [
   { id: 'unique', label: 'Unique' },
   { id: 'architecture', label: 'Tech' },
   { id: 'viability', label: 'Viability' },
+  { id: 'business', label: 'Business' },
   { id: 'impact', label: 'Impact' },
 ];
 
@@ -1291,11 +1292,60 @@ export default function PitchPage() {
           </div>
         </section>
 
-        {/* ═══ SLIDE 7: IMPACT ═══ */}
+        {/* ═══ SLIDE 7: BUSINESS MODEL ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-4xl w-full" style={{ opacity: isActive(7) ? 1 : 0, transform: isActive(7) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#1a3520' }}>07 — Impact</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
+          <div className="max-w-5xl w-full" style={{ opacity: isActive(7) ? 1 : 0, transform: isActive(7) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-8 leading-tight" style={{ color: '#0a0a0a' }}>
+              How we <span style={{ color: '#16a34a' }}>make money</span>.
+            </h2>
+
+            <div className="grid md:grid-cols-3 gap-5 mb-8">
+              <div className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-4xl font-mono font-bold mb-2" style={{ color: '#e05c00' }}>1%</div>
+                <div className="text-lg font-bold mb-2" style={{ color: '#0a0a0a' }}>Management Fee</div>
+                <p className="text-sm leading-relaxed" style={{ color: '#6b6866' }}>
+                  Annual fee on automated strategies and leveraged looping positions.
+                </p>
+              </div>
+              <div className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-4xl font-mono font-bold mb-2" style={{ color: '#c47a1a' }}>0.1%</div>
+                <div className="text-lg font-bold mb-2" style={{ color: '#0a0a0a' }}>Open / Close Fee</div>
+                <p className="text-sm leading-relaxed" style={{ color: '#6b6866' }}>
+                  Per-transaction fee on vault deposits, withdrawals, and loop execution.
+                </p>
+              </div>
+              <div className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-4xl font-mono font-bold mb-2" style={{ color: '#7c3aed' }}>$20<span className="text-lg">/mo</span></div>
+                <div className="text-lg font-bold mb-2" style={{ color: '#0a0a0a' }}>Stretch Subscription</div>
+                <p className="text-sm leading-relaxed" style={{ color: '#6b6866' }}>
+                  Premium access to the Stretch ecosystem and community.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
+              <div className="text-sm font-bold uppercase tracking-widest mb-4" style={{ color: '#7c3aed' }}>Stretch Subscription Includes</div>
+              <div className="grid grid-cols-4 gap-4">
+                {[
+                  { title: 'Analytics', desc: 'Advanced portfolio dashboards and yield tracking' },
+                  { title: 'Private Groups', desc: 'Exclusive community with alpha and strategy discussion' },
+                  { title: 'IRL Events', desc: 'Hosted meetups, conferences, and networking' },
+                  { title: 'Stretch Merch', desc: 'Exclusive branded merchandise for members' },
+                ].map((item) => (
+                  <div key={item.title}>
+                    <div className="text-sm font-mono font-bold mb-1" style={{ color: '#0a0a0a' }}>{item.title}</div>
+                    <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══ SLIDE 8: IMPACT ═══ */}
+        <section className="h-screen w-screen flex items-center justify-center px-6">
+          <div className="max-w-4xl w-full" style={{ opacity: isActive(8) ? 1 : 0, transform: isActive(8) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
               What Spreads brings<br />to <span style={{ color: '#1a3520' }}>xStocks</span>.
             </h2>
             <p className="text-sm mb-10 max-w-2xl leading-relaxed" style={{ color: '#6b6866' }}>
