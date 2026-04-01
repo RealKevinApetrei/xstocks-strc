@@ -1143,7 +1143,7 @@ export default function PitchPage() {
               Buy the Dip <span style={{ color: '#16a34a' }}>Vault</span>.
             </h2>
             <p className="text-base mb-6 leading-relaxed" style={{ color: '#6b6866' }}>
-              Idle USDC earns yield in Tydro + Ink points. When STRC dips, it auto-buys generational entries.
+              Idle USDC earns yield and Ink points via Tydro. When STRC dips, it auto-buys generational entries.
             </p>
 
             {/* Real STRC chart with dip zones */}
