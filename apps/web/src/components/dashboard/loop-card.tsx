@@ -40,8 +40,9 @@ function LoopTab() {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
+      const usdcRaw = BigInt(Math.round(parseFloat(usdcAmount) * 1e6)).toString();
       const result = await api.startLoop(token, {
-        strcAmount: usdcAmount,
+        strcAmount: usdcRaw,
         targetLeverage: leverage,
         maxSlippageBps: 0,
       });
