@@ -270,7 +270,7 @@ export default function PitchPage() {
           {/* Saylor B&W — left edge, full height cover */}
           <img src="/saylor-bw.png" alt="" aria-hidden className="absolute bottom-0 select-none pointer-events-none"
             style={{
-              left: 0, bottom: '-8vh', width: '30vw', height: '100vh',
+              left: 0, bottom: 'calc(-8vh - 104px)', width: '30vw', height: '100vh',
               objectFit: 'cover', objectPosition: 'center top',
               zIndex: 6,
               transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
@@ -278,20 +278,20 @@ export default function PitchPage() {
             }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
 
-          {/* Bitcoin hand — overlapping B&W Saylor */}
+          {/* Bitcoin hand — behind B&W Saylor */}
           <img src="/bitcoin-hand.png" alt="" aria-hidden className="absolute select-none pointer-events-none"
             style={{
-              left: '4vw', bottom: '15%', height: '52vh',
-              zIndex: 10, ...blend,
+              left: '4vw', bottom: 'calc(15% - 156px)', height: '52vh',
+              zIndex: 5, ...blend,
               transform: `translate(${parallax.x * -18}px, ${parallax.y * 10}px)`,
               ...ease,
             }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
 
-          {/* $100 bill — overlapping colour Saylor */}
+          {/* $100 bill — behind colour Saylor */}
           <img src="/hundred-dollar.png" alt="" aria-hidden className="absolute select-none pointer-events-none"
             style={{
-              right: '14vw', top: '30%', width: '28.6vw', maxWidth: '442px',
+              right: '14vw', top: 'calc(30% + 143px)', width: '28.6vw', maxWidth: '442px',
               zIndex: 3, ...blend,
               transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
               ...ease,
@@ -300,9 +300,9 @@ export default function PitchPage() {
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
 
           {/* Saylor colour — right edge, full height cover */}
-          <img src="/saylor-colour.png" alt="" aria-hidden className="absolute bottom-0 select-none pointer-events-none"
+          <img src="/saylor-colour.png" alt="" aria-hidden className="absolute select-none pointer-events-none"
             style={{
-              right: 0, width: '30vw', height: '100vh',
+              right: 0, bottom: -104, width: '30vw', height: '100vh',
               objectFit: 'cover', objectPosition: 'center top',
               zIndex: 14,
               transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
