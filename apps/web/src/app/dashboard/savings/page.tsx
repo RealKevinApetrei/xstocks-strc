@@ -28,6 +28,29 @@ const DEMO_REWARDS  = 24.80;
 
 type Product = { id: string; name: string; category: string; minValue: number; logoUrl: string };
 
+export type Portfolio = {
+  plan: {
+    strcPct: number;
+    tbillPct: number;
+    tier: 'BRONZE' | 'SILVER' | 'GOLD';
+    streakMonths: number;
+    monthlyTargetUsdc: number;
+  } | null;
+  portfolio: {
+    portfolioValueUsd: number;
+    totalDepositedUsd: number;
+    yieldToDateUsd: number;
+    rewardsAvailableUsd: number;
+    rewardMultiplier: number;
+  };
+  thisMonth: {
+    depositedUsdc: number;
+    targetUsdc: number;
+    goalMet: boolean;
+    progressPct: number;
+  } | null;
+};
+
 export default function SavingsPage() {
   const { ready } = useSmartWallet();
   const { balance: usdcBalance, refresh: refreshUsdc } = useUsdcBalance();
