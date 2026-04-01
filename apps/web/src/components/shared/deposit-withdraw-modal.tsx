@@ -92,10 +92,16 @@ export function DepositWithdrawModal({
     mode === 'withdraw' ? INK_USDC : undefined,
   );
 
+  // Find the user's external wallet (MetaMask etc.), not the Privy embedded wallet
   const externalWallet = user?.linkedAccounts.find(
+    (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType !== 'privy',
+  );
+  // Fall back to embedded wallet if no external wallet connected
+  const fallbackWallet = user?.linkedAccounts.find(
     (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
   );
-  const externalAddress = externalWallet && 'address' in externalWallet ? externalWallet.address as string : null;
+  const withdrawWallet = externalWallet || fallbackWallet;
+  const externalAddress = withdrawWallet && 'address' in withdrawWallet ? withdrawWallet.address as string : null;
 
   const tabs = mode === 'deposit' ? DEPOSIT_TABS : WITHDRAW_TABS;
 
