@@ -60,7 +60,7 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
     const provider = getProvider();
 
-    // Check for wSTRC — unwrap + approve for CoW in one tx
+    // Check for wSTRC and unwrap first
     const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
     const wstrcBalance: bigint = await wstrc.balanceOf(smartAccountAddr);
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
@@ -71,20 +71,14 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
       return;
     }
 
-    // Unwrap + approve in one batch (use max uint256 approval to avoid needing exact amount)
-    const maxApproval = 2n ** 256n - 1n;
-    const batchCalls: { to: string; data: string }[] = [];
+    // Unwrap wSTRC if present
     if (wstrcBalance > 0n) {
       console.log(`[CLOSE-STRC] Unwrapping ${Number(wstrcBalance) / 1e18} wSTRC`);
       const wstrcIface = new ethers.Interface(['function unwrap(uint256 amount)']);
-      batchCalls.push({ to: config.wstrc, data: wstrcIface.encodeFunctionData('unwrap', [wstrcBalance]) });
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [
+        { to: config.wstrc, data: wstrcIface.encodeFunctionData('unwrap', [wstrcBalance]) },
+      ]));
     }
-    batchCalls.push(...approvalExecutor.buildApproveCalls({
-      token: config.strc, spender: config.cowVaultRelayer, amount: maxApproval,
-    }));
-    await smartAccountService.waitForReceipt(
-      await smartAccountService.sendBatchUserOp(privyId, batchCalls),
-    );
 
     // Read actual STRC balance after unwrap
     const strcBalance: bigint = await strc.balanceOf(smartAccountAddr);
@@ -100,6 +94,12 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
     }
 
     console.log(`[CLOSE-STRC] Closing ${Number(strcBalance) / 1e18} STRC (~$${strcValueUsd.toFixed(2)}) for ${smartAccountAddr}`);
+
+    // 1. Approve STRC for CoW VaultRelayer
+    const approveCalls = approvalExecutor.buildApproveCalls({
+      token: config.strc, spender: config.cowVaultRelayer, amount: strcBalance,
+    });
+    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
 
     // 2. Get CoW quote STRC → USDC
     const quote = await cowSwapService.getQuote({

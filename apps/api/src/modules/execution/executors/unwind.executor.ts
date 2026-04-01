@@ -218,14 +218,13 @@ export class UnwindExecutor {
       const approveAmt = canRepayFull ? pos.borrowed + 1_000n : usdcBal; // +buffer for rounding
       console.log(`[UNWIND ${unwindId}] Repaying ${canRepayFull ? 'FULL' : 'partial'} debt: ${Number(canRepayFull ? pos.borrowed : usdcBal) / 1e6} USDC (have ${Number(usdcBal) / 1e6}, owe ${Number(pos.borrowed) / 1e6})`);
 
-      // Approve + repay in one tx
       const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: approveAmt });
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
+
       const repayCalls = canRepayFull
         ? borrowExecutor.buildRepayCalls(0n, smartAccountAddr, true, pos.borrowShares)
         : borrowExecutor.buildRepayCalls(usdcBal, smartAccountAddr);
-      await smartAccountService.waitForReceipt(
-        await smartAccountService.sendBatchUserOp(privyId, [...approveCalls, ...repayCalls]),
-      );
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
     }
   }
 
@@ -279,21 +278,26 @@ export class UnwindExecutor {
     privyId: string, smartAccountAddr: string, withdrawWstrc: bigint, position: MorphoPosition,
   ): Promise<boolean> {
     try {
-      // 1. Withdraw + unwrap + approve for CoW in one tx
-      console.log(`[UNWIND] Withdrawing ${withdrawWstrc} wSTRC, unwrapping, approving for CoW...`);
+      // 1. Withdraw collateral
+      console.log(`[UNWIND] Withdrawing ${withdrawWstrc} wSTRC collateral...`);
       const withdrawCalls = borrowExecutor.buildWithdrawCollateralCalls(withdrawWstrc, smartAccountAddr, smartAccountAddr);
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, withdrawCalls));
+
+      // 2. Unwrap wSTRC → STRC
+      console.log(`[UNWIND] Unwrapping wSTRC → STRC...`);
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [
+        { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [withdrawWstrc]) },
+      ]));
+
       const provider = getProvider();
       const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
       const strcAmount: bigint = await wstrcContract.wstrcToStrc(withdrawWstrc);
       if (strcAmount <= STRC_DUST) throw new Error('Unwrap returned dust');
+
+      // 3. Approve STRC for CoW
+      console.log(`[UNWIND] Approving STRC for CoW VaultRelayer...`);
       const aCalls = approvalExecutor.buildApproveCalls({ token: config.strc, spender: config.cowVaultRelayer, amount: strcAmount });
-      await smartAccountService.waitForReceipt(
-        await smartAccountService.sendBatchUserOp(privyId, [
-          ...withdrawCalls,
-          { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [withdrawWstrc]) },
-          ...aCalls,
-        ]),
-      );
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, aCalls));
 
       // 4. CoW swap STRC → USDC via presign
       console.log(`[UNWIND] Getting CoW quote STRC → USDC...`);
@@ -319,16 +323,17 @@ export class UnwindExecutor {
       const fill = await cowSwapService.waitForFill(orderUid);
       if (fill.buyAmount <= 0n) throw new Error('CoW returned 0 USDC');
 
-      // 5. Approve + repay in one tx
+      // 5. Approve USDC for Morpho repay
       const freshPos = await borrowExecutor.getPosition(smartAccountAddr);
       const debtToRepay = freshPos.borrowed < fill.buyAmount ? freshPos.borrowed : fill.buyAmount;
       console.log(`[UNWIND] Repaying ${Number(debtToRepay) / 1e6} USDC (debt: ${Number(freshPos.borrowed) / 1e6}, received: ${Number(fill.buyAmount) / 1e6})`);
 
       const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: debtToRepay });
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
+
+      // 6. Repay debt
       const repayCalls = borrowExecutor.buildRepayCalls(debtToRepay, smartAccountAddr);
-      const rReceipt = await smartAccountService.waitForReceipt(
-        await smartAccountService.sendBatchUserOp(privyId, [...approveCalls, ...repayCalls]),
-      );
+      const rReceipt = await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
       if (!rReceipt.success) throw new Error('Repay reverted');
 
       return true;
@@ -342,15 +347,15 @@ export class UnwindExecutor {
     if (position.collateral <= 0n) return;
     console.log(`[UNWIND] Final cleanup: withdrawing remaining ${position.collateral} wSTRC collateral`);
 
-    // Withdraw + unwrap in one tx
-    console.log(`[UNWIND] Withdrawing + unwrapping remaining collateral`);
+    // Withdraw remaining collateral
     const withdrawCalls = borrowExecutor.buildWithdrawCollateralCalls(position.collateral, smartAccountAddr, smartAccountAddr);
-    await smartAccountService.waitForReceipt(
-      await smartAccountService.sendBatchUserOp(privyId, [
-        ...withdrawCalls,
-        { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [position.collateral]) },
-      ]),
-    );
+    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, withdrawCalls));
+
+    // Unwrap wSTRC → STRC
+    console.log(`[UNWIND] Unwrapping remaining wSTRC → STRC`);
+    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [
+      { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [position.collateral]) },
+    ]));
 
     // Swap remaining STRC → USDC via CoW presign
     const provider = getProvider();
@@ -386,24 +391,27 @@ export class UnwindExecutor {
     console.log(`[UNWIND ${unwindId}] Running full unwind verification...`);
     const provider = getProvider();
 
-    // 1. Withdraw remaining collateral + unwrap any wSTRC in one batch
+    // 1. Withdraw remaining collateral
     const pos = await borrowExecutor.getPosition(smartAccountAddr);
-    const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const wstrcBal: bigint = await wstrc.balanceOf(smartAccountAddr);
-
-    const cleanupCalls: { to: string; data: string }[] = [];
     if (pos.collateral > STRC_DUST) {
       console.log(`[UNWIND ${unwindId}] Remaining collateral: ${pos.collateral} — withdrawing`);
-      cleanupCalls.push(...borrowExecutor.buildWithdrawCollateralCalls(pos.collateral, smartAccountAddr, smartAccountAddr));
+      const withdrawCalls = borrowExecutor.buildWithdrawCollateralCalls(pos.collateral, smartAccountAddr, smartAccountAddr);
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, withdrawCalls));
+
       // Unwrap the withdrawn collateral
-      cleanupCalls.push({ to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [pos.collateral]) });
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [
+        { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [pos.collateral]) },
+      ]));
     }
+
+    // 2. Unwrap any wSTRC sitting in wallet
+    const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const wstrcBal: bigint = await wstrc.balanceOf(smartAccountAddr);
     if (wstrcBal > STRC_DUST) {
       console.log(`[UNWIND ${unwindId}] Remaining wSTRC in wallet: ${Number(wstrcBal) / 1e18} — unwrapping`);
-      cleanupCalls.push({ to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [wstrcBal]) });
-    }
-    if (cleanupCalls.length > 0) {
-      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, cleanupCalls));
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [
+        { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [wstrcBal]) },
+      ]));
     }
 
     // 3. Swap any STRC to USDC
@@ -442,10 +450,9 @@ export class UnwindExecutor {
         const repayAmount = usdcBal < finalPos.borrowed ? usdcBal : finalPos.borrowed;
         console.log(`[UNWIND ${unwindId}] Repaying remaining debt: ${Number(repayAmount) / 1e6} USDC`);
         const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: repayAmount });
+        await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
         const repayCalls = borrowExecutor.buildRepayCalls(repayAmount, smartAccountAddr);
-        await smartAccountService.waitForReceipt(
-          await smartAccountService.sendBatchUserOp(privyId, [...approveCalls, ...repayCalls]),
-        );
+        await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
       }
     }
 
