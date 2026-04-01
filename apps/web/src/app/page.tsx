@@ -132,9 +132,9 @@ export default function Home() {
         className="absolute select-none pointer-events-none"
         style={{
           left: '4vw',
-          bottom: 'calc(15% - 104px)',
+          bottom: 'calc(15% - 208px)',
           height: '52vh',
-          zIndex: 10,
+          zIndex: 5,
           ...blend,
           transform: `translate(${parallax.x * -18}px, ${parallax.y * 10}px)`,
           ...ease,
