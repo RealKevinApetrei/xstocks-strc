@@ -280,9 +280,14 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
         }
 
         // Liquidation price: price at which HF = 1
-        // liqPrice = borrowed / (collateral * lltv)  — using 0.86 LLTV (Morpho market config)
-        if (position.collateral > 0n && position.borrowed > 0n) {
-          liquidationPrice = Number(position.borrowed) / (Number(position.collateral) * 0.86);
+        // liqPrice = debt_usd / (collateral_strc * lltv)
+        // borrowed is USDC (6 dec), collateralStrc is STRC (18 dec)
+        if (position.collateral > 0n && position.borrowed > 0n && strcVal > 0n) {
+          const debtUsd = Number(position.borrowed) / 1e6;
+          const collStrc = Number(strcVal) / 1e18;
+          if (collStrc > 0) {
+            liquidationPrice = debtUsd / (collStrc * 0.86);
+          }
         }
       } catch { /* contracts not deployed yet — use defaults */ }
     }
