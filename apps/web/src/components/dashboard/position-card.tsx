@@ -37,10 +37,11 @@ function HealthFactorGauge({ hf }: { hf: number }) {
     return () => clearTimeout(timeout);
   }, [hf, targetPct]);
 
-  const color = hf > 2 ? 'text-success' : hf > 1.5 ? 'text-warning' : 'text-destructive';
-  const barColor = hf > 2 ? 'bg-success' : hf > 1.5 ? 'bg-warning' : 'bg-destructive';
-  const glowColor = hf > 2 ? 'shadow-success/30' : hf > 1.5 ? 'shadow-warning/30' : 'shadow-destructive/30';
-  const label = hf > 2 ? 'SAFE' : hf > 1.5 ? 'CAUTION' : 'DANGER';
+  const isInfinity = hf >= 99;
+  const color = isInfinity ? 'text-success' : hf > 2 ? 'text-success' : hf > 1.5 ? 'text-warning' : 'text-destructive';
+  const barColor = isInfinity ? 'bg-success' : hf > 2 ? 'bg-success' : hf > 1.5 ? 'bg-warning' : 'bg-destructive';
+  const glowColor = isInfinity ? 'shadow-success/30' : hf > 2 ? 'shadow-success/30' : hf > 1.5 ? 'shadow-warning/30' : 'shadow-destructive/30';
+  const label = isInfinity ? 'NO DEBT' : hf > 2 ? 'SAFE' : hf > 1.5 ? 'CAUTION' : 'DANGER';
 
   return (
     <div className="space-y-2">
@@ -48,7 +49,7 @@ function HealthFactorGauge({ hf }: { hf: number }) {
         <span className="text-xs text-muted-foreground">Health Factor</span>
         <div className="flex items-center gap-2">
           <span className={cn('text-[10px] font-mono font-semibold uppercase tracking-wider', color)}>{label}</span>
-          <span className={cn('text-lg font-mono font-bold', color)}>{displayHf.toFixed(2)}</span>
+          <span className={cn('text-lg font-mono font-bold', color)}>{isInfinity ? '∞' : displayHf.toFixed(2)}</span>
         </div>
       </div>
       <div className="relative h-2 rounded-full bg-muted overflow-hidden">

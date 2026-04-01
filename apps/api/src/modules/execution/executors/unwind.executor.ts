@@ -37,8 +37,13 @@ export class UnwindExecutor {
     }
 
     // If debt is 0 but collateral remains, run finalCleanup directly
+    // First clear any stale IN_PROGRESS unwinds that might block
     if (position.borrowed === 0n && position.collateral > 0n) {
-      console.log(`[UNWIND] Debt is 0 but collateral remains — running final cleanup`);
+      console.log(`[UNWIND] Debt is 0 but collateral remains — cleaning up stale unwinds and running final cleanup`);
+      await query(
+        `UPDATE unwind_executions SET status = 'COMPLETED', error = 'Debt already repaid — running cleanup' WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+        [params.privyId],
+      );
       await this.finalCleanup(params.privyId, smartAccountAddr, position);
       return 'cleanup-complete';
     }
