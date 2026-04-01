@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DepositWithdrawModal } from './deposit-withdraw-modal';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
+import { useMarketRate } from '@/hooks/use-market-rate';
 
 const navItems = [
   { href: '/dashboard', label: 'Loop' },
@@ -16,6 +17,7 @@ const navItems = [
 export function Nav() {
   const { logout } = usePrivy();
   const { address: smartWalletAddress } = useSmartWallet();
+  const { borrowApy } = useMarketRate();
   const pathname = usePathname();
   const [modalMode, setModalMode] = useState<'deposit' | 'withdraw' | null>(null);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
@@ -79,9 +81,20 @@ export function Nav() {
 
         <div className="flex items-center gap-3">
           {/* STRC Yield stat — styled like the action buttons */}
-          <div className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 bg-secondary">
-            <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">STRC Yield</span>
-            <span className="text-xs font-mono font-semibold text-success">+11.5%</span>
+          <div className="flex items-center gap-3 rounded-md border border-border px-3 py-1.5 bg-secondary">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Yield</span>
+              <span className="text-xs font-mono font-semibold text-success">+11.5%</span>
+            </div>
+            <span className="text-border">|</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Borrow</span>
+              {borrowApy !== null ? (
+                <span className="text-xs font-mono font-semibold text-destructive/70">-{borrowApy.toFixed(1)}%</span>
+              ) : (
+                <span className="inline-block h-3 w-8 bg-muted animate-pulse rounded" />
+              )}
+            </div>
           </div>
           <button
             onClick={() => setModalMode('deposit')}
