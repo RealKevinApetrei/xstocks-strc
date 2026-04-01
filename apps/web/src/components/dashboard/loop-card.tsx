@@ -8,6 +8,7 @@ import { useMarketRate } from '@/hooks/use-market-rate';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { usePosition } from '@/hooks/use-position';
 import { api, ApiError } from '@/lib/api';
+import { useStrcBalance } from '@/hooks/use-strc-balance';
 import { LoopStatus } from './loop-status';
 
 const STRC_BASE_APY = 11.5;
@@ -243,6 +244,8 @@ function UnwindTab() {
   const { getAccessToken } = usePrivy();
   const { data: positionData } = usePosition();
   const { price: strcPrice } = useStrcxPrice();
+  const strcBalance = useStrcBalance();
+  const { refresh: refreshUsdcBalance } = useUsdcBalance();
   const [targetLeverage, setTargetLeverage] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [unwindStarted, setUnwindStarted] = useState(false);
@@ -298,6 +301,56 @@ function UnwindTab() {
   }
 
   if (!hasPosition) {
+    // Check for 1x STRC position (STRC in wallet, no Morpho position)
+    if (strcBalance.formatted > 0.001) {
+      const strcValueUsd = strcBalance.formatted * strcPrice;
+      return (
+        <div className="space-y-5">
+          <div className="rounded-md border border-border bg-secondary p-4 space-y-2">
+            <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-3">
+              1x STRC Position
+            </p>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">STRC held</span>
+              <span className="font-mono">{strcBalance.formatted.toFixed(4)} STRC</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Value</span>
+              <span className="font-mono">{formatUsd(strcValueUsd)}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={async () => {
+              setIsSubmitting(true);
+              setError(null);
+              try {
+                const token = await getAccessToken();
+                if (!token) throw new Error('Not authenticated');
+                await api.closeStrc(token);
+                strcBalance.refresh();
+                refreshUsdcBalance();
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to close');
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+            disabled={isSubmitting}
+            className="w-full rounded-md border border-destructive/40 bg-destructive/5 py-3.5 text-xs font-medium tracking-widest uppercase text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Closing Position...' : 'Close Position → USDC'}
+          </button>
+
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-xs text-destructive">{error}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[380px] text-center">
         <div className="w-8 h-8 rounded-full border border-border flex items-center justify-center mb-3">
