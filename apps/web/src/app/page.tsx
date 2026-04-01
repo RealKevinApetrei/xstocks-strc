@@ -105,17 +105,17 @@ export default function Home() {
 
       {/* ── LEFT SIDE ── */}
 
-      {/* Saylor colour — large portrait, bottom-left */}
+      {/* Saylor B&W — far left, anchored to edge */}
       <img
-        src="/saylor-colour.png"
+        src="/saylor-bw.png"
         alt="Michael Saylor"
         className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
         style={{
-          left: '-2%',
+          left: '-6%',
           height: '88vh',
           zIndex: 6,
           ...blend,
-          transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
+          transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
           ...ease,
         }}
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -128,7 +128,7 @@ export default function Home() {
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          left: '14%',
+          left: '12%',
           bottom: '18%',
           height: '32vh',
           zIndex: 10,
@@ -148,10 +148,10 @@ export default function Home() {
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          right: '4%',
+          right: '2%',
           top: '28%',
-          width: '30vw',
-          maxWidth: '420px',
+          width: '26vw',
+          maxWidth: '380px',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
@@ -161,17 +161,17 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Saylor B&W — bottom-right, overlaps $100 bill */}
+      {/* Saylor colour (orange tie) — far right, anchored to edge */}
       <img
-        src="/saylor-bw.png"
+        src="/saylor-colour.png"
         alt="Michael Saylor"
         className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
         style={{
-          right: '-2%',
-          height: '70vh',
+          right: '-6%',
+          height: '88vh',
           zIndex: 10,
           ...blend,
-          transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
+          transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
           ...ease,
         }}
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -211,13 +211,20 @@ export default function Home() {
 
       {/* Bottom bar */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white/70 backdrop-blur-sm px-8 py-3 flex items-center justify-between" style={{ zIndex: 30 }}>
-        <div className="flex items-center gap-6 text-[10px] text-gray-400 tracking-widest uppercase">
-          <a href="https://x.com/spreads_fi" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 transition-colors">X</a>
-          <a href="https://t.me/spreads_fi" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 transition-colors">Telegram</a>
+        <div className="flex items-center gap-2">
+          <svg width="14" height="18" viewBox="415 379 250 322" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <polygon fill="#1a3520" points="416.8 476.1 525.8 476.4 602 379.7 663.9 380.4 664.2 380.7 662.9 484.1 537.5 484 473 581.2 415.8 580.8 416.8 476.1"/>
+            <polygon fill="#1a3520" points="416.8 605.1 525.8 605.4 591.9 508.8 664.2 508.8 662.9 610.4 537.5 613 483 700.3 415.8 699.9 416.8 605.1"/>
+          </svg>
+          <span className="text-[10px] font-semibold tracking-widest uppercase text-gray-700">Spreads</span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-400 tracking-wide">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          Operational · INK Mainnet
+        <div className="flex items-center gap-3">
+          <a href="https://x.com/spreads_fi" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
+          <a href="https://t.me/spreads_fi" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          </a>
         </div>
       </div>
 
