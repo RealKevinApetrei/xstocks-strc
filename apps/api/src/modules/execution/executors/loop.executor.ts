@@ -155,15 +155,21 @@ export class LoopExecutor {
         return;
       }
 
-      // ── Phase 3: Borrow + Swap USDC → STRC ──
+      // ── Phase 3: Borrow + Swap USDC → STRC (with retry) ──
       await this.updateStage(loopId, `Iteration ${iteration}: borrowing and swapping...`);
-      const borrowResult = await this.borrowAndSwap(loopId, privyId, smartAccountAddr, iteration, usdcAmount, targetLeverage);
+      let borrowResult = await this.borrowAndSwap(loopId, privyId, smartAccountAddr, iteration, usdcAmount, targetLeverage);
+
+      if (!borrowResult.success) {
+        console.log(`[LOOP ${loopId}] Borrow+swap failed, retrying after 5s...`);
+        await new Promise(r => setTimeout(r, 5000));
+        borrowResult = await this.borrowAndSwap(loopId, privyId, smartAccountAddr, iteration, usdcAmount, targetLeverage);
+      }
 
       if (!borrowResult.success || borrowResult.strcReceived <= STRC_DUST) {
         const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
         await query(
           `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
-           effective_leverage = $4, error = ${!borrowResult.success ? "'Borrow+swap failed'" : "'Swap returned dust'"} WHERE id = $1`,
+           effective_leverage = $4, error = ${!borrowResult.success ? "'Borrow+swap failed after retry'" : "'Swap returned dust'"} WHERE id = $1`,
           [loopId, iteration, posAfter.healthFactor, borrowExecutor.calculateLeverage(posAfter.healthFactor)],
         );
         return;
