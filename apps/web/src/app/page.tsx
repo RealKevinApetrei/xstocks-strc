@@ -105,16 +105,15 @@ export default function Home() {
 
       {/* ── LEFT SIDE ── */}
 
-      {/* Saylor B&W — big, left edge, capped at 30vw so it doesn't hit center */}
+      {/* Saylor B&W — left edge, explicit box so bottom aligns with colour */}
       <img
         src="/saylor-bw.png"
         alt="Michael Saylor"
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           left: 0,
-          height: '95vh',
-          width: 'auto',
-          maxWidth: '30vw',
+          width: '30vw',
+          height: '100vh',
           objectFit: 'cover',
           objectPosition: 'center top',
           zIndex: 6,
@@ -125,16 +124,16 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Bitcoin hand — over Saylor left */}
+      {/* Bitcoin hand — large, left zone */}
       <img
         src="/bitcoin-hand.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          left: '20%',
-          bottom: '20%',
-          height: '28vh',
+          left: '18%',
+          bottom: '12%',
+          height: '52vh',
           zIndex: 10,
           ...blend,
           transform: `translate(${parallax.x * -18}px, ${parallax.y * 10}px)`,
@@ -145,17 +144,17 @@ export default function Home() {
 
       {/* ── RIGHT SIDE ── */}
 
-      {/* $100 bill — over Saylor right */}
+      {/* $100 bill — large, right zone */}
       <img
         src="/hundred-dollar.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          right: '20%',
-          top: '32%',
-          width: '16vw',
-          maxWidth: '260px',
+          right: '22%',
+          top: '22%',
+          width: '28vw',
+          maxWidth: '420px',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
@@ -165,16 +164,15 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Saylor colour (orange tie) — big, right edge, capped at 30vw so it doesn't hit center */}
+      {/* Saylor colour — right edge, explicit box so bottom aligns with B&W */}
       <img
         src="/saylor-colour.png"
         alt="Michael Saylor"
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           right: 0,
-          height: '95vh',
-          width: 'auto',
-          maxWidth: '30vw',
+          width: '30vw',
+          height: '100vh',
           objectFit: 'cover',
           objectPosition: 'center top',
           zIndex: 10,
