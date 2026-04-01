@@ -267,29 +267,53 @@ export default function PitchPage() {
       >
         {/* ═══ SLIDE 0: HERO ═══ */}
         <section className="h-screen w-screen flex items-center justify-center relative overflow-hidden px-6">
-          <img src="/saylor-bw.png" alt="" aria-hidden className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
-            style={{ left: '-4%', height: '85vh', zIndex: 5, ...blend, transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`, ...ease, opacity: 0.7 }}
+          {/* Saylor B&W — left edge, full height cover */}
+          <img src="/saylor-bw.png" alt="" aria-hidden className="absolute bottom-0 select-none pointer-events-none"
+            style={{
+              left: 0, bottom: '-8vh', width: '30vw', height: '100vh',
+              objectFit: 'cover', objectPosition: 'center top',
+              zIndex: 6,
+              transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
+              ...ease,
+            }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+
+          {/* Bitcoin hand — overlapping B&W Saylor */}
           <img src="/bitcoin-hand.png" alt="" aria-hidden className="absolute select-none pointer-events-none"
-            style={{ left: '10%', bottom: '20%', height: '28vh', zIndex: 8, ...blend, transform: `translate(${parallax.x * -18}px, ${parallax.y * 10}px)`, ...ease, opacity: 0.6 }}
+            style={{
+              left: '4vw', bottom: '15%', height: '52vh',
+              zIndex: 10, ...blend,
+              transform: `translate(${parallax.x * -18}px, ${parallax.y * 10}px)`,
+              ...ease,
+            }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+
+          {/* $100 bill — overlapping colour Saylor */}
           <img src="/hundred-dollar.png" alt="" aria-hidden className="absolute select-none pointer-events-none"
-            style={{ right: '3%', top: '25%', width: '22vw', maxWidth: '340px', zIndex: 5, ...blend, transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`, ...ease, opacity: 0.5, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.08))' }}
+            style={{
+              right: '14vw', top: '30%', width: '28.6vw', maxWidth: '442px',
+              zIndex: 3, ...blend,
+              transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
+              ...ease,
+              filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.10))',
+            }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          <img src="/saylor-colour.png" alt="" aria-hidden className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
-            style={{ right: '-4%', height: '85vh', zIndex: 8, ...blend, transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`, ...ease, opacity: 0.7 }}
+
+          {/* Saylor colour — right edge, full height cover */}
+          <img src="/saylor-colour.png" alt="" aria-hidden className="absolute bottom-0 select-none pointer-events-none"
+            style={{
+              right: 0, width: '30vw', height: '100vh',
+              objectFit: 'cover', objectPosition: 'center top',
+              zIndex: 14,
+              transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
+              ...ease,
+            }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
 
           <div className="relative flex flex-col items-center text-center max-w-[640px]" style={{ zIndex: 20 }}>
             <div className="flex items-center gap-2.5 mb-8">
               <SpreadsLogo size={24} />
               <span className="text-base font-semibold tracking-widest uppercase" style={{ color: '#0a0a0a' }}>Spreads</span>
-            </div>
-            <div className="mb-4">
-              <span className="inline-block text-[9px] font-mono font-semibold tracking-widest uppercase px-3 py-1.5 rounded-full border"
-                style={{ borderColor: '#16a34a40', color: '#16a34a', backgroundColor: 'rgba(22,163,74,0.06)' }}>
-                xStocks Hackathon 2025
-              </span>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] mb-5" style={{ color: '#0a0a0a' }}>
               <span style={{ color: '#e05c00' }}>Stretch</span> Your<br />STRC Yield
