@@ -249,11 +249,13 @@ function UnwindTab() {
   const [error, setError] = useState<string | null>(null);
 
   const position = positionData?.position;
-  const hasPosition = positionData?.hasPosition && position;
+  const collateralStrc_ = position ? parseFloat(formatBigInt(position.collateralStrc)) : 0;
+  const debtUsd_ = position ? parseFloat(formatBigInt(position.debtUsdc, 6, 2)) : 0;
+  const hasPosition = positionData?.hasPosition && position && (collateralStrc_ >= 0.001 || debtUsd_ >= 0.01);
 
-  const collateralStrc = hasPosition ? parseFloat(formatBigInt(position.collateralStrc)) : 0;
+  const collateralStrc = hasPosition ? collateralStrc_ : 0;
   const collateralUsd = collateralStrc * strcPrice;
-  const debtUsd = hasPosition ? parseFloat(formatBigInt(position.debtUsdc, 6, 2)) : 0;
+  const debtUsd = hasPosition ? debtUsd_ : 0;
   const equityUsd = collateralUsd - debtUsd;
   const currentLeverage = hasPosition ? position.effectiveLeverage : 0;
 
