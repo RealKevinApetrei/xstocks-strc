@@ -1200,8 +1200,8 @@ export default function PitchPage() {
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Closest To</p>
                   <div className="flex gap-2">
-                    {['🛒', '☕', '🎬'].map((icon, i) => (
-                      <div key={i} className="w-9 h-9 rounded-lg bg-white border flex items-center justify-center text-base" style={{ borderColor: '#e5e7eb' }}>{icon}</div>
+                    {['amazon.com', 'starbucks.com', 'netflix.com'].map((domain) => (
+                      <img key={domain} src={`https://logo.clearbit.com/${domain}`} alt={domain} className="w-9 h-9 rounded-lg bg-white border object-contain" style={{ borderColor: '#e5e7eb', padding: 2 }} />
                     ))}
                   </div>
                   <div className="rounded-md border px-4 py-1.5 text-xs font-medium uppercase tracking-widest" style={{ borderColor: '#e5e7eb', color: '#6b6866' }}>Redeem →</div>
@@ -1267,14 +1267,14 @@ export default function PitchPage() {
                     <span className="text-[10px] font-mono font-medium" style={{ color: '#16a34a' }}>$12.40 available</span>
                   </div>
                   {[
-                    { icon: '🛒', name: 'Amazon', min: 5, away: 0 },
-                    { icon: '☕', name: 'Starbucks', min: 10, away: 0 },
-                    { icon: '🎬', name: 'Netflix', min: 15, away: 2.60 },
-                    { icon: '✈️', name: 'Airbnb', min: 25, away: 12.60 },
+                    { logo: 'https://logo.clearbit.com/amazon.com', name: 'Amazon', min: 5, away: 0 },
+                    { logo: 'https://logo.clearbit.com/starbucks.com', name: 'Starbucks', min: 10, away: 0 },
+                    { logo: 'https://logo.clearbit.com/netflix.com', name: 'Netflix', min: 15, away: 2.60 },
+                    { logo: 'https://logo.clearbit.com/airbnb.com', name: 'Airbnb', min: 25, away: 12.60 },
                   ].map((p, i) => (
                     <div key={p.name} className={`flex items-center gap-3 px-4 py-3 relative ${i === 0 ? 'bg-secondary/30' : ''}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       {i === 0 && <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-r" style={{ backgroundColor: '#0a0a0a' }} />}
-                      <div className="w-8 h-8 rounded-lg border flex items-center justify-center text-base shrink-0" style={{ borderColor: '#e5e7eb', backgroundColor: '#fafafa' }}>{p.icon}</div>
+                      <img src={p.logo} alt={p.name} className="w-8 h-8 rounded-lg border object-contain shrink-0" style={{ borderColor: '#e5e7eb', backgroundColor: '#fafafa', padding: 2 }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium" style={{ color: '#0a0a0a' }}>{p.name}</p>
                         <p className="text-[9px] font-mono" style={{ color: '#6b6866' }}>from ${p.min}</p>
