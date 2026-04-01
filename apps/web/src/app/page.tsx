@@ -131,7 +131,7 @@ export default function Home() {
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          left: '23vw',
+          left: '6vw',
           bottom: '15%',
           height: '52vh',
           zIndex: 10,
