@@ -177,16 +177,34 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
+      {/* ── LARGE ANIMATED SPREADS WATERMARK ── */}
+      <div
+        className="absolute select-none pointer-events-none"
+        style={{
+          zIndex: 12,
+          left: '50%',
+          top: '50%',
+          transform: `translate(-50%, -50%) translate(${parallax.x * -6}px, ${parallax.y * -4}px)`,
+          ...ease,
+          opacity: 0.04,
+        }}
+      >
+        <svg width="480" height="590" viewBox="415 379 250 322" xmlns="http://www.w3.org/2000/svg">
+          <polygon className="spreads-spinner-top" fill="#1a3520" points="416.8 476.1 525.8 476.4 602 379.7 663.9 380.4 664.2 380.7 662.9 484.1 537.5 484 473 581.2 415.8 580.8 416.8 476.1"/>
+          <polygon className="spreads-spinner-bottom" fill="#1a3520" points="416.8 605.1 525.8 605.4 591.9 508.8 664.2 508.8 662.9 610.4 537.5 613 483 700.3 415.8 699.9 416.8 605.1"/>
+        </svg>
+      </div>
+
       {/* ── CENTRAL CONTENT ── */}
       <div className="relative flex flex-col items-center text-center px-6 max-w-[480px]" style={{ zIndex: 20 }}>
 
         {/* Spreads logo */}
-        <div className="flex items-center gap-2 mb-8">
-          <svg width="18" height="22" viewBox="415 379 250 322" xmlns="http://www.w3.org/2000/svg">
-            <polygon fill="#1a3520" points="416.8 476.1 525.8 476.4 602 379.7 663.9 380.4 664.2 380.7 662.9 484.1 537.5 484 473 581.2 415.8 580.8 416.8 476.1"/>
-            <polygon fill="#1a3520" points="416.8 605.1 525.8 605.4 591.9 508.8 664.2 508.8 662.9 610.4 537.5 613 483 700.3 415.8 699.9 416.8 605.1"/>
+        <div className="flex items-center gap-2.5 mb-8">
+          <svg width="22" height="27" viewBox="415 379 250 322" xmlns="http://www.w3.org/2000/svg">
+            <polygon className="spreads-spinner-top" fill="#1a3520" points="416.8 476.1 525.8 476.4 602 379.7 663.9 380.4 664.2 380.7 662.9 484.1 537.5 484 473 581.2 415.8 580.8 416.8 476.1"/>
+            <polygon className="spreads-spinner-bottom" fill="#1a3520" points="416.8 605.1 525.8 605.4 591.9 508.8 664.2 508.8 662.9 610.4 537.5 613 483 700.3 415.8 699.9 416.8 605.1"/>
           </svg>
-          <span className="text-sm font-semibold tracking-widest uppercase">Spreads</span>
+          <span className="text-base font-semibold tracking-widest uppercase">Spreads</span>
         </div>
 
         <AprCounter />
