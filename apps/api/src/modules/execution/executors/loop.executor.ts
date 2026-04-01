@@ -16,9 +16,19 @@ export class LoopExecutor {
 
   /** Track active loops in memory for state awareness */
   private activeLoops = new Map<string, { privyId: string; targetLeverage: number }>();
+  /** Loops marked for cancellation — checked between iterations */
+  private cancelledLoops = new Set<string>();
 
   isActive(loopId: string): boolean {
     return this.activeLoops.has(loopId);
+  }
+
+  /** Request cancellation of an active loop. Takes effect between iterations. */
+  requestCancel(loopId: string): boolean {
+    if (!this.activeLoops.has(loopId)) return false;
+    this.cancelledLoops.add(loopId);
+    console.log(`[LOOP ${loopId}] Cancellation requested — will stop after current step`);
+    return true;
   }
 
   /**
@@ -75,7 +85,7 @@ export class LoopExecutor {
         query(`UPDATE loop_executions SET status = 'FAILED', error = $2 WHERE id = $1`, [loop.id, msg.slice(0, 500)])
           .catch((dbErr) => console.error(`[LOOP ${loop.id}] DB update also failed:`, dbErr));
       })
-      .finally(() => this.activeLoops.delete(loop.id));
+      .finally(() => { this.activeLoops.delete(loop.id); this.cancelledLoops.delete(loop.id); });
 
     return loop.id;
   }
@@ -117,6 +127,19 @@ export class LoopExecutor {
 
     // Loop: wrap+supply STRC → check leverage → borrow+swap → repeat
     for (let iteration = 1; iteration <= config.maxLoopIterations; iteration++) {
+      // ── Check for cancellation ──
+      if (this.cancelledLoops.has(loopId)) {
+        this.cancelledLoops.delete(loopId);
+        const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
+        await query(
+          `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
+           effective_leverage = $4, error = 'Cancelled by user' WHERE id = $1`,
+          [loopId, iteration - 1, posAfter.healthFactor, borrowExecutor.calculateLeverage(posAfter.healthFactor)],
+        );
+        console.log(`[LOOP ${loopId}] Cancelled by user at iteration ${iteration}`);
+        return;
+      }
+
       // ── Phase 1: Wrap + Supply STRC into Morpho ──
       await this.updateStage(loopId, `Iteration ${iteration}: wrapping and supplying STRC...`);
       let supplySuccess = await this.wrapAndSupply(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);

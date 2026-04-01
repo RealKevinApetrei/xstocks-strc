@@ -200,6 +200,39 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
   });
 });
 
+// POST /api/execution/loop/:id/cancel — Cancel an active loop
+executionRouter.post('/loop/:id/cancel', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const id = req.params.id as string;
+
+  // Verify ownership
+  const { rows: [loop] } = await query(
+    `SELECT id, status FROM loop_executions WHERE id = $1 AND privy_id = $2`,
+    [id, privyId],
+  );
+  if (!loop) {
+    res.status(404).json({ error: 'Loop not found' });
+    return;
+  }
+  if (loop.status !== 'IN_PROGRESS' && loop.status !== 'PENDING') {
+    res.status(400).json({ error: `Loop is already ${loop.status}` });
+    return;
+  }
+
+  // If actively running in memory, request graceful cancellation
+  if (loopExecutor.requestCancel(id)) {
+    res.json({ success: true, message: 'Cancellation requested — loop will stop after current step' });
+    return;
+  }
+
+  // Not in memory (e.g. PENDING or server restarted) — mark directly
+  await query(
+    `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', error = 'Cancelled by user' WHERE id = $1`,
+    [id],
+  );
+  res.json({ success: true, message: 'Loop cancelled' });
+});
+
 // GET /api/execution/loop/:id/status — Loop progress
 executionRouter.get('/loop/:id/status', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
