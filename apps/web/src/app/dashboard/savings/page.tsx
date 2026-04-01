@@ -53,17 +53,13 @@ export default function SavingsPage() {
     );
   }
 
-  const hasHoldings = strcBalance > 0 || tbillBalance > 0;
-
   return (
     <div className="space-y-4">
       <ReadyToSpendHero rewards={DEMO_REWARDS} products={products} />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
         <div className="space-y-4">
           <DepositSection usdcBalance={usdcBalance} onDeposited={refreshAll} />
-          {hasHoldings && (
-            <HoldingsCard strcBalance={strcBalance} tbillBalance={tbillBalance} onWithdrawn={refreshAll} />
-          )}
+          <HoldingsCard strcBalance={strcBalance} tbillBalance={tbillBalance} onWithdrawn={refreshAll} />
         </div>
         <GiftCardsPanel rewards={DEMO_REWARDS} products={products} onRedeemed={refreshAll} />
       </div>
@@ -295,7 +291,7 @@ function HoldingsCard({ strcBalance, tbillBalance, onWithdrawn }: { strcBalance:
         <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">Your Holdings</p>
         <button
           onClick={withdraw}
-          disabled={withdrawing}
+          disabled={withdrawing || (strcBalance === 0 && tbillBalance === 0)}
           className="text-[10px] font-medium uppercase tracking-wider border border-border rounded px-2.5 py-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           {withdrawing ? 'Withdrawing...' : 'Withdraw All'}
