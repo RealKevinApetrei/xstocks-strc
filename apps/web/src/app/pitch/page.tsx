@@ -1417,29 +1417,20 @@ export default function PitchPage() {
                   </div>
                 </div>
 
-                <div className="p-6 relative" style={{ minHeight: 280 }}>
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 px-6" style={{ backdropFilter: 'blur(5px)', backgroundColor: 'rgba(255,255,255,0.5)' }}>
-                    <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ border: '1px solid rgba(245,158,11,0.3)', backgroundColor: 'rgba(245,158,11,0.1)' }}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    </div>
-                    <div className="text-sm font-bold" style={{ color: '#0a0a0a' }}>Coming soon</div>
+                <div className="p-6">
+                  <div className="flex justify-between text-sm mb-5">
+                    <span style={{ color: '#6b6866' }}>Protected notional</span>
+                    <span className="font-mono font-bold" style={{ color: '#0a0a0a' }}>$4,200.00</span>
                   </div>
-
-                  <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
-                    <div className="flex justify-between text-sm mb-5">
-                      <span style={{ color: '#6b6866' }}>Protected notional</span>
-                      <span className="font-mono font-bold" style={{ color: '#0a0a0a' }}>$4,200.00</span>
-                    </div>
-                    <div className="rounded-md border p-4 space-y-3 text-sm" style={{ borderColor: '#e5e7eb' }}>
-                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Strategy</span><span className="font-mono font-semibold">OTM Put Spreads</span></div>
-                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Strike</span><span className="font-mono">10-15% OTM</span></div>
-                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Expiry</span><span className="font-mono">Monthly rolling</span></div>
-                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Protection</span><span className="font-mono font-bold" style={{ color: '#16a34a' }}>Up to 25%</span></div>
-                    </div>
-                    <div className="flex gap-3 mt-4">
-                      <div className="flex-1 rounded-md py-2.5 text-sm font-semibold text-center" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Deposit</div>
-                      <div className="flex-1 rounded-md py-2.5 text-sm font-semibold text-center border" style={{ borderColor: '#e5e7eb', color: '#6b6866' }}>Withdraw</div>
-                    </div>
+                  <div className="rounded-md border p-4 space-y-3 text-sm" style={{ borderColor: '#e5e7eb' }}>
+                    <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Strategy</span><span className="font-mono font-semibold">OTM Put Spreads</span></div>
+                    <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Strike</span><span className="font-mono">10-15% OTM</span></div>
+                    <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Expiry</span><span className="font-mono">Monthly rolling</span></div>
+                    <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Protection</span><span className="font-mono font-bold" style={{ color: '#16a34a' }}>Up to 25%</span></div>
+                  </div>
+                  <div className="flex gap-3 mt-4">
+                    <div className="flex-1 rounded-md py-2.5 text-sm font-semibold text-center" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Deposit</div>
+                    <div className="flex-1 rounded-md py-2.5 text-sm font-semibold text-center border" style={{ borderColor: '#e5e7eb', color: '#6b6866' }}>Withdraw</div>
                   </div>
                 </div>
               </div>
