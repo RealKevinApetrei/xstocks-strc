@@ -168,17 +168,14 @@ export class GridExecutor {
     );
 
     try {
-      // 1. Withdraw USDC from Tydro/Aave
+      // 1. Withdraw + approve for CoW in one tx
       const withdrawCalls = vaultService.buildWithdrawCalls(buyAmount, smartAccountAddr);
-      const withdrawHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, withdrawCalls);
-      await smartAccountService.waitForReceipt(withdrawHash);
-
-      // 2. Approve USDC for CoW VaultRelayer
       const approveCowCalls = approvalExecutor.buildApproveCalls({
         token: config.usdc, spender: config.cowVaultRelayer, amount: buyAmount,
       });
-      const approveHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, approveCowCalls);
-      await smartAccountService.waitForReceipt(approveHash);
+      await smartAccountService.waitForReceipt(
+        await smartAccountService.sendBatchUserOp(strategy.privy_id, [...withdrawCalls, ...approveCowCalls]),
+      );
 
       // 3. Get CoW quote and create presign order
       const quote = await cowSwapService.getQuote({

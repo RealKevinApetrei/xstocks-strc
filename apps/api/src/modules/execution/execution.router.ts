@@ -60,42 +60,46 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
     const provider = getProvider();
 
-    // Check for wSTRC and unwrap it first
+    // Check for wSTRC — unwrap + approve for CoW in one tx
     const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
     const wstrcBalance: bigint = await wstrc.balanceOf(smartAccountAddr);
-    if (wstrcBalance > 0n) {
-      console.log(`[CLOSE-STRC] Unwrapping ${Number(wstrcBalance) / 1e18} wSTRC first`);
-      const wstrcIface = new ethers.Interface(['function unwrap(uint256 amount)']);
-      const unwrapHash = await smartAccountService.sendBatchUserOp(privyId, [
-        { to: config.wstrc, data: wstrcIface.encodeFunctionData('unwrap', [wstrcBalance]) },
-      ]);
-      await smartAccountService.waitForReceipt(unwrapHash);
-    }
-
-    // Now check total STRC balance (original + freshly unwrapped)
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const strcBalance: bigint = await strc.balanceOf(smartAccountAddr);
+    const existingStrc: bigint = await strc.balanceOf(smartAccountAddr);
 
-    if (strcBalance <= 0n) {
+    if (wstrcBalance <= 0n && existingStrc <= 0n) {
       res.status(400).json({ error: 'No STRC or wSTRC balance to close' });
       return;
     }
 
-    // CoW requires minimum ~$10 per swap for solvers to pick up
-    const strcValueUsd = Number(strcBalance) / 1e18 * 100; // rough estimate at $100/STRC
+    // Unwrap + approve in one batch (use max uint256 approval to avoid needing exact amount)
+    const maxApproval = 2n ** 256n - 1n;
+    const batchCalls: { to: string; data: string }[] = [];
+    if (wstrcBalance > 0n) {
+      console.log(`[CLOSE-STRC] Unwrapping ${Number(wstrcBalance) / 1e18} wSTRC`);
+      const wstrcIface = new ethers.Interface(['function unwrap(uint256 amount)']);
+      batchCalls.push({ to: config.wstrc, data: wstrcIface.encodeFunctionData('unwrap', [wstrcBalance]) });
+    }
+    batchCalls.push(...approvalExecutor.buildApproveCalls({
+      token: config.strc, spender: config.cowVaultRelayer, amount: maxApproval,
+    }));
+    await smartAccountService.waitForReceipt(
+      await smartAccountService.sendBatchUserOp(privyId, batchCalls),
+    );
+
+    // Read actual STRC balance after unwrap
+    const strcBalance: bigint = await strc.balanceOf(smartAccountAddr);
+    if (strcBalance <= 0n) {
+      res.status(400).json({ error: 'No STRC balance after unwrap' });
+      return;
+    }
+
+    const strcValueUsd = Number(strcBalance) / 1e18 * 100;
     if (strcValueUsd < 10) {
       res.status(400).json({ error: `STRC balance too small to swap (~$${strcValueUsd.toFixed(2)}). CoW Protocol requires at least ~$10 per trade.` });
       return;
     }
 
     console.log(`[CLOSE-STRC] Closing ${Number(strcBalance) / 1e18} STRC (~$${strcValueUsd.toFixed(2)}) for ${smartAccountAddr}`);
-
-    // 1. Approve STRC for CoW VaultRelayer
-    const approveCalls = approvalExecutor.buildApproveCalls({
-      token: config.strc, spender: config.cowVaultRelayer, amount: strcBalance,
-    });
-    const approveHash = await smartAccountService.sendBatchUserOp(privyId, approveCalls);
-    await smartAccountService.waitForReceipt(approveHash);
 
     // 2. Get CoW quote STRC → USDC
     const quote = await cowSwapService.getQuote({
