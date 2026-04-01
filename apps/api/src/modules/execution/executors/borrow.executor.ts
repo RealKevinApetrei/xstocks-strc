@@ -32,9 +32,10 @@ const ORACLE_PRICE_SCALE = 10n ** 36n;
 export class BorrowExecutor {
   private iface = new ethers.Interface(MorphoABI);
 
-  /** LLTV from config (86% = 0.86e18) */
+  /** LLTV from config — supports both decimal (0.86) and wei (860000000000000000) */
   private get lltv(): bigint {
-    return BigInt(config.morphoLltv);
+    const raw = config.morphoLltv;
+    return raw.includes('.') ? BigInt(Math.floor(parseFloat(raw) * 1e18)) : BigInt(raw);
   }
 
   /** Market params tuple for Morpho calldata encoding */
