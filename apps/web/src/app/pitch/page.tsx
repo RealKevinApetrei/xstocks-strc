@@ -823,8 +823,16 @@ export default function PitchPage() {
         </section>
 
         {/* ═══ SLIDE 1: WHAT IS STRC ═══ */}
-        <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-3xl w-full" style={{ opacity: isActive(1) ? 1 : 0, transform: isActive(1) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+        <section className="h-screen w-screen flex items-center justify-center px-6 relative overflow-hidden">
+          <img src="/saylor-colour.png" alt="" aria-hidden className="absolute bottom-0 select-none pointer-events-none"
+            style={{
+              right: 0, bottom: -104, width: '30vw', height: '100vh',
+              objectFit: 'cover', objectPosition: 'center top',
+              zIndex: 1, opacity: 0.5,
+              mixBlendMode: 'multiply',
+            }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <div className="relative max-w-3xl w-full" style={{ zIndex: 10, opacity: isActive(1) ? 1 : 0, transform: isActive(1) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
               What is <span style={{ color: '#e05c00' }}>STRC</span>?
             </h2>
