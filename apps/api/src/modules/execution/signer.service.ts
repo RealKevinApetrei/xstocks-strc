@@ -81,7 +81,7 @@ export class SignerService {
     } as any);
 
     const data = result.data as any;
-    const hash = data.hash ?? data.transaction_hash;
+    const hash = data.hash || data.transaction_hash || data.user_operation_hash;
     if (!hash) throw new Error(`Privy sendTransaction returned no hash: ${JSON.stringify(data)}`);
     return hash;
   }
