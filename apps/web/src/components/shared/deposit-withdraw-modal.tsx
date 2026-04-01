@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { usePrivy, useSendTransaction, useWallets } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { SwapWidget } from '@relayprotocol/relay-kit-ui';
 import { adaptViemWallet } from '@relayprotocol/relay-sdk';
 import { createWalletClient, custom } from 'viem';
+import { useSendTransaction as useWagmiSendTransaction } from 'wagmi';
 import { cn } from '@/lib/utils';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
@@ -51,8 +52,8 @@ export function DepositWithdrawModal({
   onClose: () => void;
 }) {
   const { getAccessToken, user } = usePrivy();
-  const { sendTransaction } = useSendTransaction();
   const { wallets } = useWallets();
+  const { sendTransactionAsync } = useWagmiSendTransaction();
   const { address: smartWalletAddress } = useSmartWallet();
 
   // Deposits go to smart wallet (where loop executor operates)
@@ -108,7 +109,7 @@ export function DepositWithdrawModal({
 
   const resetStatus = () => { setError(null); setSuccess(null); };
 
-  // Deposit: transfer USDC from embedded wallet → smart wallet on Ink
+  // Deposit: transfer USDC from connected wallet (MetaMask) → smart wallet on Ink
   const handleInkDeposit = async () => {
     if (!amount || amountNum <= 0 || isSubmitting || !depositAddress) return;
     setIsSubmitting(true);
@@ -118,14 +119,11 @@ export function DepositWithdrawModal({
       const amountRaw = BigInt(Math.round(amountNum * 1e6));
       const data = encodeTransfer(depositAddress, amountRaw);
 
-      await sendTransaction(
-        {
-          to: USDC_ADDRESS as `0x${string}`,
-          data: data as `0x${string}`,
-          chainId: 57073,
-        },
-        { sponsor: true },
-      );
+      await sendTransactionAsync({
+        to: USDC_ADDRESS as `0x${string}`,
+        data: data as `0x${string}`,
+        chainId: 57073,
+      });
 
       setSuccess(`Deposited $${amountNum.toFixed(2)} USDC`);
       setAmount('');
@@ -306,46 +304,36 @@ export function DepositWithdrawModal({
             {mode === 'deposit' ? (
               <>
                 <p className="text-xs text-muted-foreground">
-                  Send USDC from your wallet (MetaMask, etc.) directly to your trading account on Ink.
+                  Transfer USDC from your connected wallet (MetaMask, etc.) directly to your trading account on Ink.
                 </p>
 
-                {/* Smart wallet address to send to */}
-                <div
-                  className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-2.5 cursor-pointer hover:border-foreground/20 transition-colors"
-                  onClick={handleCopy}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                    placeholder="0.00"
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="flex items-center text-xs text-muted-foreground px-1">USDC</span>
+                </div>
+
+                <div className="text-[10px] text-muted-foreground flex justify-between">
+                  <span>To: {depositAddress ? `${depositAddress.slice(0, 6)}...${depositAddress.slice(-4)}` : '...'}</span>
+                  <span>Network: Ink</span>
+                </div>
+
+                <button
+                  onClick={handleInkDeposit}
+                  disabled={amountNum <= 0 || isSubmitting || !depositAddress}
+                  className="w-full rounded-md bg-primary py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <span className="text-xs font-mono text-muted-foreground flex-1 truncate">
-                    {depositAddress || 'Loading...'}
-                  </span>
-                  <button className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                    {copied ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-success"><path d="M20 6 9 17l-5-5"/></svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                    )}
-                  </button>
-                </div>
+                  {isSubmitting ? 'Processing...' : `DEPOSIT $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
+                </button>
 
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Network</span>
-                    <span className="font-medium">Ink</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Token</span>
-                    <span className="font-medium">USDC</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Current balance</span>
-                    <span className="font-mono">{platformBalance.toFixed(2)} USDC</span>
-                  </div>
-                </div>
-
-                <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
-                  <p className="text-xs text-warning">
-                    Only send <span className="font-semibold">USDC</span> on <span className="font-semibold">Ink</span>. Other tokens or networks will be lost. Copy the address above and send from your wallet.
-                  </p>
-                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Make sure your wallet is connected to Ink and has USDC. The transfer is signed by your connected wallet.
+                </p>
               </>
             ) : (
               <>
