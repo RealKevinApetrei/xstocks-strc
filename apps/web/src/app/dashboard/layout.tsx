@@ -4,12 +4,10 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Nav } from '@/components/shared/nav';
-import { useEnsureSigner } from '@/hooks/use-ensure-signer';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { ready, authenticated } = usePrivy();
   const router = useRouter();
-  useEnsureSigner();
 
   useEffect(() => {
     if (ready && !authenticated) {
