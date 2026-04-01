@@ -216,6 +216,17 @@ export class LoopExecutor {
     await this.updateStage(loopId, 'Waiting for USDC approval confirmation...');
     await smartAccountService.waitForReceipt(approveHash);
 
+    // Verify approval landed on-chain before proceeding
+    await this.updateStage(loopId, 'Verifying approval on-chain...');
+    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const usdc = new ethers.Contract(config.usdc, ['function allowance(address,address) view returns (uint256)'], provider);
+    for (let i = 0; i < 10; i++) {
+      const allowance: bigint = await usdc.allowance(smartAccountAddr, config.cowVaultRelayer);
+      if (allowance >= usdcAmount) break;
+      if (i === 9) throw new Error('USDC approval not confirmed on-chain after 30s');
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
     // CoW swap USDC → STRC
     await this.updateStage(loopId, 'Getting CoW swap quote...');
     const quote = await cowSwapService.getQuote({
