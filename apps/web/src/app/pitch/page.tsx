@@ -860,8 +860,11 @@ export default function PitchPage() {
               An <span style={{ color: '#16a34a' }}>ecosystem</span> of products<br />enriching what you can do with STRC.
             </h2>
             <div className="grid grid-cols-3 gap-3 mt-10">
-              <div className="rounded-md border bg-white px-5 py-6 text-center" style={{ borderColor: '#e5e7eb' }}>
+              <div className="rounded-md border bg-white px-5 py-4 text-center" style={{ borderColor: '#e5e7eb' }}>
                 <div className="text-sm font-mono font-semibold tracking-widest uppercase" style={{ color: '#e05c00' }}>Leverage</div>
+                <div className="text-2xl font-mono font-bold mt-1" style={{ color: '#16a34a' }}>
+                  <AnimatedCounter target={46} suffix="%" active={isActive(2)} /> <span className="text-xs font-normal" style={{ color: '#6b6866' }}>APY</span>
+                </div>
               </div>
               <div className="rounded-md border bg-white px-5 py-6 text-center" style={{ borderColor: '#e5e7eb' }}>
                 <div className="text-sm font-mono font-semibold tracking-widest uppercase" style={{ color: '#2d2d2d' }}>Trading</div>
