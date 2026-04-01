@@ -57,34 +57,22 @@ export class SmartAccountService {
 
     const wallet = await signerService.getWalletForUser(privyId);
 
-    if (calls.length === 1) {
-      // Single call — send directly
-      return signerService.sendTransaction(wallet.walletId, {
-        to: calls[0].to,
-        data: calls[0].data,
-        value: calls[0].value?.toString(),
+    // Privy wraps each eth_sendTransaction in execute() — no native batch support.
+    // executeBatch via self-call fails (Kernel rejects nested execute→executeBatch).
+    // Send calls sequentially with a short delay for on-chain propagation.
+    let lastHash = '';
+    for (let i = 0; i < calls.length; i++) {
+      lastHash = await signerService.sendTransaction(wallet.walletId, {
+        to: calls[i].to,
+        data: calls[i].data,
+        value: calls[i].value?.toString(),
         chainId: config.chainId,
       });
+      if (i < calls.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
     }
-
-    // Multiple calls — encode as executeBatch on the Kernel smart wallet.
-    // Privy wraps this as a UserOp: smartWallet.execute(smartWallet, 0, executeBatchData)
-    // which triggers smartWallet.executeBatch(calls) — all calls in a single tx.
-    const smartAccountAddr = await this.getSmartAccountAddress(privyId);
-    const batchData = KERNEL_ABI.encodeFunctionData('executeBatch', [
-      calls.map(c => ({
-        to: c.to,
-        value: c.value ?? 0n,
-        data: c.data,
-      })),
-    ]);
-
-    console.log(`[BATCH] Sending ${calls.length} calls as executeBatch to ${smartAccountAddr.slice(0, 10)}...`);
-    return signerService.sendTransaction(wallet.walletId, {
-      to: smartAccountAddr,
-      data: batchData,
-      chainId: config.chainId,
-    });
+    return lastHash;
   }
 
   async waitForReceipt(txHash: string): Promise<{ txHash: string; success: boolean }> {
