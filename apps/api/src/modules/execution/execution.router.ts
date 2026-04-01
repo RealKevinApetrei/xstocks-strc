@@ -154,6 +154,14 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
   const { loopExecutionId } = req.body as StartUnwindRequest;
   const targetLeverage = (req.body as any).targetLeverage ?? 0;
 
+  // Clear stale IN_PROGRESS unwinds that may be stuck from server restarts
+  await query(
+    `UPDATE unwind_executions SET status = 'FAILED', error = 'Server restarted — marked stale'
+     WHERE privy_id = $1 AND status = 'IN_PROGRESS'
+     AND updated_at < NOW() - INTERVAL '5 minutes'`,
+    [privyId],
+  );
+
   try {
     await policyService.validateUnwind({ privyId, targetLeverage });
   } catch (err) {
