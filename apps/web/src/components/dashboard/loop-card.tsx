@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd, formatBigInt } from '@/lib/utils';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
@@ -169,6 +169,65 @@ function LoopTab() {
   );
 }
 
+// ── Unwind progress poller ────────────────────────────────────────────────────
+// Since there's no /unwind/:id/status endpoint, we poll the on-chain position
+// until debt reaches zero (full unwind) or leverage drops to target.
+
+function UnwindProgress({ onDone }: { onDone: () => void }) {
+  const { data: positionData, refetch } = usePosition();
+
+  useEffect(() => {
+    const interval = setInterval(refetch, 5_000);
+    return () => clearInterval(interval);
+  }, [refetch]);
+
+  const isDone = !positionData?.hasPosition;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <span className={cn(
+          'text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border',
+          isDone ? 'border-success/50 text-success' : 'border-primary/50 text-primary',
+        )}>
+          {isDone ? 'COMPLETED' : 'IN PROGRESS'}
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {(['Repaying USDC debt', 'Unwrapping wSTRC → STRCx', 'Withdrawing collateral'] as const).map((step, i) => (
+          <div key={step} className="flex items-center gap-3 text-xs">
+            <div className={cn(
+              'h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-mono font-bold shrink-0',
+              isDone
+                ? 'border-success bg-success/10 text-success'
+                : 'border-primary bg-primary/10 text-primary animate-pulse',
+            )}>
+              {isDone ? '✓' : i + 1}
+            </div>
+            <span className="text-muted-foreground">{step}</span>
+          </div>
+        ))}
+      </div>
+
+      {!isDone && (
+        <p className="text-[10px] text-muted-foreground text-center animate-pulse">
+          Checking position every 5s...
+        </p>
+      )}
+
+      {isDone && (
+        <button
+          onClick={onDone}
+          className="w-full rounded-md bg-secondary py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
+        >
+          Done
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Unwind tab ─────────────────────────────────────────────────────────────────
 
 function UnwindTab() {
@@ -177,7 +236,7 @@ function UnwindTab() {
   const { price: strcPrice } = useStrcxPrice();
   const [targetLeverage, setTargetLeverage] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeLoopId, setActiveLoopId] = useState<string | null>(null);
+  const [unwindStarted, setUnwindStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const position = positionData?.position;
@@ -194,17 +253,28 @@ function UnwindTab() {
   );
 
   const handleUnwind = async () => {
-    if (!positionData?.activeLoop?.id) return;
     setIsSubmitting(true);
     setError(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      const result = await api.startUnwind(token, {
-        loopExecutionId: positionData.activeLoop.id,
+
+      // activeLoop is only set for PENDING/IN_PROGRESS loops.
+      // Fall back to the most recent loop from history so completed
+      // loops (which still hold an open Morpho position) can also unwind.
+      let loopExecutionId = positionData?.activeLoop?.id;
+      if (!loopExecutionId) {
+        const history = await api.getLoopHistory(token, 1, 0);
+        loopExecutionId = history.loops[0]?.id;
+      }
+      if (!loopExecutionId) throw new Error('No loop found to unwind');
+
+      await api.startUnwind(token, {
+        loopExecutionId,
         ...(targetLeverage > 0 ? { targetLeverage } : {}),
       } as any);
-      setActiveLoopId(result.loopExecutionId);
+
+      setUnwindStarted(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to start unwind');
     } finally {
@@ -212,8 +282,8 @@ function UnwindTab() {
     }
   };
 
-  if (activeLoopId) {
-    return <LoopStatus loopId={activeLoopId} onClose={() => setActiveLoopId(null)} />;
+  if (unwindStarted) {
+    return <UnwindProgress onDone={() => setUnwindStarted(false)} />;
   }
 
   if (!hasPosition) {
