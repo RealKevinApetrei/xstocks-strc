@@ -157,7 +157,7 @@ export class LoopExecutor {
 
       // ── Phase 3: Borrow + Swap USDC → STRC ──
       await this.updateStage(loopId, `Iteration ${iteration}: borrowing and swapping...`);
-      const borrowResult = await this.borrowAndSwap(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+      const borrowResult = await this.borrowAndSwap(loopId, privyId, smartAccountAddr, iteration, usdcAmount, targetLeverage);
 
       if (!borrowResult.success || borrowResult.strcReceived <= STRC_DUST) {
         const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
@@ -420,18 +420,26 @@ export class LoopExecutor {
   }
 
   /** Phase 2: Borrow USDC and swap to STRC via CoW */
-  private async borrowAndSwap(loopId: string, privyId: string, smartAccountAddr: string, iteration: number, strcAmount: bigint): Promise<{ success: boolean; strcReceived: bigint }> {
+  private async borrowAndSwap(loopId: string, privyId: string, smartAccountAddr: string, iteration: number, originalDepositUsdc: bigint, targetLeverage: number): Promise<{ success: boolean; strcReceived: bigint }> {
     try {
-      const provider = getProvider();
-      const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
-      const wstrcAmount: bigint = await wstrcContract.strcToWstrc(strcAmount);
-
       const currentPosition = await borrowExecutor.getPosition(smartAccountAddr);
-      const maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
-        0n, currentPosition, config.loopTargetHF, // 0n because we already supplied
+      let maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
+        0n, currentPosition, config.loopTargetHF,
       );
 
-      console.log(`[LOOP ${loopId}] Borrow+swap ${iteration}: borrowing ${Number(maxBorrowUsdc) / 1e6} USDC`);
+      // Cap borrow to reach exact target leverage
+      // Target debt = originalDeposit * (targetLeverage - 1)
+      // e.g. $40 deposit at 2x → target debt = $40
+      const targetDebtUsdc = BigInt(Math.floor(Number(originalDepositUsdc) * (targetLeverage - 1)));
+      const currentDebtUsdc = currentPosition.borrowed;
+      const remainingDebtNeeded = targetDebtUsdc > currentDebtUsdc ? targetDebtUsdc - currentDebtUsdc : 0n;
+
+      if (remainingDebtNeeded > 0n && remainingDebtNeeded < maxBorrowUsdc) {
+        console.log(`[LOOP ${loopId}] Capping borrow: max=${Number(maxBorrowUsdc) / 1e6}, need=${Number(remainingDebtNeeded) / 1e6} to reach ${targetLeverage}x`);
+        maxBorrowUsdc = remainingDebtNeeded;
+      }
+
+      console.log(`[LOOP ${loopId}] Borrow+swap ${iteration}: borrowing ${Number(maxBorrowUsdc) / 1e6} USDC (current debt: ${Number(currentDebtUsdc) / 1e6}, target: ${Number(targetDebtUsdc) / 1e6})`);
 
       if (maxBorrowUsdc === 0n) return { success: false, strcReceived: 0n };
 
