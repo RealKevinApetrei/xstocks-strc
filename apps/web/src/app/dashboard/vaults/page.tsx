@@ -2,6 +2,7 @@
 
 import { OrangeDotVault } from '@/components/vaults/orange-dot-vault';
 import { LendUsdcVault } from '@/components/vaults/lend-usdc-vault';
+import { BtcHedgeVault } from '@/components/vaults/btc-hedge-vault';
 
 export default function StrategyVaults() {
   return (
@@ -16,6 +17,7 @@ export default function StrategyVaults() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         <OrangeDotVault />
         <LendUsdcVault />
+        <BtcHedgeVault />
       </div>
     </div>
   );
