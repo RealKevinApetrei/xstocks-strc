@@ -85,35 +85,31 @@ export class SmartAccountService {
 
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
 
-    // Try regular tx lookup first with generous timeout
-    try {
-      const receipt = await provider.waitForTransaction(txHash, 1, 60_000);
-      if (receipt) {
-        if (receipt.status !== 1) {
-          console.error(`[TX] Reverted: ${txHash} (status=${receipt.status})`);
-        }
-        return { txHash, success: receipt.status === 1 };
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      if (!msg.includes('timeout')) throw err;
-      // Timeout — likely a UserOp hash not findable via regular tx lookup
-    }
-
-    // For UserOp hashes: poll eth_getUserOperationReceipt via bundler
-    console.log(`[TX] ${txHash.slice(0, 10)}... not found as regular tx — polling as UserOp`);
-    for (let attempt = 0; attempt < 12; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 5_000));
+    // Smart wallets return UserOp hashes — poll immediately, don't waste time on regular tx lookup
+    console.log(`[TX] Polling UserOp ${txHash.slice(0, 10)}...`);
+    for (let attempt = 0; attempt < 24; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 2_500));
       try {
+        // Try UserOp receipt first (fast path for smart wallets)
         const result = await provider.send('eth_getUserOperationReceipt', [txHash]);
         if (result?.receipt) {
           const success = result.receipt.status === '0x1' || result.success === true;
-          console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed, success=${success}`);
+          console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed in ${((attempt + 1) * 2.5).toFixed(0)}s, success=${success}`);
           return { txHash, success };
         }
       } catch {
-        // Bundler RPC might not be available on this endpoint
-        break;
+        // Bundler RPC not available — fall back to regular tx lookup
+        try {
+          const receipt = await provider.getTransactionReceipt(txHash);
+          if (receipt) {
+            if (receipt.status !== 1) {
+              console.error(`[TX] Reverted: ${txHash} (status=${receipt.status})`);
+            }
+            return { txHash, success: receipt.status === 1 };
+          }
+        } catch {
+          // Neither worked — keep polling
+        }
       }
     }
 
