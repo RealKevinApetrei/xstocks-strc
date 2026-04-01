@@ -154,7 +154,7 @@ export class LoopExecutor {
       }
 
       // Execute iteration (with auto-retry once on failure)
-      let result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+      let result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount, targetLeverage);
 
       if (!result.success) {
         // Retry once with fresh position state
@@ -280,6 +280,7 @@ export class LoopExecutor {
     smartAccountAddr: string,
     iterationNumber: number,
     strcAmount: bigint,
+    targetLeverage: number = 5,
   ): Promise<{ success: boolean; strcReceived: bigint }> {
     const { rows: [iter] } = await query(
       `INSERT INTO loop_iterations (loop_execution_id, iteration_number, step, strc_deposited, started_at)
@@ -306,11 +307,33 @@ export class LoopExecutor {
         throw new Error('wSTRC amount rounds to zero');
       }
 
-      // Calculate safe borrow amount
+      // Calculate safe borrow amount, capped by target leverage
       const currentPosition = await borrowExecutor.getPosition(smartAccountAddr);
-      const maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
+      let maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
         wstrcAmount, currentPosition, config.loopTargetHF,
       );
+
+      // Cap borrow to reach target leverage, not max leverage
+      // Target leverage L means: totalCollateral / equity = L
+      // So target debt = collateral * (1 - 1/L) at current oracle price
+      if (targetLeverage > 1 && maxBorrowUsdc > 0n) {
+        const provider = getProvider();
+        const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
+        const totalCollateralStrc = Number(currentPosition.collateral + wstrcAmount) / 1e18;
+        const strcToWstrcRate = Number(await wstrcContract.strcPerWstrc()) / 1e18;
+        const totalCollateralUsd = totalCollateralStrc * strcToWstrcRate * 100; // rough $100/STRC
+        const currentDebtUsd = Number(currentPosition.borrowed) / 1e6;
+        const targetDebtUsd = totalCollateralUsd * (1 - 1 / targetLeverage);
+        const additionalDebtNeeded = targetDebtUsd - currentDebtUsd;
+
+        if (additionalDebtNeeded > 0) {
+          const cappedBorrow = BigInt(Math.floor(additionalDebtNeeded * 1e6));
+          if (cappedBorrow < maxBorrowUsdc) {
+            console.log(`[LOOP] Capping borrow from ${Number(maxBorrowUsdc) / 1e6} to ${Number(cappedBorrow) / 1e6} USDC for ${targetLeverage}x target`);
+            maxBorrowUsdc = cappedBorrow;
+          }
+        }
+      }
 
       if (maxBorrowUsdc === 0n) {
         await query(`UPDATE loop_iterations SET step = 'COMPLETED', error = 'No safe borrow available', completed_at = NOW() WHERE id = $1`, [iter.id]);
