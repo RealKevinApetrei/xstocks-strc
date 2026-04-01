@@ -52,18 +52,32 @@ executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => 
   }
 });
 
-// POST /api/execution/close-strc — Swap STRC balance to USDC via CoW presign
+// POST /api/execution/close-strc — Swap STRC (+ wSTRC) balance to USDC via CoW presign
 executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
     const provider = getProvider();
+
+    // Check for wSTRC and unwrap it first
+    const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const wstrcBalance: bigint = await wstrc.balanceOf(smartAccountAddr);
+    if (wstrcBalance > 0n) {
+      console.log(`[CLOSE-STRC] Unwrapping ${Number(wstrcBalance) / 1e18} wSTRC first`);
+      const wstrcIface = new ethers.Interface(['function unwrap(uint256 amount)']);
+      const unwrapHash = await smartAccountService.sendBatchUserOp(privyId, [
+        { to: config.wstrc, data: wstrcIface.encodeFunctionData('unwrap', [wstrcBalance]) },
+      ]);
+      await smartAccountService.waitForReceipt(unwrapHash);
+    }
+
+    // Now check total STRC balance (original + freshly unwrapped)
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
     const strcBalance: bigint = await strc.balanceOf(smartAccountAddr);
 
     if (strcBalance <= 0n) {
-      res.status(400).json({ error: 'No STRC balance to close' });
+      res.status(400).json({ error: 'No STRC or wSTRC balance to close' });
       return;
     }
 
@@ -385,13 +399,18 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
     vaultBalance = { shares: '0', assets: vb.assets.toString() };
   } catch { /* vault not set up yet */ }
 
-  // 5. STRC balance in smart wallet
+  // 5. STRC + wSTRC balance in smart wallet
   let strcBalance: string | undefined;
+  let wstrcBalance: string | undefined;
   try {
     const provider = getProvider();
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
     const bal: bigint = await strc.balanceOf(address);
     if (bal > 0n) strcBalance = bal.toString();
+
+    const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const wbal: bigint = await wstrc.balanceOf(address);
+    if (wbal > 0n) wstrcBalance = wbal.toString();
   } catch { /* ignore */ }
 
   // 6. Position details (exchange rate, leverage, liq price)
@@ -446,6 +465,7 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
     } : null,
     vaultBalance,
     strcBalance,
+    wstrcBalance,
     error: positionError,
   });
 });
