@@ -118,11 +118,14 @@ export function DepositWithdrawModal({
       const amountRaw = BigInt(Math.round(amountNum * 1e6));
       const data = encodeTransfer(depositAddress, amountRaw);
 
-      await sendTransaction({
-        to: USDC_ADDRESS as `0x${string}`,
-        data: data as `0x${string}`,
-        chainId: 57073,
-      });
+      await sendTransaction(
+        {
+          to: USDC_ADDRESS as `0x${string}`,
+          data: data as `0x${string}`,
+          chainId: 57073,
+        },
+        { sponsor: true },
+      );
 
       setSuccess(`Deposited $${amountNum.toFixed(2)} USDC`);
       setAmount('');
