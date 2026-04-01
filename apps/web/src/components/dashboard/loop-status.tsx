@@ -96,8 +96,20 @@ export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () =>
               </div>
             ))}
 
-            {/* Show current active step if no iterations yet */}
-            {data.iterations.length === 0 && data.status === 'IN_PROGRESS' && (
+            {/* Show current active stage */}
+            {data.status === 'IN_PROGRESS' && data.error?.startsWith('[ACTIVE]') && (
+              <div className="flex items-center gap-3 text-xs">
+                <div className="h-6 w-6 rounded-full border border-primary bg-primary/10 animate-pulse flex items-center justify-center">
+                  <div className="h-2 w-2 rounded-full bg-primary animate-ping" />
+                </div>
+                <span className="text-muted-foreground animate-pulse">
+                  {data.error.replace('[ACTIVE] ', '')}
+                </span>
+              </div>
+            )}
+
+            {/* Show generic waiting if in progress but no stage */}
+            {data.iterations.length === 0 && data.status === 'IN_PROGRESS' && !data.error?.startsWith('[ACTIVE]') && (
               <div className="flex items-center gap-3 text-xs">
                 <div className="h-6 w-6 rounded-full border border-primary bg-primary/10 animate-pulse flex items-center justify-center">
                   <span className="text-[10px] text-primary">1</span>
@@ -107,8 +119,8 @@ export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () =>
             )}
           </div>
 
-          {/* Error */}
-          {data.error && (
+          {/* Error (only show real errors, not [ACTIVE] stages) */}
+          {data.error && !data.error.startsWith('[ACTIVE]') && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
               <p className="text-xs text-destructive">{data.error}</p>
             </div>

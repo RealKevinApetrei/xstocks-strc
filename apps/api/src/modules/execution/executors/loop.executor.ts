@@ -90,12 +90,14 @@ export class LoopExecutor {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
 
     // Push fresh Pyth price on-chain before any execution
+    await this.updateStage(loopId, 'Refreshing oracle price...');
     await pythPriceService.ensureFreshPrice();
 
     // Step 0: Initial swap USDC → STRC via CoW
     let currentStrcAmount: bigint;
     try {
-      currentStrcAmount = await this.initialSwap(privyId, smartAccountAddr, usdcAmount);
+      await this.updateStage(loopId, 'Swapping USDC → STRC via CoW Protocol...');
+      currentStrcAmount = await this.initialSwap(loopId, privyId, smartAccountAddr, usdcAmount);
       if (currentStrcAmount <= STRC_DUST) {
         await this.failLoop(loopId, 'Initial swap returned dust amount — insufficient STRC received');
         return;
@@ -204,25 +206,32 @@ export class LoopExecutor {
   /**
    * Initial USDC → STRC swap via CoW before entering the loop.
    */
-  private async initialSwap(privyId: string, smartAccountAddr: string, usdcAmount: bigint): Promise<bigint> {
+  private async initialSwap(loopId: string, privyId: string, smartAccountAddr: string, usdcAmount: bigint): Promise<bigint> {
     // Approve USDC for CoW VaultRelayer
+    await this.updateStage(loopId, 'Approving USDC for CoW Protocol...');
     const approveCalls = approvalExecutor.buildApproveCalls({
       token: config.usdc, spender: config.cowVaultRelayer, amount: usdcAmount,
     });
     const approveHash = await smartAccountService.sendBatchUserOp(privyId, approveCalls);
+    await this.updateStage(loopId, 'Waiting for USDC approval confirmation...');
     await smartAccountService.waitForReceipt(approveHash);
 
     // CoW swap USDC → STRC
+    await this.updateStage(loopId, 'Getting CoW swap quote...');
     const quote = await cowSwapService.getQuote({
       sellToken: config.usdc, buyToken: config.strc, sellAmount: usdcAmount, from: smartAccountAddr,
     });
 
+    await this.updateStage(loopId, 'Signing CoW swap order...');
     const wallet = await signerService.getWalletForUser(privyId);
     const signature = await signerService.signTypedData(
       wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order,
     );
 
+    await this.updateStage(loopId, 'Submitting CoW order...');
     const orderUid = await cowSwapService.createOrder(quote, signature);
+
+    await this.updateStage(loopId, 'Waiting for CoW swap to fill...');
     const fill = await cowSwapService.waitForFill(orderUid);
 
     if (fill.buyAmount <= 0n) {
@@ -332,6 +341,11 @@ export class LoopExecutor {
       await query(`UPDATE loop_iterations SET step = 'FAILED', error = $2 WHERE id = $1`, [iter.id, message.slice(0, 500)]);
       return { success: false, strcReceived: 0n };
     }
+  }
+
+  private async updateStage(loopId: string, stage: string): Promise<void> {
+    console.log(`[LOOP ${loopId}] Stage: ${stage}`);
+    await query(`UPDATE loop_executions SET error = $2 WHERE id = $1 AND status = 'IN_PROGRESS'`, [loopId, `[ACTIVE] ${stage}`]);
   }
 
   private async failLoop(loopId: string, error: string): Promise<void> {
