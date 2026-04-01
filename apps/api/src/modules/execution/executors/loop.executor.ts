@@ -499,14 +499,16 @@ export class LoopExecutor {
 
       if (maxBorrowUsdc === 0n) return { success: false, strcReceived: 0n };
 
-      // Borrow + approve USDC for CoW in one tx
+      // Borrow
       const borrowCalls = borrowExecutor.buildBorrowCalls(maxBorrowUsdc, smartAccountAddr, smartAccountAddr);
+      const borrowHash = await smartAccountService.sendBatchUserOp(privyId, borrowCalls);
+      await smartAccountService.waitForReceipt(borrowHash);
+
+      // Approve USDC for CoW
       const cowApproveCalls = approvalExecutor.buildApproveCalls({
         token: config.usdc, spender: config.cowVaultRelayer, amount: maxBorrowUsdc,
       });
-      await smartAccountService.waitForReceipt(
-        await smartAccountService.sendBatchUserOp(privyId, [...borrowCalls, ...cowApproveCalls]),
-      );
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, cowApproveCalls));
 
       // CoW swap USDC → STRC via presign
       const quote = await cowSwapService.getQuote({

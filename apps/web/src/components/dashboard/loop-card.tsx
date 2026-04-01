@@ -445,9 +445,11 @@ function UnwindTab() {
   }
 
   if (!hasPosition) {
-    // Check for 1x STRC position (STRC in wallet, no Morpho position)
-    if (strcBalance.formatted > 0.001) {
-      const strcValueUsd = strcBalance.formatted * strcPrice;
+    // Check for STRC or wSTRC in wallet (no Morpho position)
+    const totalStrc = strcBalance.totalFormatted;
+    const hasWstrc = strcBalance.wstrcFormatted > 0.001;
+    if (totalStrc > 0.001) {
+      const strcValueUsd = totalStrc * strcPrice;
       return (
         <div className="space-y-5">
           {/* Position summary — matches leveraged unwind card style */}
@@ -456,8 +458,8 @@ function UnwindTab() {
               Position Summary
             </p>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">STRCx held</span>
-              <span className="font-mono">{strcBalance.formatted.toFixed(4)} STRCx</span>
+              <span className="text-muted-foreground">{hasWstrc ? 'STRCx held (inc. wrapped)' : 'STRCx held'}</span>
+              <span className="font-mono">{totalStrc.toFixed(4)} STRCx</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Leverage</span>
@@ -494,7 +496,7 @@ function UnwindTab() {
             disabled={isSubmitting}
             className="w-full rounded-md bg-primary py-3.5 text-xs font-medium tracking-widest uppercase text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Selling...' : 'Sell STRCx → USDC'}
+            {isSubmitting ? (hasWstrc ? 'Unwrapping & Selling...' : 'Selling...') : 'Sell STRCx → USDC'}
           </button>
 
           <p className="text-[9px] text-muted-foreground text-center">
