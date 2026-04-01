@@ -28,11 +28,19 @@ function LoopTab() {
   const { price: strcPrice } = useStrcxPrice();
   const { borrowApy } = useMarketRate();
   const { balance: usdcBalance, loading: balanceLoading } = useUsdcBalance();
+  const { data: positionData } = usePosition();
   const [usdcAmount, setUsdcAmount] = useState('');
   const [leverage, setLeverage] = useState<number>(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeLoopId, setActiveLoopId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-detect active loop on mount/refresh
+  useEffect(() => {
+    if (positionData?.activeLoop?.id && positionData.activeLoop.status === 'IN_PROGRESS') {
+      setActiveLoopId(positionData.activeLoop.id);
+    }
+  }, [positionData?.activeLoop]);
 
   const handleSubmit = async () => {
     if (!usdcAmount || isSubmitting) return;
