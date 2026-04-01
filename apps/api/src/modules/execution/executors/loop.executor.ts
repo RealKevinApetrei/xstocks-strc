@@ -115,66 +115,61 @@ export class LoopExecutor {
       return;
     }
 
-    // Loop iterations
-    // Each iteration: wrap STRC → supply → check leverage → borrow → swap USDC→STRC
-    // The leverage check happens AFTER supply (so swapped STRC is included in collateral)
+    // Loop: wrap+supply STRC → check leverage → borrow+swap → repeat
     for (let iteration = 1; iteration <= config.maxLoopIterations; iteration++) {
-      // Emergency stop: HF in liquidation danger zone
-      const position = await borrowExecutor.getPosition(smartAccountAddr);
-      if (position.borrowed > 0n && position.healthFactor < config.emergencyHF) {
-        await query(
-          `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
-           effective_leverage = $4, error = 'Emergency stop: health factor below ${config.emergencyHF}' WHERE id = $1`,
-          [loopId, iteration - 1, position.healthFactor, borrowExecutor.calculateLeverage(position.healthFactor)],
-        );
-        return;
-      }
-
-      // Execute iteration: wrap + supply + borrow + swap
-      let result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount, targetLeverage);
-
-      if (!result.success) {
-        console.log(`[LOOP ${loopId}] Iteration ${iteration} failed, retrying once...`);
-        await pythPriceService.ensureFreshPrice();
-        result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount, targetLeverage);
-
-        if (!result.success) {
-          const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
-          await query(
-            `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
-             effective_leverage = $4, error = 'Iteration failed after retry' WHERE id = $1`,
-            [loopId, iteration, posAfter.healthFactor, borrowExecutor.calculateLeverage(posAfter.healthFactor)],
-          );
-          return;
-        }
-      }
-
-      // Check leverage AFTER iteration (collateral now includes the supplied STRC)
-      const posAfterIter = await borrowExecutor.getPosition(smartAccountAddr);
-      const currentLeverage = borrowExecutor.calculateLeverage(posAfterIter.healthFactor);
-      console.log(`[LOOP ${loopId}] After iteration ${iteration}: leverage=${currentLeverage.toFixed(2)}x, target=${targetLeverage}x, HF=${posAfterIter.healthFactor.toFixed(2)}`);
-
-      if (currentLeverage >= targetLeverage) {
-        await query(
-          `UPDATE loop_executions SET status = 'COMPLETED', current_iteration = $2, health_factor = $3,
-           effective_leverage = $4 WHERE id = $1`,
-          [loopId, iteration, posAfterIter.healthFactor, currentLeverage],
-        );
-        return;
-      }
-
-      // If no more STRC was received, can't continue
-      if (result.strcReceived <= STRC_DUST) {
+      // ── Phase 1: Wrap + Supply STRC into Morpho ──
+      await this.updateStage(loopId, `Iteration ${iteration}: wrapping and supplying STRC...`);
+      const supplySuccess = await this.wrapAndSupply(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+      if (!supplySuccess) {
         const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
         await query(
           `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
-           effective_leverage = $4, error = 'CoW swap returned dust — stopping' WHERE id = $1`,
+           effective_leverage = $4, error = 'Wrap+supply failed' WHERE id = $1`,
           [loopId, iteration, posAfter.healthFactor, borrowExecutor.calculateLeverage(posAfter.healthFactor)],
         );
         return;
       }
 
-      currentStrcAmount = result.strcReceived;
+      // ── Phase 2: Check leverage after supply ──
+      const posAfterSupply = await borrowExecutor.getPosition(smartAccountAddr);
+      const currentLeverage = borrowExecutor.calculateLeverage(posAfterSupply.healthFactor);
+      console.log(`[LOOP ${loopId}] After supply ${iteration}: leverage=${currentLeverage.toFixed(2)}x, target=${targetLeverage}x, HF=${posAfterSupply.healthFactor.toFixed(2)}`);
+
+      if (currentLeverage >= targetLeverage) {
+        await query(
+          `UPDATE loop_executions SET status = 'COMPLETED', current_iteration = $2, health_factor = $3,
+           effective_leverage = $4 WHERE id = $1`,
+          [loopId, iteration, posAfterSupply.healthFactor, currentLeverage],
+        );
+        console.log(`[LOOP ${loopId}] Target ${targetLeverage}x reached at ${currentLeverage.toFixed(2)}x`);
+        return;
+      }
+
+      // Emergency stop
+      if (posAfterSupply.borrowed > 0n && posAfterSupply.healthFactor < config.emergencyHF) {
+        await query(
+          `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
+           effective_leverage = $4, error = 'Emergency stop: HF below ${config.emergencyHF}' WHERE id = $1`,
+          [loopId, iteration, posAfterSupply.healthFactor, currentLeverage],
+        );
+        return;
+      }
+
+      // ── Phase 3: Borrow + Swap USDC → STRC ──
+      await this.updateStage(loopId, `Iteration ${iteration}: borrowing and swapping...`);
+      const borrowResult = await this.borrowAndSwap(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+
+      if (!borrowResult.success || borrowResult.strcReceived <= STRC_DUST) {
+        const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
+        await query(
+          `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
+           effective_leverage = $4, error = ${!borrowResult.success ? "'Borrow+swap failed'" : "'Swap returned dust'"} WHERE id = $1`,
+          [loopId, iteration, posAfter.healthFactor, borrowExecutor.calculateLeverage(posAfter.healthFactor)],
+        );
+        return;
+      }
+
+      currentStrcAmount = borrowResult.strcReceived;
       await query(`UPDATE loop_executions SET current_iteration = $2 WHERE id = $1`, [loopId, iteration]);
     }
 
@@ -380,6 +375,99 @@ export class LoopExecutor {
       const message = err instanceof Error ? err.message : 'Unknown error';
       console.error(`[LOOP ${loopId}] Iteration ${iterationNumber} error:`, message);
       await query(`UPDATE loop_iterations SET step = 'FAILED', error = $2 WHERE id = $1`, [iter.id, message.slice(0, 500)]);
+      return { success: false, strcReceived: 0n };
+    }
+  }
+
+  /** Phase 1: Wrap STRC → wSTRC and supply to Morpho */
+  private async wrapAndSupply(loopId: string, privyId: string, smartAccountAddr: string, iteration: number, strcAmount: bigint): Promise<boolean> {
+    try {
+      const provider = getProvider();
+      const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
+      const actualStrcBalance: bigint = await strcContract.balanceOf(smartAccountAddr);
+      console.log(`[LOOP ${loopId}] Wrap+supply ${iteration}: STRC balance=${Number(actualStrcBalance) / 1e18}, using=${Number(strcAmount) / 1e18}`);
+
+      if (actualStrcBalance < strcAmount) {
+        // Use actual balance if it's close enough (rounding from CoW)
+        if (actualStrcBalance > strcAmount * 99n / 100n) {
+          strcAmount = actualStrcBalance;
+        } else {
+          console.error(`[LOOP ${loopId}] STRC balance too low: ${Number(actualStrcBalance) / 1e18} < ${Number(strcAmount) / 1e18}`);
+          return false;
+        }
+      }
+
+      const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
+      const wstrcAmount: bigint = await wstrcContract.strcToWstrc(strcAmount);
+      if (wstrcAmount <= 0n) return false;
+
+      // Approve STRC → wrap → approve wSTRC → supply (4 sequential calls)
+      const calls: Call[] = [
+        ...approvalExecutor.buildApproveCalls({ token: config.strc, spender: config.wstrc, amount: strcAmount }),
+        { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('wrap', [strcAmount]) },
+        ...approvalExecutor.buildApproveCalls({ token: config.wstrc, spender: config.morpho, amount: wstrcAmount }),
+        ...borrowExecutor.buildSupplyCollateralCalls(wstrcAmount, smartAccountAddr),
+      ];
+
+      const hash = await smartAccountService.sendBatchUserOp(privyId, calls);
+      await smartAccountService.waitForReceipt(hash);
+      console.log(`[LOOP ${loopId}] Wrap+supply ${iteration}: supplied ${Number(wstrcAmount) / 1e18} wSTRC`);
+      return true;
+    } catch (err) {
+      console.error(`[LOOP ${loopId}] Wrap+supply ${iteration} error:`, err instanceof Error ? err.message : err);
+      return false;
+    }
+  }
+
+  /** Phase 2: Borrow USDC and swap to STRC via CoW */
+  private async borrowAndSwap(loopId: string, privyId: string, smartAccountAddr: string, iteration: number, strcAmount: bigint): Promise<{ success: boolean; strcReceived: bigint }> {
+    try {
+      const provider = getProvider();
+      const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
+      const wstrcAmount: bigint = await wstrcContract.strcToWstrc(strcAmount);
+
+      const currentPosition = await borrowExecutor.getPosition(smartAccountAddr);
+      const maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
+        0n, currentPosition, config.loopTargetHF, // 0n because we already supplied
+      );
+
+      console.log(`[LOOP ${loopId}] Borrow+swap ${iteration}: borrowing ${Number(maxBorrowUsdc) / 1e6} USDC`);
+
+      if (maxBorrowUsdc === 0n) return { success: false, strcReceived: 0n };
+
+      // Borrow
+      const borrowCalls = borrowExecutor.buildBorrowCalls(maxBorrowUsdc, smartAccountAddr, smartAccountAddr);
+      const borrowHash = await smartAccountService.sendBatchUserOp(privyId, borrowCalls);
+      await smartAccountService.waitForReceipt(borrowHash);
+
+      // Approve USDC for CoW
+      const cowApproveCalls = approvalExecutor.buildApproveCalls({
+        token: config.usdc, spender: config.cowVaultRelayer, amount: maxBorrowUsdc,
+      });
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, cowApproveCalls));
+
+      // CoW swap USDC → STRC via presign
+      const quote = await cowSwapService.getQuote({
+        sellToken: config.usdc, buyToken: config.strc, sellAmount: maxBorrowUsdc, from: smartAccountAddr,
+      });
+      const orderUid = await cowSwapService.createOrder(quote, '');
+
+      const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [preSignCall]));
+
+      // Wait for presign pickup
+      for (let i = 0; i < 20; i++) {
+        const status = await cowSwapService.pollOrderStatus(orderUid);
+        if (status !== 'presignaturePending') break;
+        await new Promise(r => setTimeout(r, 3000));
+      }
+
+      const fill = await cowSwapService.waitForFill(orderUid);
+      console.log(`[LOOP ${loopId}] Borrow+swap ${iteration}: received ${Number(fill.buyAmount) / 1e18} STRC`);
+
+      return { success: true, strcReceived: fill.buyAmount };
+    } catch (err) {
+      console.error(`[LOOP ${loopId}] Borrow+swap ${iteration} error:`, err instanceof Error ? err.message : err);
       return { success: false, strcReceived: 0n };
     }
   }
