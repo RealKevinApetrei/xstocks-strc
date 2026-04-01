@@ -74,9 +74,17 @@ function LoopTab() {
         {balanceLoading ? (
           <div className="h-3 w-16 bg-muted animate-pulse rounded" />
         ) : usdcBalance > 0 ? (
-          <span className="text-xs font-mono font-semibold text-foreground">
-            ${usdcBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-semibold text-foreground">
+              ${usdcBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <button
+              onClick={() => setUsdcAmount(usdcBalance.toFixed(2))}
+              className="text-[10px] font-mono font-semibold tracking-widest uppercase text-primary border border-primary/30 rounded px-1.5 py-0.5 hover:bg-primary/10 transition-colors"
+            >
+              MAX
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => document.dispatchEvent(new CustomEvent('open-deposit-modal'))}
