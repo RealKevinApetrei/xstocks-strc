@@ -300,8 +300,10 @@ gridRouter.post('/lend/withdraw', privyAuth, async (req: Request, res: Response)
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
-    const calls = lendService.buildWithdrawCalls(withdrawAmount, smartAccountAddr, smartAccountAddr);
+    // Max withdrawal reads exact supply shares to avoid Morpho arithmetic overflow
+    const calls = amount === 'max'
+      ? await lendService.buildWithdrawMaxCalls(smartAccountAddr, smartAccountAddr)
+      : lendService.buildWithdrawByAssets(BigInt(amount), smartAccountAddr, smartAccountAddr);
     const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
     res.status(201).json({ txHash: receipt.txHash });

@@ -48,18 +48,39 @@ export class LendService {
 
   /**
    * Build calls to withdraw (unlend) USDC from Morpho.
-   * Pass ethers.MaxUint256 for full withdrawal (all shares).
+   * For partial: withdraw by assets. For max: withdraw by exact supply shares.
    */
-  buildWithdrawCalls(usdcAmount: bigint, onBehalfOf: string, receiver: string): Call[] {
-    // For max withdrawal, use shares instead of assets
-    const isMax = usdcAmount === ethers.MaxUint256;
+  buildWithdrawByAssets(usdcAmount: bigint, onBehalfOf: string, receiver: string): Call[] {
     return [
       {
         to: config.morpho,
         data: this.morphoIface.encodeFunctionData('withdraw', [
           this.getMarketParams(),
-          isMax ? 0 : usdcAmount,  // assets (0 when withdrawing by shares)
-          isMax ? ethers.MaxUint256 : 0, // shares (max when withdrawing all)
+          usdcAmount, // assets
+          0,          // shares (0 = use assets)
+          onBehalfOf,
+          receiver,
+        ]),
+      },
+    ];
+  }
+
+  /**
+   * Build calls to withdraw ALL supplied USDC by passing exact supply shares.
+   * Must read shares first to avoid MaxUint256 overflow in Morpho.
+   */
+  async buildWithdrawMaxCalls(onBehalfOf: string, receiver: string): Promise<Call[]> {
+    const { supplyShares } = await this.getLendBalance(onBehalfOf);
+    if (supplyShares === 0n) {
+      throw new Error('No lending position to withdraw');
+    }
+    return [
+      {
+        to: config.morpho,
+        data: this.morphoIface.encodeFunctionData('withdraw', [
+          this.getMarketParams(),
+          0,            // assets (0 = use shares)
+          supplyShares, // exact shares to withdraw all
           onBehalfOf,
           receiver,
         ]),
