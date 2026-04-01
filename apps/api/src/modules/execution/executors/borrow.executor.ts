@@ -4,7 +4,7 @@ import { config } from '../../../config';
 import { USDC_DUST } from '@xstocks/shared';
 import MorphoABI from '@xstocks/shared/abis/MorphoBlue.json';
 
-import { getProvider } from '../../../lib/provider';
+import { getProvider, retryCall } from '../../../lib/provider';
 
 export interface MorphoPosition {
   collateral: bigint;   // wSTRC collateral (raw, 18 decimals)
@@ -196,7 +196,7 @@ export class BorrowExecutor {
   private async readOraclePrice(provider: ethers.JsonRpcProvider): Promise<bigint> {
     if (!config.morphoOracle) throw new Error('Oracle address not configured');
     const oracle = new ethers.Contract(config.morphoOracle, ORACLE_ABI, provider);
-    const price = BigInt(await oracle.price());
+    const price = BigInt(await retryCall(() => oracle.price(), 3, 'oracle.price'));
     if (price <= 0n) throw new Error(`Oracle returned invalid price: ${price}`);
     return price;
   }

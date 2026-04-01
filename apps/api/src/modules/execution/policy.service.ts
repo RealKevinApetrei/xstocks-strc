@@ -1,7 +1,7 @@
 import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, computeMinDepositUsd, usdToUsdc6, LEVERAGE_TARGET_HF } from '@xstocks/shared';
 import { ethers } from 'ethers';
 import { config } from '../../config';
-import { getProvider } from '../../lib/provider';
+import { getProvider, retryCall } from '../../lib/provider';
 import { query } from '../../db/pool';
 import { smartAccountService } from './smart-account.service';
 
@@ -58,7 +58,7 @@ export class PolicyService {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(params.privyId);
     const provider = getProvider();
     const usdc = new ethers.Contract(config.usdc, ERC20_BALANCE_ABI, provider);
-    const balance: bigint = await usdc.balanceOf(smartAccountAddr);
+    const balance: bigint = await retryCall(() => usdc.balanceOf(smartAccountAddr), 3, 'USDC balanceOf');
 
     if (balance < params.usdcAmount) {
       const balFormatted = (Number(balance) / 1e6).toFixed(2);

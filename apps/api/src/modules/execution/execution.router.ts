@@ -11,7 +11,7 @@ import { approvalExecutor } from './executors/approval.executor';
 import { cowSwapService } from '../cowswap/cowswap.service';
 import { query } from '../../db/pool';
 import { config } from '../../config';
-import { getProvider } from '../../lib/provider';
+import { getProvider, retryCall } from '../../lib/provider';
 import type { StartLoopRequest, StartUnwindRequest } from '@xstocks/shared';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 
@@ -62,9 +62,9 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
 
     // Check for wSTRC and unwrap first
     const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const wstrcBalance: bigint = await wstrc.balanceOf(smartAccountAddr);
+    const wstrcBalance: bigint = await retryCall(() => wstrc.balanceOf(smartAccountAddr), 3, 'wSTRC balanceOf');
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const existingStrc: bigint = await strc.balanceOf(smartAccountAddr);
+    const existingStrc: bigint = await retryCall(() => strc.balanceOf(smartAccountAddr), 3, 'STRC balanceOf');
 
     if (wstrcBalance <= 0n && existingStrc <= 0n) {
       res.status(400).json({ error: 'No STRC or wSTRC balance to close' });
@@ -81,7 +81,7 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
     }
 
     // Read actual STRC balance after unwrap
-    const strcBalance: bigint = await strc.balanceOf(smartAccountAddr);
+    const strcBalance: bigint = await retryCall(() => strc.balanceOf(smartAccountAddr), 3, 'STRC balanceOf');
     if (strcBalance <= 0n) {
       res.status(400).json({ error: 'No STRC balance after unwrap' });
       return;
@@ -149,7 +149,7 @@ executionRouter.post('/withdraw', privyAuth, async (req: Request, res: Response)
   const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
   const provider = getProvider();
   const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
-  const balance: bigint = await usdc.balanceOf(smartAccountAddr);
+  const balance: bigint = await retryCall(() => usdc.balanceOf(smartAccountAddr), 3, 'USDC balanceOf');
 
   if (balance < amountBn) {
     const balFormatted = (Number(balance) / 1e6).toFixed(2);
@@ -409,11 +409,11 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
   try {
     const provider = getProvider();
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const bal: bigint = await strc.balanceOf(address);
+    const bal: bigint = await retryCall(() => strc.balanceOf(address), 3, 'STRC balanceOf');
     if (bal > 0n) strcBalance = bal.toString();
 
     const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const wbal: bigint = await wstrc.balanceOf(address);
+    const wbal: bigint = await retryCall(() => wstrc.balanceOf(address), 3, 'wSTRC balanceOf');
     if (wbal > 0n) wstrcBalance = wbal.toString();
   } catch { /* ignore */ }
 

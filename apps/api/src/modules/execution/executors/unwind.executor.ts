@@ -11,7 +11,7 @@ import { pythPriceService } from '../../pyth/pyth-price.service';
 
 const UNWIND_SAFETY_MARGIN = 0.95;
 
-import { getProvider } from '../../../lib/provider';
+import { getProvider, retryCall } from '../../../lib/provider';
 
 export class UnwindExecutor {
   private wstrcIface = new ethers.Interface(wSTRCABI);
@@ -209,7 +209,7 @@ export class UnwindExecutor {
   private async repayMaxUsdc(unwindId: string, privyId: string, smartAccountAddr: string): Promise<void> {
     const provider = getProvider();
     const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const usdcBal: bigint = await usdc.balanceOf(smartAccountAddr);
+    const usdcBal: bigint = await retryCall(() => usdc.balanceOf(smartAccountAddr), 3, 'USDC balanceOf');
     const pos = await borrowExecutor.getPosition(smartAccountAddr);
 
     if (usdcBal > 0n && pos.borrowed > 0n) {
@@ -234,7 +234,7 @@ export class UnwindExecutor {
 
     // First: unwrap any wSTRC sitting in the wallet
     const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const wstrcBal: bigint = await wstrc.balanceOf(smartAccountAddr);
+    const wstrcBal: bigint = await retryCall(() => wstrc.balanceOf(smartAccountAddr), 3, 'wSTRC balanceOf');
     if (wstrcBal > STRC_DUST) {
       console.log(`[UNWIND ${unwindId}] Unwrapping ${Number(wstrcBal) / 1e18} wSTRC from wallet`);
       const unwrapHash = await smartAccountService.sendBatchUserOp(privyId, [
@@ -244,7 +244,7 @@ export class UnwindExecutor {
     }
 
     const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const strcBal: bigint = await strcContract.balanceOf(smartAccountAddr);
+    const strcBal: bigint = await retryCall(() => strcContract.balanceOf(smartAccountAddr), 3, 'STRC balanceOf');
     const strcUsd = Number(strcBal) / 1e18 * 100;
 
     if (strcBal <= STRC_DUST || strcUsd < 10) return;
@@ -291,7 +291,7 @@ export class UnwindExecutor {
 
       const provider = getProvider();
       const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
-      const strcAmount: bigint = await wstrcContract.wstrcToStrc(withdrawWstrc);
+      const strcAmount: bigint = await retryCall(() => wstrcContract.wstrcToStrc(withdrawWstrc), 3, 'wstrcToStrc');
       if (strcAmount <= STRC_DUST) throw new Error('Unwrap returned dust');
 
       // 3. Approve STRC for CoW
@@ -360,7 +360,7 @@ export class UnwindExecutor {
     // Swap remaining STRC → USDC via CoW presign
     const provider = getProvider();
     const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const strcBalance: bigint = await strcContract.balanceOf(smartAccountAddr);
+    const strcBalance: bigint = await retryCall(() => strcContract.balanceOf(smartAccountAddr), 3, 'STRC balanceOf');
 
     if (strcBalance > STRC_DUST) {
       // Approve STRC for CoW
@@ -406,7 +406,7 @@ export class UnwindExecutor {
 
     // 2. Unwrap any wSTRC sitting in wallet
     const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const wstrcBal: bigint = await wstrc.balanceOf(smartAccountAddr);
+    const wstrcBal: bigint = await retryCall(() => wstrc.balanceOf(smartAccountAddr), 3, 'wSTRC balanceOf');
     if (wstrcBal > STRC_DUST) {
       console.log(`[UNWIND ${unwindId}] Remaining wSTRC in wallet: ${Number(wstrcBal) / 1e18} — unwrapping`);
       await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [
@@ -416,7 +416,7 @@ export class UnwindExecutor {
 
     // 3. Swap any STRC to USDC
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-    const strcBal: bigint = await strc.balanceOf(smartAccountAddr);
+    const strcBal: bigint = await retryCall(() => strc.balanceOf(smartAccountAddr), 3, 'STRC balanceOf');
     const strcValueUsd = Number(strcBal) / 1e18 * 100;
 
     if (strcBal > STRC_DUST && strcValueUsd >= 10) {
@@ -445,7 +445,7 @@ export class UnwindExecutor {
     const finalPos = await borrowExecutor.getPosition(smartAccountAddr);
     if (finalPos.borrowed > 0n) {
       const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
-      const usdcBal: bigint = await usdc.balanceOf(smartAccountAddr);
+      const usdcBal: bigint = await retryCall(() => usdc.balanceOf(smartAccountAddr), 3, 'USDC balanceOf');
       if (usdcBal > 0n) {
         const repayAmount = usdcBal < finalPos.borrowed ? usdcBal : finalPos.borrowed;
         console.log(`[UNWIND ${unwindId}] Repaying remaining debt: ${Number(repayAmount) / 1e6} USDC`);
