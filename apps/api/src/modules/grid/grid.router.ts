@@ -227,10 +227,14 @@ gridRouter.post('/vault/deposit', privyAuth, async (req: Request, res: Response)
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    const calls = vaultService.buildDepositCalls(BigInt(amount), smartAccountAddr);
-    // Approve first, wait for it to land, then supply
-    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [calls[0]]));
-    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [calls[1]]);
+    // Step 1: Max-approve USDC to L2Pool (idempotent, only costs gas once)
+    const approveCall = vaultService.buildApproveCall();
+    await smartAccountService.waitForReceipt(
+      await smartAccountService.sendBatchUserOp(privyId, [approveCall]),
+    );
+    // Step 2: Supply USDC into Aave (approval already landed)
+    const supplyCall = vaultService.buildSupplyCall(BigInt(amount), smartAccountAddr);
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [supplyCall]);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {

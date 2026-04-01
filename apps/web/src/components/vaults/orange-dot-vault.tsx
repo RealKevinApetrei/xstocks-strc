@@ -177,22 +177,6 @@ export function OrangeDotVault() {
     }
   }, [getAccessToken, hasStrategy, strategyId, numTrades, intervalHours, strategyEnabled, isSubmitting, VAULT_BALANCE_USDC]);
 
-  const handleClaimStrc = async () => {
-    clearStatus();
-    if (STRC_BALANCE <= 0 || isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await api.closeStrc(token);
-      setSuccess('STRC sold for USDC');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Sell failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const perTradeUsdc = VAULT_BALANCE_USDC / numTrades;
   const belowMinimum = VAULT_BALANCE_USDC > 0 && perTradeUsdc < 10;
   const depositNum = parseFloat(depositAmount) || 0;
@@ -241,20 +225,13 @@ export function OrangeDotVault() {
             </div>
           </div>
 
-          {/* Sell STRC button */}
+          {/* STRC purchased by DCA (informational) */}
           {STRC_BALANCE > 0 && (
-            <div className="rounded-md border border-orange-500/20 bg-orange-500/5 p-3 space-y-2">
+            <div className="rounded-md border border-orange-500/20 bg-orange-500/5 p-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">STRC in wallet</span>
                 <span className="font-mono text-orange-400">{STRC_BALANCE.toFixed(2)} STRC (~{formatUsd(STRC_BALANCE * STRC_PRICE_USD)})</span>
               </div>
-              <button
-                onClick={handleClaimStrc}
-                disabled={isSubmitting}
-                className="w-full rounded-md py-1.5 text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? 'Selling...' : 'Sell STRC → USDC'}
-              </button>
             </div>
           )}
 
