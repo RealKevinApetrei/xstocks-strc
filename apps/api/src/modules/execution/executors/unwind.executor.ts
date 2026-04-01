@@ -32,8 +32,15 @@ export class UnwindExecutor {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(params.privyId);
     const position = await borrowExecutor.getPosition(smartAccountAddr);
 
-    if (position.borrowed === 0n) {
-      throw new Error('No debt to repay — position already unwound');
+    if (position.borrowed === 0n && position.collateral === 0n) {
+      throw new Error('No position to unwind — already fully closed');
+    }
+
+    // If debt is 0 but collateral remains, run finalCleanup directly
+    if (position.borrowed === 0n && position.collateral > 0n) {
+      console.log(`[UNWIND] Debt is 0 but collateral remains — running final cleanup`);
+      await this.finalCleanup(params.privyId, smartAccountAddr, position);
+      return 'cleanup-complete';
     }
 
     const { rows: [execReq] } = await query(
