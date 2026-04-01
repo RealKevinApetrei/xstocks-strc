@@ -859,16 +859,6 @@ export default function PitchPage() {
             <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-4 leading-tight" style={{ color: '#0a0a0a' }}>
               An <span style={{ color: '#16a34a' }}>ecosystem</span> of products<br />enriching what you can do with STRC.
             </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                <StatCard label="Maximum APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(2)} /></StatCard>
-                <StatCard label="Leverage Options">2x &middot; 3x &middot; 5x</StatCard>
-              </div>
-              <div className="space-y-6">
-                <StatCard label="Transactions per Loop"><AnimatedCounter target={1} active={isActive(2)} /><span className="text-sm font-normal ml-2" style={{ color: '#6b6866' }}>(we handle the rest)</span></StatCard>
-                <StatCard label="Liquidation Protection" accent="#16a34a">Automated</StatCard>
-              </div>
-            </div>
           </div>
         </section>
 
