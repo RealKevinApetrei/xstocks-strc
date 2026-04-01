@@ -1018,64 +1018,134 @@ export default function PitchPage() {
           `}</style>
         </section>
 
-        {/* ═══ SLIDE 4: WHAT'S UNIQUE ═══ */}
+        {/* ═══ SLIDE 4: BUY THE DIP VAULT ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-4xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
-              Not just another <span style={{ color: '#7c3aed' }}>yield farm</span>.
+          <div className="max-w-5xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#16a34a' }}>04 — Strategy Vault</span>
+            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-8 leading-tight" style={{ color: '#0a0a0a' }}>
+              The Buy the Dip <span style={{ color: '#16a34a' }}>Vault</span>.
             </h2>
-            <div className="grid md:grid-cols-2 gap-5">
-              {[
-                { icon: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>, bg: '#16a34a15', title: 'Buy the Dip Vault', desc: 'No other looping product has automated liquidation protection. The Buy the Dip Vault monitors Pyth price feeds and autonomously deploys capital to strengthen your position when health factor drops.' },
-                { icon: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e05c00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4"/><path d="M12 16V8"/></svg>, bg: '#e05c0015', title: 'One-Click Looping', desc: 'Deposit USDC, pick leverage, done. Spreads handles wrapping, supplying, borrowing, swapping, and iterating \u2014 across 10+ on-chain transactions \u2014 in a single user action.' },
-                { icon: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2d2d2d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, bg: '#2d2d2d15', title: 'Gasless Smart Wallets', desc: 'Privy Kernel smart wallets with gas sponsorship. Users never need to hold ETH/INK for gas. Abstract away all blockchain complexity \u2014 it feels like using a fintech app.' },
-                { icon: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, bg: '#7c3aed15', title: 'CoW MEV Protection', desc: "Every swap uses CoW Protocol's batch auction system with presigned orders \u2014 protecting users from MEV extraction and ensuring best execution price across all iterations." },
-              ].map((c) => (
-                <div key={c.title} className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: c.bg }}>{c.icon}</div>
-                    <span className="text-sm font-bold" style={{ color: '#0a0a0a' }}>{c.title}</span>
-                  </div>
-                  <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
+                <p className="text-[10px] font-mono font-bold tracking-widest uppercase mb-5" style={{ color: '#6b6866' }}>How It Triggers</p>
+                <div className="space-y-4">
+                  {[
+                    { step: '01', label: 'STRCx price drops', desc: 'Pyth oracle streams real-time price. Backend detects decline.', color: '#e05c00' },
+                    { step: '02', label: 'Health factor falls below 1.2', desc: 'Position health checked against Morpho. Alert fires.', color: '#d93030' },
+                    { step: '03', label: 'Vault deploys USDC', desc: 'Protection capital auto-withdrawn from ERC-4626 vault.', color: '#c47a1a' },
+                    { step: '04', label: 'Buys STRCx via CoW', desc: 'USDC swapped to STRCx, supplied to Morpho. HF restored.', color: '#16a34a' },
+                  ].map((s) => (
+                    <div key={s.step} className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-mono font-bold" style={{ backgroundColor: s.color + '18', color: s.color }}>{s.step}</div>
+                      <div>
+                        <p className="text-xs font-semibold" style={{ color: '#0a0a0a' }}>{s.label}</p>
+                        <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: '#6b6866' }}>{s.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'HF Trigger', val: '1.2×', color: '#d93030' },
+                    { label: 'Grid Price', val: '$103', color: '#c47a1a' },
+                    { label: 'Monitoring', val: '24/7', color: '#16a34a' },
+                    { label: 'Oracle', val: 'Pyth', color: '#2d2d2d' },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-lg border bg-white p-4" style={{ borderColor: '#e5e7eb' }}>
+                      <div className="text-[9px] font-mono tracking-widest uppercase mb-1.5" style={{ color: '#6b6866' }}>{s.label}</div>
+                      <div className="text-2xl font-mono font-bold" style={{ color: s.color }}>{s.val}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="text-[9px] font-mono tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>STRCx Price — Vault Active Zone</div>
+                  <svg viewBox="0 0 320 72" className="w-full" style={{ height: 72 }}>
+                    <line x1="0" y1="22" x2="320" y2="22" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,4" />
+                    <line x1="0" y1="48" x2="320" y2="48" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,4" />
+                    <polyline points="0,14 55,17 95,19 125,21 150,40 165,53 180,46 198,33 225,22 258,18 288,16 320,14" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinejoin="round" />
+                    <rect x="150" y="40" width="48" height="16" fill="#16a34a12" />
+                    <line x1="150" y1="0" x2="150" y2="72" stroke="#d93030" strokeWidth="1" strokeDasharray="3,3" />
+                    <line x1="198" y1="0" x2="198" y2="72" stroke="#16a34a" strokeWidth="1" strokeDasharray="3,3" />
+                    <text x="120" y="69" fontSize="7" fill="#d93030" fontFamily="monospace">dip detected</text>
+                    <text x="201" y="69" fontSize="7" fill="#16a34a" fontFamily="monospace">HF restored</text>
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ═══ SLIDE 5: ARCHITECTURE ═══ */}
+        {/* ═══ SLIDE 5: STRETCH YOUR SAVINGS ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-5xl w-full" style={{ opacity: isActive(5) ? 1 : 0, transform: isActive(5) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
-              Built on <span style={{ color: '#e05c00' }}>production-grade</span><br />infrastructure.
+            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#c47a1a' }}>05 — Savings Product</span>
+            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
+              Stretch Your <span style={{ color: '#c47a1a' }}>Savings</span>.
             </h2>
-            <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <ArchBlock label="Frontend" accent="#2d2d2d" items={['Next.js 15 App Router', 'Privy Auth + Smart Wallets', 'Real-time SSE Price Stream', 'Responsive Dashboard']} />
-              <ArchBlock label="Backend" accent="#e05c00" items={['Express 5 + TypeScript', 'Pyth Oracle Integration', 'CoW Presign Execution', 'Grid Strategy Engine']} />
-              <ArchBlock label="On-Chain" accent="#16a34a" items={['Morpho Blue (Ink L2)', 'wSTRC Collateral Market', 'Buy the Dip Vault (ERC-4626)', 'Gas-Sponsored UserOps']} />
-            </div>
-            <div className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
-              <div className="text-[10px] font-mono font-bold tracking-widest uppercase mb-5" style={{ color: '#6b6866' }}>Execution Flow</div>
-              <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2">
-                {[
-                  { label: 'User', sub: 'USDC Deposit', color: '#2d2d2d' },
-                  { label: 'Privy', sub: 'Smart Wallet', color: '#7c3aed' },
-                  { label: 'CoW', sub: 'USDC \u2192 STRC', color: '#e05c00' },
-                  { label: 'wSTRC', sub: 'Wrap Token', color: '#6b6866' },
-                  { label: 'Morpho', sub: 'Supply + Borrow', color: '#16a34a' },
-                  { label: 'CoW', sub: 'USDC \u2192 STRC', color: '#e05c00' },
-                  { label: 'Loop', sub: 'Repeat N\u00d7', color: '#2d2d2d' },
-                ].map((step, i, arr) => (
-                  <div key={i} className="flex items-center gap-2 shrink-0">
-                    <div className="text-center">
-                      <div className="w-14 h-14 rounded-lg border-2 flex items-center justify-center text-[10px] font-mono font-bold mb-1" style={{ borderColor: step.color, color: step.color }}>{step.label}</div>
-                      <div className="text-[8px] font-mono" style={{ color: '#6b6866' }}>{step.sub}</div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 space-y-4">
+                <div className="flex gap-8 pb-2">
+                  {[
+                    { label: 'Savings Balance', val: '$1,247.83', color: '#0a0a0a' },
+                    { label: 'STRC Value', val: '$623.91', color: '#16a34a' },
+                    { label: 'T-Bill Value', val: '$623.92', color: '#c47a1a' },
+                  ].map((s) => (
+                    <div key={s.label}>
+                      <p className="text-[9px] font-mono tracking-widest uppercase mb-1" style={{ color: '#6b6866' }}>{s.label}</p>
+                      <span className="text-2xl font-mono font-bold" style={{ color: s.color }}>{s.val}</span>
                     </div>
-                    {i < arr.length - 1 && (
-                      <svg width="20" height="10" viewBox="0 0 20 10" className="shrink-0 -mt-4"><path d="M0 5 L15 5 M12 2 L15 5 L12 8" fill="none" stroke="#d1d5db" strokeWidth="1.5" /></svg>
-                    )}
+                  ))}
+                </div>
+                <div className="rounded-lg border bg-white p-5 space-y-3" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Deposit USDC</p>
+                    <span className="text-[10px] font-mono" style={{ color: '#6b6866' }}>Balance: <span style={{ color: '#0a0a0a' }}>500.00 USDC</span></span>
                   </div>
-                ))}
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm" style={{ color: '#6b6866' }}>$</span>
+                    <div className="w-full rounded-md border pl-7 pr-16 py-2.5 font-mono text-xl font-semibold" style={{ borderColor: '#d1d5db', color: '#0a0a0a', backgroundColor: '#fafafa' }}>100.00</div>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono" style={{ color: '#6b6866' }}>USDC</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {[20, 50, 100, 250, 500].map((q) => (
+                      <div key={q} className="flex-1 rounded-md border py-1.5 text-center text-xs font-mono" style={{ borderColor: q === 100 ? '#0a0a0a' : '#e5e7eb', color: q === 100 ? '#0a0a0a' : '#9ca3af' }}>${q}</div>
+                    ))}
+                  </div>
+                  <div className="rounded-md border p-3 space-y-2" style={{ borderColor: '#e5e7eb', backgroundColor: '#fafafa' }}>
+                    <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Allocation</p>
+                    <div className="flex justify-between text-xs">
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#16a34a' }} />STRC (50%)</span>
+                      <span className="font-mono font-medium">$50.00</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#c47a1a' }} />Invesco T-Bill (50%)</span>
+                      <span className="font-mono font-medium">$50.00</span>
+                    </div>
+                    <p className="text-[9px] pt-1.5 border-t" style={{ color: '#9ca3af', borderColor: '#e5e7eb' }}>Swapped via CoW Protocol on INK chain</p>
+                  </div>
+                  <div className="w-full rounded-md py-2.5 text-center text-xs font-medium uppercase tracking-wider text-white" style={{ backgroundColor: '#0a0a0a' }}>Deposit $100.00</div>
+                </div>
+              </div>
+              <div className="rounded-lg border bg-white p-5 space-y-4" style={{ borderColor: '#e5e7eb' }}>
+                <div>
+                  <p className="text-[9px] font-mono tracking-widest uppercase mb-1" style={{ color: '#6b6866' }}>Rewards Available</p>
+                  <p className="text-3xl font-mono font-bold">$12.40</p>
+                  <p className="text-[9px] mt-1" style={{ color: '#6b6866' }}>earned from yield on your savings</p>
+                </div>
+                <p className="text-xs" style={{ color: '#6b6866' }}>Redeem your yield for real gift cards</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Amazon', 'Starbucks', 'Netflix', 'Airbnb'].map((name) => (
+                    <div key={name} className="rounded-md border p-3 space-y-1" style={{ borderColor: '#e5e7eb' }}>
+                      <span className="text-lg">🎁</span>
+                      <p className="text-xs font-semibold">{name}</p>
+                      <p className="text-[9px]" style={{ color: '#9ca3af' }}>from $5</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="w-full rounded-md py-2 text-center text-xs font-medium uppercase tracking-wider text-white" style={{ backgroundColor: '#0a0a0a' }}>Select a Gift Card</div>
+                <p className="text-[9px] text-center" style={{ color: '#9ca3af' }}>Powered by Bitrefill</p>
               </div>
             </div>
           </div>
