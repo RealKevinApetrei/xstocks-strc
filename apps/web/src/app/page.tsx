@@ -105,7 +105,7 @@ export default function Home() {
 
       {/* ── LEFT SIDE ── */}
 
-      {/* Saylor B&W — big, anchored left edge */}
+      {/* Saylor B&W — big, left edge, capped at 30vw so it doesn't hit center */}
       <img
         src="/saylor-bw.png"
         alt="Michael Saylor"
@@ -114,6 +114,9 @@ export default function Home() {
           left: 0,
           height: '95vh',
           width: 'auto',
+          maxWidth: '30vw',
+          objectFit: 'cover',
+          objectPosition: 'center top',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
@@ -162,7 +165,7 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Saylor colour (orange tie) — big, anchored right edge */}
+      {/* Saylor colour (orange tie) — big, right edge, capped at 30vw so it doesn't hit center */}
       <img
         src="/saylor-colour.png"
         alt="Michael Saylor"
@@ -171,6 +174,9 @@ export default function Home() {
           right: 0,
           height: '95vh',
           width: 'auto',
+          maxWidth: '30vw',
+          objectFit: 'cover',
+          objectPosition: 'center top',
           zIndex: 10,
           ...blend,
           transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
