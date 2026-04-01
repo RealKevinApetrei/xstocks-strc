@@ -13,12 +13,19 @@ import { api, ApiError } from '@/lib/api';
 const STRC_STAKING_APY = 11.5;
 
 function HealthFactorGauge({ hf }: { hf: number }) {
-  const targetPct = Math.min(Math.max((hf - 1) / 2, 0), 1) * 100;
-  const [displayPct, setDisplayPct] = useState(0);
-  const [displayHf, setDisplayHf] = useState(1);
+  const isInfinity = hf >= 99;
+  const clampedHf = isInfinity ? 3 : hf;
+  const targetPct = Math.min(Math.max((clampedHf - 1) / 2, 0), 1) * 100;
+  const [displayPct, setDisplayPct] = useState(isInfinity ? 100 : 0);
+  const [displayHf, setDisplayHf] = useState(isInfinity ? 3 : 1);
 
   useEffect(() => {
-    // Delay so the bar is visible before animating
+    if (isInfinity) {
+      setDisplayPct(100);
+      setDisplayHf(3);
+      return;
+    }
+
     const timeout = setTimeout(() => {
       const start = performance.now();
       const duration = 900;
@@ -27,7 +34,7 @@ function HealthFactorGauge({ hf }: { hf: number }) {
         const progress = Math.min((now - start) / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
         setDisplayPct(eased * targetPct);
-        setDisplayHf(1 + eased * (hf - 1));
+        setDisplayHf(1 + eased * (clampedHf - 1));
         if (progress < 1) requestAnimationFrame(tick);
       }
 
@@ -35,9 +42,7 @@ function HealthFactorGauge({ hf }: { hf: number }) {
     }, 200);
 
     return () => clearTimeout(timeout);
-  }, [hf, targetPct]);
-
-  const isInfinity = hf >= 99;
+  }, [hf, targetPct, isInfinity, clampedHf]);
   const color = isInfinity ? 'text-success' : hf > 2 ? 'text-success' : hf > 1.5 ? 'text-warning' : 'text-destructive';
   const barColor = isInfinity ? 'bg-success' : hf > 2 ? 'bg-success' : hf > 1.5 ? 'bg-warning' : 'bg-destructive';
   const glowColor = isInfinity ? 'shadow-success/30' : hf > 2 ? 'shadow-success/30' : hf > 1.5 ? 'shadow-warning/30' : 'shadow-destructive/30';
