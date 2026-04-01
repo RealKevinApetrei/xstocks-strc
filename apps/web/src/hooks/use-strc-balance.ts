@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSmartWallet } from './use-smart-wallet';
 
-const STRC_ADDRESS = process.env.NEXT_PUBLIC_STRC_ADDRESS || '';
-const WSTRC_ADDRESS = process.env.NEXT_PUBLIC_WSTRC_ADDRESS || '';
+const STRC_ADDRESS = process.env.NEXT_PUBLIC_STRC_ADDRESS || '0x1aad217b8f78dba5e6693460e8470f8b1a3977f3';
+const WSTRC_ADDRESS = process.env.NEXT_PUBLIC_WSTRC_ADDRESS || '0x3b172e9c5488B17A0F4dc6fF4dc798055CC77281';
 const INK_RPC = process.env.NEXT_PUBLIC_INK_RPC || 'https://rpc-gel.inkonchain.com';
 
 const BALANCE_OF_SIG = '0x70a08231';
