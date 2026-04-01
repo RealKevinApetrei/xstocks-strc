@@ -54,9 +54,9 @@ export function useUsdcBalance() {
   // Refresh with delayed re-fetch to catch UserOp mining
   const refresh = useCallback(() => {
     fetchNow();
-    // Re-fetch after 3s and 8s to catch UserOp confirmation
     setTimeout(fetchNow, 3000);
-    setTimeout(fetchNow, 8000);
+    setTimeout(fetchNow, 5000);
+    setTimeout(fetchNow, 10000);
   }, [fetchNow]);
 
   useEffect(() => {
