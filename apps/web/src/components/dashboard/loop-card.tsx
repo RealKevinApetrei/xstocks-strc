@@ -500,11 +500,6 @@ export function LoopCard() {
             Unwind
           </button>
         </div>
-        {tab === 'loop' && (
-          <span className="text-[10px] text-muted-foreground font-mono">
-            STRC/USD <span className="text-foreground font-medium">{formatUsd(strcPrice)}</span>
-          </span>
-        )}
       </div>
 
       <div className="min-h-[420px]">

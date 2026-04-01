@@ -119,7 +119,12 @@ export class LoopExecutor {
     for (let iteration = 1; iteration <= config.maxLoopIterations; iteration++) {
       // ── Phase 1: Wrap + Supply STRC into Morpho ──
       await this.updateStage(loopId, `Iteration ${iteration}: wrapping and supplying STRC...`);
-      const supplySuccess = await this.wrapAndSupply(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+      let supplySuccess = await this.wrapAndSupply(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+      if (!supplySuccess) {
+        console.log(`[LOOP ${loopId}] Wrap+supply failed, retrying after 5s...`);
+        await new Promise(r => setTimeout(r, 5000));
+        supplySuccess = await this.wrapAndSupply(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+      }
       if (!supplySuccess) {
         const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
         await query(
@@ -443,6 +448,18 @@ export class LoopExecutor {
       if (remainingDebtNeeded > 0n && remainingDebtNeeded < maxBorrowUsdc) {
         console.log(`[LOOP ${loopId}] Capping borrow: max=${Number(maxBorrowUsdc) / 1e6}, need=${Number(remainingDebtNeeded) / 1e6} to reach ${targetLeverage}x`);
         maxBorrowUsdc = remainingDebtNeeded;
+      }
+
+      // Cap by available liquidity in the Morpho pool
+      const provider = getProvider();
+      const morpho = new ethers.Contract(config.morpho, [
+        'function market(bytes32 id) external view returns (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee)',
+      ], provider);
+      const mkt = await morpho.market(config.morphoMarketId);
+      const availableLiquidity = BigInt(mkt[0]) - BigInt(mkt[2]); // totalSupply - totalBorrow
+      if (availableLiquidity > 0n && maxBorrowUsdc > availableLiquidity) {
+        console.log(`[LOOP ${loopId}] Capping borrow by pool liquidity: ${Number(maxBorrowUsdc) / 1e6} → ${Number(availableLiquidity) / 1e6} USDC`);
+        maxBorrowUsdc = availableLiquidity * 95n / 100n; // 95% of available to leave buffer
       }
 
       console.log(`[LOOP ${loopId}] Borrow+swap ${iteration}: borrowing ${Number(maxBorrowUsdc) / 1e6} USDC (current debt: ${Number(currentDebtUsdc) / 1e6}, target: ${Number(targetDebtUsdc) / 1e6})`);
