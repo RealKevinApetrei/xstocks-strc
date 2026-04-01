@@ -1079,8 +1079,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 5: STRETCH YOUR SAVINGS ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-5xl w-full" style={{ opacity: isActive(5) ? 1 : 0, transform: isActive(5) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#c47a1a' }}>05 — Savings Product</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
               Stretch Your <span style={{ color: '#c47a1a' }}>Savings</span>.
             </h2>
             <div className="grid md:grid-cols-3 gap-4">
@@ -1153,8 +1152,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 6: VIABILITY ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(6) ? 1 : 0, transform: isActive(6) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#c47a1a' }}>06 — Viability &amp; Uptake</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-8 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-8 leading-tight" style={{ color: '#0a0a0a' }}>
               A massive market.<br /><span style={{ color: '#c47a1a' }}>1% is enough.</span>
             </h2>
             <div className="grid md:grid-cols-3 gap-4 mb-6">
