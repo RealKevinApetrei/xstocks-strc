@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
+import { useLoopStatus } from '@/hooks/use-loop-status';
 import { PerformanceChart } from '@/components/vaults/performance-chart';
 import { ContractsPanel } from '@/components/dashboard/contracts-panel';
 import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
@@ -116,11 +117,39 @@ function HowItWorks() {
 
 const STRC_STAKING_APY = 11.5;
 
+// Animated dots — used when a step is active
+function StepDots() {
+  return (
+    <span className="inline-flex items-center gap-[3px] ml-1">
+      <span className="dot-1 inline-block w-1 h-1 rounded-full bg-current" />
+      <span className="dot-2 inline-block w-1 h-1 rounded-full bg-current" />
+      <span className="dot-3 inline-block w-1 h-1 rounded-full bg-current" />
+    </span>
+  );
+}
+
+const STEP_SHORT: Record<string, string> = {
+  'Approving tokens...': 'APPROVING',
+  'Wrapping STRCx → wSTRC...': 'WRAPPING',
+  'Supplying collateral to Morpho...': 'SUPPLYING',
+  'Borrowing USDC...': 'BORROWING',
+  'Swapping USDC → STRCx via CoW...': 'SWAPPING',
+};
+
 function PositionTab() {
   const { data: positionData, loading } = usePosition();
   const { price: strcPrice, stale, source } = useStrcxPrice();
   const { borrowApy } = useMarketRate();
   const effectiveBorrowApy = borrowApy ?? 4.2;
+
+  // Track active loop step
+  const activeLoop = positionData?.activeLoop;
+  const isBuilding = activeLoop?.status === 'IN_PROGRESS' || activeLoop?.status === 'PENDING';
+  const { data: loopStatus } = useLoopStatus(isBuilding ? (activeLoop?.id ?? null) : null);
+  const activeStepRaw = loopStatus?.error?.startsWith('[ACTIVE]')
+    ? loopStatus.error.replace('[ACTIVE] ', '')
+    : null;
+  const activeStep = activeStepRaw ? (STEP_SHORT[activeStepRaw] ?? 'BUILDING') : (isBuilding ? 'PENDING' : null);
 
   if (loading) {
     return (
@@ -146,7 +175,11 @@ function PositionTab() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Position</span>
-          {hasPosition ? (
+          {isBuilding ? (
+            <span className="step-label text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary flex items-center">
+              {activeStep ?? 'PENDING'}<StepDots />
+            </span>
+          ) : hasPosition ? (
             <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border border-success/30 bg-success/10 text-success">ACTIVE</span>
           ) : (
             <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border border-border text-muted-foreground">NO POSITION</span>
@@ -211,7 +244,13 @@ function PositionTab() {
           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Leverage</span>
-              <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}×</span>
+              {isBuilding ? (
+                <span className="step-label text-sm font-mono font-semibold text-primary flex items-center">
+                  {activeStep ?? 'PENDING'}<StepDots />
+                </span>
+              ) : (
+                <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}×</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Liq. Price</span>
