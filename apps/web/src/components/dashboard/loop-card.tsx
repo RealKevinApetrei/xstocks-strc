@@ -379,7 +379,7 @@ export function LoopCard() {
   const { price: strcPrice } = useStrcxPrice();
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 space-y-5 min-h-[620px]">
+    <div className="rounded-lg border border-border bg-card p-6 space-y-5 min-h-[560px]">
       {/* Header with tabs */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 rounded-md border border-border bg-secondary p-0.5">

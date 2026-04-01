@@ -156,23 +156,28 @@ function PositionTab() {
     );
   }
 
-  if (!positionData?.hasPosition || !positionData.position) {
-    return <div className="px-6 pb-6"><HowItWorks /></div>;
-  }
+  const hasPosition = positionData?.hasPosition && positionData.position;
+  const p = hasPosition ? positionData.position : null;
 
-  const p = positionData.position;
-  const collateralStrc = parseFloat(formatBigInt(p.collateralStrc));
+  const collateralStrc = p ? parseFloat(formatBigInt(p.collateralStrc)) : 0;
   const collateralUsd = collateralStrc * strcPrice;
-  const debtUsd = parseFloat(formatBigInt(p.debtUsdc, 6, 2));
+  const debtUsd = p ? parseFloat(formatBigInt(p.debtUsdc, 6, 2)) : 0;
   const equityUsd = collateralUsd - debtUsd;
-  const leverage = p.effectiveLeverage;
-  const netYield = (STRC_STAKING_APY * leverage) - (effectiveBorrowApy * (leverage - 1));
+  const leverage = p ? p.effectiveLeverage : 0;
+  const netYield = leverage > 0 ? (STRC_STAKING_APY * leverage) - (effectiveBorrowApy * (leverage - 1)) : 0;
 
   return (
     <div className="p-6 space-y-5">
-      {/* Price header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Active Position</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Position</span>
+          {hasPosition ? (
+            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border border-success/30 bg-success/10 text-success">ACTIVE</span>
+          ) : (
+            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border border-border text-muted-foreground">NO POSITION</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground font-mono">STRCx/USD</span>
           <span className="text-sm font-mono font-semibold">{formatUsd(strcPrice)}</span>
@@ -185,54 +190,73 @@ function PositionTab() {
         </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Collateral</div>
-          <div className="text-lg font-mono font-semibold">{formatUsd(collateralUsd)}</div>
-          <div className="text-[10px] text-muted-foreground font-mono">{collateralStrc.toFixed(2)} STRCx</div>
+      {/* Key metrics — always visible */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <div className="text-[10px] text-muted-foreground tracking-widest uppercase mb-1">Equity</div>
+          <div className={cn('text-xl font-mono font-bold', hasPosition ? 'text-foreground' : 'text-muted-foreground')}>
+            {hasPosition ? formatUsd(equityUsd) : '$0.00'}
+          </div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+            {hasPosition ? `${(equityUsd / strcPrice).toFixed(2)} STRCx` : '—'}
+          </div>
         </div>
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Debt</div>
-          <div className="text-lg font-mono font-semibold text-destructive/80">{formatUsd(debtUsd)}</div>
-          <div className="text-[10px] text-muted-foreground font-mono">{debtUsd.toFixed(2)} USDC</div>
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <div className="text-[10px] text-muted-foreground tracking-widest uppercase mb-1">Current APR</div>
+          <div className={cn('text-xl font-mono font-bold', hasPosition ? 'text-success' : 'text-muted-foreground')}>
+            {hasPosition ? `+${netYield.toFixed(1)}%` : '—'}
+          </div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+            {hasPosition ? `at ${leverage.toFixed(1)}× leverage` : 'No active loop'}
+          </div>
         </div>
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Equity</div>
-          <div className="text-lg font-mono font-semibold text-success">{formatUsd(equityUsd)}</div>
-          <div className="text-[10px] text-muted-foreground font-mono">{(equityUsd / strcPrice).toFixed(2)} STRCx eq.</div>
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <div className="text-[10px] text-muted-foreground tracking-widest uppercase mb-1">Loan</div>
+          <div className={cn('text-xl font-mono font-bold', hasPosition ? 'text-destructive/80' : 'text-muted-foreground')}>
+            {hasPosition ? formatUsd(debtUsd) : '$0.00'}
+          </div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+            {hasPosition ? 'USDC borrowed' : '—'}
+          </div>
+        </div>
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <div className="text-[10px] text-muted-foreground tracking-widest uppercase mb-1">Collateral</div>
+          <div className={cn('text-xl font-mono font-bold', hasPosition ? 'text-foreground' : 'text-muted-foreground')}>
+            {hasPosition ? formatUsd(collateralUsd) : '$0.00'}
+          </div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+            {hasPosition ? `${collateralStrc.toFixed(2)} STRCx` : '—'}
+          </div>
         </div>
       </div>
 
-      <HealthFactorGauge hf={p.healthFactor} />
-
-      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Leverage</span>
-          <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}×</span>
+      {/* Health factor — show gauge when active, flat bar when not */}
+      {hasPosition && p ? (
+        <>
+          <HealthFactorGauge hf={p.healthFactor} />
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Leverage</span>
+              <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}×</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Liq. Price</span>
+              <span className="text-sm font-mono font-semibold">{formatUsd(p.liquidationPrice)}</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Health Factor</span>
+            <span className="text-xs font-mono text-muted-foreground">—</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted" />
+          <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+            <span>1.0 LIQ</span><span>1.5</span><span>2.0</span><span>3.0+</span>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Liq. Price</span>
-          <span className="text-sm font-mono font-semibold">{formatUsd(p.liquidationPrice)}</span>
-        </div>
-      </div>
-
-      <div className="rounded-md border border-border bg-secondary p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Morpho Borrow Rate</span>
-          <span className="text-xs font-mono text-destructive/70">−{effectiveBorrowApy.toFixed(2)}%</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">STRCx Yield ({leverage.toFixed(0)}× leveraged)</span>
-          <span className="text-xs font-mono text-success">+{(STRC_STAKING_APY * leverage).toFixed(2)}%</span>
-        </div>
-        <div className="flex items-center justify-between border-t border-border pt-2">
-          <span className="text-xs font-medium">Effective Net Yield</span>
-          <span className={cn('text-sm font-mono font-bold', netYield > 0 ? 'text-success' : 'text-destructive')}>
-            {netYield > 0 ? '+' : ''}{netYield.toFixed(2)}% APY
-          </span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -358,7 +382,7 @@ export function LeftPanel() {
   ];
 
   return (
-    <div className="rounded-lg border border-border bg-card flex flex-col min-h-[620px]">
+    <div className="rounded-lg border border-border bg-card flex flex-col min-h-[560px]">
       {/* Tab bar */}
       <div className="flex border-b border-border px-6 pt-4 shrink-0">
         {tabs.map(({ value, label }) => (
@@ -382,7 +406,7 @@ export function LeftPanel() {
         {tab === 'position' && <PositionTab />}
         {tab === 'history' && <HistoryTab />}
         {tab === 'performance' && <PerformanceChart embedded />}
-        {tab === 'info' && <div className="p-6"><ContractsPanel embedded /></div>}
+        {tab === 'info' && <div className="p-6 space-y-6"><HowItWorks /><ContractsPanel embedded /></div>}
       </div>
     </div>
   );
