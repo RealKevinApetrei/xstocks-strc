@@ -213,7 +213,7 @@ export class CowSwapService {
         console.warn(`[CoW] Poll error (will retry): ${err instanceof Error ? err.message : err}`);
       }
 
-      await new Promise((resolve) => setTimeout(resolve, COW_POLL_INTERVAL_MS));
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
     }
 
     throw new Error(`CoW order timed out after ${config.cowTimeoutMs / 1000}s: ${orderUid}`);
