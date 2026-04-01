@@ -266,7 +266,10 @@ export function DepositWithdrawModal({
                     onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
                   />
                 ) : (
-                  <div className="p-8 text-center text-xs text-muted-foreground">Loading wallet...</div>
+                  <div className="p-8 text-center space-y-2">
+                    <div className="h-4 w-32 mx-auto bg-secondary animate-pulse rounded" />
+                    <p className="text-xs text-muted-foreground">Setting up your trading account...</p>
+                  </div>
                 )
               ) : (
                 <>

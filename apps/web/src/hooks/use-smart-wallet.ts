@@ -1,53 +1,61 @@
 'use client';
 
-import { usePrivy } from '@privy-io/react-auth';
-import { useMemo } from 'react';
+import { usePrivy, useCreateWallet } from '@privy-io/react-auth';
+import { useMemo, useEffect, useRef } from 'react';
 
 /**
  * Resolves the user's Privy smart wallet address.
- * Privy creates a Kernel smart wallet on login.
- * The smart wallet address is the one users should deposit USDC to.
+ * If no smart wallet exists, attempts to create one.
+ * The smart wallet is the trading account where all funds and execution happen.
  */
 export function useSmartWallet() {
   const { user, ready, authenticated } = usePrivy();
+  const { createWallet } = useCreateWallet();
+  const creatingRef = useRef(false);
 
   const smartWallet = useMemo(() => {
     if (!user) return null;
 
-    const accounts = user.linkedAccounts;
-    console.log('[WALLET] Linked accounts:', accounts.map(a => ({ type: a.type, ...'address' in a ? { address: a.address } : {}, ...'walletClientType' in a ? { walletClientType: a.walletClientType } : {} })));
-
     // Find the smart wallet from linked accounts
-    const sw = accounts.find(
+    const sw = user.linkedAccounts.find(
       (a) => a.type === 'smart_wallet',
     );
     if (sw && 'address' in sw) {
-      console.log('[WALLET] Using smart_wallet:', sw.address);
       return { address: sw.address as string, type: 'smart_wallet' as const };
-    }
-
-    // Fallback to embedded wallet (EOA) if smart wallet not yet created
-    const embedded = accounts.find(
-      (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
-    );
-    if (embedded && 'address' in embedded) {
-      console.warn('[WALLET] No smart_wallet found, falling back to embedded EOA:', embedded.address);
-      return { address: embedded.address as string, type: 'embedded' as const };
-    }
-
-    // Last resort: user.wallet
-    if (user.wallet?.address) {
-      console.warn('[WALLET] Falling back to user.wallet:', user.wallet.address);
-      return { address: user.wallet.address, type: 'wallet' as const };
     }
 
     return null;
   }, [user]);
+
+  // Auto-create smart wallet if user is authenticated but doesn't have one
+  useEffect(() => {
+    if (!ready || !authenticated || !user || smartWallet || creatingRef.current) return;
+
+    // Check if embedded wallet exists (required before smart wallet can be created)
+    const hasEmbedded = user.linkedAccounts.some(
+      (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
+    );
+    if (!hasEmbedded) return;
+
+    creatingRef.current = true;
+    createWallet()
+      .then((wallet) => {
+        console.log('[WALLET] Smart wallet created:', wallet.address);
+      })
+      .catch((err) => {
+        // May already exist or creation not supported
+        console.warn('[WALLET] Could not create smart wallet:', err?.message ?? err);
+      })
+      .finally(() => {
+        creatingRef.current = false;
+      });
+  }, [ready, authenticated, user, smartWallet, createWallet]);
 
   return {
     address: smartWallet?.address ?? null,
     type: smartWallet?.type ?? null,
     ready: ready && authenticated,
     isSmartWallet: smartWallet?.type === 'smart_wallet',
+    loading: ready && authenticated && !smartWallet,
   };
 }
