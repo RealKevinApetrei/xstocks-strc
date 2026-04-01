@@ -76,7 +76,12 @@ export class UnwindExecutor {
       `SELECT u.id, u.privy_id, u.metadata FROM unwind_executions u WHERE u.status = 'IN_PROGRESS'`,
     );
     for (const row of rows) {
-      const meta = row.metadata ? JSON.parse(row.metadata) : {};
+      let meta: any = {};
+      try {
+        meta = row.metadata && typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata ?? {});
+      } catch {
+        console.warn(`[UNWIND ${row.id}] Invalid metadata, defaulting to full unwind`);
+      }
       console.log(`[UNWIND ${row.id}] Resuming after restart...`);
       this.launchUnwind(row.id, row.privy_id, meta.targetLeverage ?? 0);
     }
