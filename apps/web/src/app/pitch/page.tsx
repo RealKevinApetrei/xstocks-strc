@@ -816,6 +816,7 @@ const SECTIONS = [
   { id: 'architecture', label: 'Tech' },
   { id: 'viability', label: 'Viability' },
   { id: 'business', label: 'Business' },
+  { id: 'next', label: "What's Next" },
   { id: 'impact', label: 'Impact' },
 ];
 
@@ -1342,9 +1343,100 @@ export default function PitchPage() {
           </div>
         </section>
 
-        {/* ═══ SLIDE 8: IMPACT ═══ */}
+        {/* ═══ SLIDE 8: WHAT'S NEXT ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-4xl w-full" style={{ opacity: isActive(8) ? 1 : 0, transform: isActive(8) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+          <div className="max-w-5xl w-full" style={{ opacity: isActive(8) ? 1 : 0, transform: isActive(8) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
+              What&apos;s next for <span style={{ color: '#1a3520' }}>Stretch</span>.
+            </h2>
+            <p className="text-sm mb-8 max-w-2xl leading-relaxed" style={{ color: '#6b6866' }}>
+              Abstracted structured products for consumers. Starting with hedging &mdash; no options knowledge required.
+            </p>
+
+            <div className="grid md:grid-cols-5 gap-5">
+              {/* Left: Vault UI mockup */}
+              <div className="md:col-span-3 rounded-lg border bg-white overflow-hidden" style={{ borderColor: '#e5e7eb' }}>
+                {/* Vault header */}
+                <div className="p-5 border-b" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11.767 19.089c4.924.868 6.14-6.025 1.216-6.894m-1.216 6.894L5.86 18.047m5.908 1.042-.347 1.97m1.563-8.864c4.924.869 6.14-6.025 1.215-6.893m-1.215 6.893-3.94-.694m5.155-6.2L8.29 4.26m5.908 1.042.348-1.97M7.48 20.364l3.126-17.727"/></svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold" style={{ color: '#0a0a0a' }}>BTC Hedging Vault</div>
+                        <div className="text-[10px]" style={{ color: '#6b6866' }}>Automated downside protection via Derive</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px]" style={{ color: '#6b6866' }}>Weekly cost</div>
+                      <div className="text-sm font-mono font-semibold" style={{ color: '#f59e0b' }}>~0.5%</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vault body with blur */}
+                <div className="p-5 relative" style={{ minHeight: 260 }}>
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6" style={{ backdropFilter: 'blur(5px)', backgroundColor: 'rgba(255,255,255,0.5)' }}>
+                    <div className="h-8 w-8 rounded-full flex items-center justify-center" style={{ border: '1px solid rgba(245,158,11,0.3)', backgroundColor: 'rgba(245,158,11,0.1)' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <div className="text-xs font-semibold" style={{ color: '#0a0a0a' }}>Coming soon</div>
+                  </div>
+
+                  <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
+                    <div className="flex justify-between text-xs mb-4">
+                      <span style={{ color: '#6b6866' }}>Protected notional</span>
+                      <span className="font-mono font-semibold" style={{ color: '#0a0a0a' }}>$4,200.00</span>
+                    </div>
+                    <div className="rounded-md border p-3 space-y-2 text-xs" style={{ borderColor: '#e5e7eb' }}>
+                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Strategy</span><span className="font-mono">OTM Put Spreads</span></div>
+                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Strike</span><span className="font-mono">10-15% OTM</span></div>
+                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Expiry</span><span className="font-mono">Weekly rolling</span></div>
+                      <div className="flex justify-between"><span style={{ color: '#6b6866' }}>Protection</span><span className="font-mono" style={{ color: '#16a34a' }}>Up to 25%</span></div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <div className="flex-1 rounded-md py-2 text-xs font-medium text-center" style={{ backgroundColor: '#0a0a0a', color: '#fff' }}>Deposit</div>
+                      <div className="flex-1 rounded-md py-2 text-xs font-medium text-center border" style={{ borderColor: '#e5e7eb', color: '#6b6866' }}>Withdraw</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Feature list */}
+              <div className="md:col-span-2 space-y-4">
+                <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#f59e0b' }}>BTC Hedging Vault</div>
+                  <div className="space-y-3">
+                    {[
+                      { title: 'Derive Protocol', desc: 'Decentralised BTC options on-chain. No CEX counterparty risk.' },
+                      { title: 'OTM Put Spreads', desc: 'Weekly rolling puts 10-15% out of the money. Cheap protection, big payoff in crashes.' },
+                      { title: 'One-click hedge', desc: 'Deposit USDC, vault handles strike selection, rolling, and settlement automatically.' },
+                      { title: 'Delta reduction', desc: 'Reduces BTC-correlated downside on your STRC loop. Sleep through volatility.' },
+                    ].map((f) => (
+                      <div key={f.title}>
+                        <div className="text-xs font-mono font-bold mb-0.5" style={{ color: '#0a0a0a' }}>{f.title}</div>
+                        <p className="text-[11px] leading-relaxed" style={{ color: '#6b6866' }}>{f.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#7c3aed' }}>The Vision</div>
+                  <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>
+                    Abstracted structured products for everyday investors. Leverage, hedging, yield &mdash;
+                    packaged into vaults that feel as simple as a savings account. No options Greeks, no perp funding rates, no liquidation anxiety.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══ SLIDE 9: IMPACT ═══ */}
+        <section className="h-screen w-screen flex items-center justify-center px-6">
+          <div className="max-w-4xl w-full" style={{ opacity: isActive(9) ? 1 : 0, transform: isActive(9) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <h2 className="text-4xl md:text-5xl font-bold mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
               What Spreads brings<br />to <span style={{ color: '#1a3520' }}>xStocks</span>.
             </h2>
