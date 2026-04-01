@@ -217,7 +217,9 @@ export function PositionCard() {
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Leverage</span>
           {positionData.activeLoop?.status === 'IN_PROGRESS' ? (
-            <span className="text-sm font-mono font-semibold text-primary animate-pulse">{leverage.toFixed(1)}x...</span>
+            <span className="text-sm font-mono font-semibold text-primary animate-pulse">{leverage.toFixed(1)}x <span className="text-[10px] text-muted-foreground">building</span></span>
+          ) : (positionData as any).activeUnwind?.status === 'IN_PROGRESS' ? (
+            <span className="text-sm font-mono font-semibold text-warning animate-pulse">{leverage.toFixed(1)}x <span className="text-[10px] text-muted-foreground">unwinding</span></span>
           ) : (
             <span className="text-sm font-mono font-semibold text-primary">{leverage.toFixed(1)}x</span>
           )}

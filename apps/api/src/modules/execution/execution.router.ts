@@ -262,6 +262,12 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
       [privyId],
     );
 
+    // Check for active unwind
+    const { rows: [activeUnwind] } = await query(
+      `SELECT id, status FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') LIMIT 1`,
+      [privyId],
+    );
+
     // Check for grid strategy
     const { rows: [gridStrategy] } = await query(
       `SELECT id, enabled FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
@@ -321,12 +327,12 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
         exchangeRate,
       } : null,
       activeLoop: activeLoop ? { id: activeLoop.id, status: activeLoop.status } : null,
+      activeUnwind: activeUnwind ? { id: activeUnwind.id, status: activeUnwind.status } : null,
       gridStrategy: gridStrategy ? { id: gridStrategy.id, enabled: gridStrategy.enabled } : null,
       vaultBalance,
     });
   } catch {
-    // No position or contracts not deployed yet
-    res.json({ address, hasPosition: false, position: null, activeLoop: null, gridStrategy: null, vaultBalance: null });
+    res.json({ address, hasPosition: false, position: null, activeLoop: null, activeUnwind: null, gridStrategy: null, vaultBalance: null });
   }
 });
 
