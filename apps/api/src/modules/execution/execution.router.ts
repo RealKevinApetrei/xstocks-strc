@@ -67,6 +67,15 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
       return;
     }
 
+    // CoW requires minimum ~$10 per swap
+    const strcValueUsd = Number(strcBalance) / 1e18 * 100; // rough estimate at $100/STRC
+    if (strcValueUsd < 1) {
+      res.status(400).json({ error: `STRC balance too small to swap (~$${strcValueUsd.toFixed(2)}). Dust amounts cannot be traded on CoW.` });
+      return;
+    }
+
+    console.log(`[CLOSE-STRC] Closing ${Number(strcBalance) / 1e18} STRC (~$${strcValueUsd.toFixed(2)}) for ${smartAccountAddr}`);
+
     // 1. Approve STRC for CoW VaultRelayer
     const approveCalls = approvalExecutor.buildApproveCalls({
       token: config.strc, spender: config.cowVaultRelayer, amount: strcBalance,
