@@ -98,6 +98,9 @@ export class LendService {
   /**
    * Get the current supply APY from the IRM.
    * supplyAPY = borrowAPY * utilization * (1 - fee)
+   *
+   * Morpho Blue IRM returns borrow rate per second (in WAD).
+   * Market fee is in WAD (1e18 = 100%, max 25%).
    */
   async getSupplyApy(): Promise<{ supplyApy: number | null; borrowApy: number | null; utilization: number; totalSupply: string; totalBorrow: string }> {
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
@@ -106,16 +109,18 @@ export class LendService {
     ], provider);
 
     const mkt = await morpho.market(config.morphoMarketId);
-    const totalSupply = BigInt(mkt[0]);
-    const totalBorrow = BigInt(mkt[2]);
-    const fee = BigInt(mkt[5]); // fee is in WAD (1e18 = 100%)
+    const totalSupplyAssets = BigInt(mkt[0]);
+    const totalBorrowAssets = BigInt(mkt[2]);
+    const fee = BigInt(mkt[5]); // WAD: 0 = 0%, 0.1e18 = 10%, max 0.25e18 = 25%
 
-    const utilization = totalSupply > 0n
-      ? Number(totalBorrow * 10000n / totalSupply) / 100
+    // Utilization as a decimal 0-1 (not percentage)
+    const utilizationDecimal = totalSupplyAssets > 0n
+      ? Number(totalBorrowAssets) / Number(totalSupplyAssets)
       : 0;
+    const utilizationPct = utilizationDecimal * 100;
 
     if (!config.morphoIrm) {
-      return { supplyApy: null, borrowApy: null, utilization, totalSupply: totalSupply.toString(), totalBorrow: totalBorrow.toString() };
+      return { supplyApy: null, borrowApy: null, utilization: Math.round(utilizationPct * 100) / 100, totalSupply: totalSupplyAssets.toString(), totalBorrow: totalBorrowAssets.toString() };
     }
 
     try {
@@ -127,27 +132,34 @@ export class LendService {
         'function idToMarketParams(bytes32 id) external view returns (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv)',
       ], provider).idToMarketParams(config.morphoMarketId);
 
-      const ratePerSecond = await irm.borrowRateView(
+      const ratePerSecond: bigint = await irm.borrowRateView(
         [marketParams[0], marketParams[1], marketParams[2], marketParams[3], marketParams[4]],
         [mkt[0], mkt[1], mkt[2], mkt[3], mkt[4], mkt[5]],
       );
 
+      // Convert rate per second → APY: (1 + r/1e18)^(seconds_per_year) - 1
       const rateFloat = Number(ratePerSecond) / 1e18;
-      const borrowApy = (Math.pow(1 + rateFloat, 365.25 * 86400) - 1) * 100;
+      const secondsPerYear = 365.25 * 86400;
+      const borrowApy = (Math.pow(1 + rateFloat, secondsPerYear) - 1) * 100;
 
-      // Supply APY = borrow APY * utilization * (1 - fee)
-      const feeRate = Number(fee) / 1e18;
-      const supplyApy = borrowApy * (utilization / 100) * (1 - feeRate);
+      // Fee as decimal (0-0.25)
+      const feeDecimal = Number(fee) / 1e18;
+
+      // Supply APY = borrowAPY * utilization * (1 - protocolFee)
+      const supplyApy = borrowApy * utilizationDecimal * (1 - feeDecimal);
+
+      console.log(`[LEND-APY] borrowRate/s=${ratePerSecond}, borrowAPY=${borrowApy.toFixed(4)}%, util=${(utilizationDecimal * 100).toFixed(2)}%, fee=${(feeDecimal * 100).toFixed(1)}%, supplyAPY=${supplyApy.toFixed(4)}%`);
 
       return {
-        supplyApy: Math.round(supplyApy * 100) / 100,
+        supplyApy: Math.round(supplyApy * 10000) / 10000, // 4 decimal places to avoid rounding to 0
         borrowApy: Math.round(borrowApy * 100) / 100,
-        utilization: Math.round(utilization * 100) / 100,
-        totalSupply: totalSupply.toString(),
-        totalBorrow: totalBorrow.toString(),
+        utilization: Math.round(utilizationPct * 100) / 100,
+        totalSupply: totalSupplyAssets.toString(),
+        totalBorrow: totalBorrowAssets.toString(),
       };
-    } catch {
-      return { supplyApy: null, borrowApy: null, utilization, totalSupply: totalSupply.toString(), totalBorrow: totalBorrow.toString() };
+    } catch (err) {
+      console.error('[LEND-APY] IRM call failed:', err instanceof Error ? err.message : err);
+      return { supplyApy: null, borrowApy: null, utilization: Math.round(utilizationPct * 100) / 100, totalSupply: totalSupplyAssets.toString(), totalBorrow: totalBorrowAssets.toString() };
     }
   }
 }

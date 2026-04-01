@@ -155,10 +155,11 @@ function RecentActivity() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const ASSET_COLORS = {
-  usdc: '#16a34a',
+  usdc:   '#16a34a',
   looped: '#1a3520',
-  strc: '#e05c00',
-  tbill: '#3b82f6',
+  strc:   '#e05c00',
+  wstrc:  '#b84500',
+  tbill:  '#3b82f6',
 };
 
 export default function Portfolio() {
@@ -183,27 +184,29 @@ export default function Portfolio() {
   const hasLoopedPosition = positionData?.hasPosition && position !== null;
 
   // Values
-  const unloopedUsd = strcBalance.formatted * strcPrice;
+  const unloopedUsd      = strcBalance.formatted     * strcPrice;
+  const unloopedWstrcUsd = strcBalance.wstrcFormatted * strcPrice;
   const tbillUsd = tbillBalance * tbillPrice;
-  const totalValue = usdcBalance + loopedEquity + unloopedUsd + tbillUsd;
+  const totalValue = usdcBalance + loopedEquity + unloopedUsd + unloopedWstrcUsd + tbillUsd;
 
   // 24h P&L (STRC only — USDC and T-bill are stable)
   const looped24h = change24h !== null && position ? change24h * collateralStrc * leverage : 0;
-  const unlooped24h = change24h !== null ? change24h * strcBalance.formatted : 0;
+  const unlooped24h = change24h !== null ? change24h * (strcBalance.formatted + strcBalance.wstrcFormatted) : 0;
   const total24h = looped24h + unlooped24h;
   const total24hPct = totalValue > 0 ? (total24h / (totalValue - total24h)) * 100 : 0;
   const is24hPositive = total24h >= 0;
 
   // Donut segments (only show non-zero)
   const segments: Segment[] = [
-    { label: 'USDC', value: usdcBalance, color: ASSET_COLORS.usdc },
+    { label: 'USDC',  value: usdcBalance,       color: ASSET_COLORS.usdc   },
     ...(hasLoopedPosition ? [{ label: 'Looped Position', value: loopedEquity, color: ASSET_COLORS.looped }] : []),
-    { label: 'STRC', value: unloopedUsd, color: ASSET_COLORS.strc },
-    { label: 'T-Bill', value: tbillUsd, color: ASSET_COLORS.tbill },
+    { label: 'STRC',  value: unloopedUsd,        color: ASSET_COLORS.strc  },
+    { label: 'wSTRC', value: unloopedWstrcUsd,   color: ASSET_COLORS.wstrc },
+    { label: 'T-Bill',value: tbillUsd,           color: ASSET_COLORS.tbill },
   ].filter(s => s.value > 0.01);
 
   // Active positions count
-  const activeCount = [usdcBalance > 0, hasLoopedPosition, unloopedUsd > 0, tbillUsd > 0].filter(Boolean).length;
+  const activeCount = [usdcBalance > 0, hasLoopedPosition, unloopedUsd > 0, unloopedWstrcUsd > 0, tbillUsd > 0].filter(Boolean).length;
 
   const openDepositModal = () => document.dispatchEvent(new CustomEvent('open-deposit-modal'));
 
@@ -233,11 +236,22 @@ export default function Portfolio() {
     ...(strcBalance.formatted > 0.0001 ? [{
       key: 'strc',
       label: 'STRC',
-      sublabel: 'Unlooped',
+      sublabel: 'Wallet balance',
       color: ASSET_COLORS.strc,
       amount: strcBalance.formatted,
-      amountLabel: `${strcBalance.formatted.toFixed(4)} STRCx`,
+      amountLabel: `${strcBalance.formatted.toFixed(4)} STRC`,
       value: unloopedUsd as number | null,
+      price: strcPrice,
+      change24h: changePct24h,
+    }] : []),
+    ...(strcBalance.wstrcFormatted > 0.0001 ? [{
+      key: 'wstrc',
+      label: 'wSTRC',
+      sublabel: 'Wrapped STRC',
+      color: ASSET_COLORS.wstrc,
+      amount: strcBalance.wstrcFormatted,
+      amountLabel: `${strcBalance.wstrcFormatted.toFixed(4)} wSTRC`,
+      value: unloopedWstrcUsd as number | null,
       price: strcPrice,
       change24h: changePct24h,
     }] : []),

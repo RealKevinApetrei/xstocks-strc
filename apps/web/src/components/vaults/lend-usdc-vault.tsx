@@ -124,7 +124,7 @@ export function LendUsdcVault() {
           <div className="text-right">
             <div className="text-xs text-muted-foreground">Supply APY</div>
             <div className="text-sm font-mono font-semibold text-success">
-              {SUPPLY_APY !== null && SUPPLY_APY !== undefined ? `+${SUPPLY_APY.toFixed(2)}%` : '—'}
+              {SUPPLY_APY !== null && SUPPLY_APY !== undefined ? `+${SUPPLY_APY < 0.01 && SUPPLY_APY > 0 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}%` : '—'}
             </div>
           </div>
         </div>
@@ -213,7 +213,7 @@ export function LendUsdcVault() {
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Supply APY</span>
                 <span className="font-mono font-semibold text-success">
-                  {SUPPLY_APY !== null && SUPPLY_APY !== undefined ? `+${SUPPLY_APY.toFixed(2)}%` : '—'}
+                  {SUPPLY_APY !== null && SUPPLY_APY !== undefined ? `+${SUPPLY_APY < 0.01 && SUPPLY_APY > 0 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}%` : '—'}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
