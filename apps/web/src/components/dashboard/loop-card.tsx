@@ -146,9 +146,13 @@ function LoopTab() {
         </div>
       )}
 
+      {amountUsdc > usdcBalance && usdcBalance > 0 && (
+        <p className="text-xs text-destructive">Amount exceeds your USDC balance of ${usdcBalance.toFixed(2)}</p>
+      )}
+
       <button
         onClick={handleSubmit}
-        disabled={!usdcAmount || isSubmitting}
+        disabled={!usdcAmount || isSubmitting || (usdcBalance > 0 && amountUsdc > usdcBalance)}
         className="w-full rounded-md bg-primary py-3.5 text-xs font-medium tracking-widest uppercase text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {isSubmitting ? 'Opening Position...' : `Deposit & Loop ${leverage}×`}
@@ -182,7 +186,7 @@ function LoopTab() {
 // Since there's no /unwind/:id/status endpoint, we poll the on-chain position
 // until debt reaches zero (full unwind) or leverage drops to target.
 
-function UnwindProgress({ onDone }: { onDone: () => void }) {
+function UnwindProgress({ onDone, targetLeverage }: { onDone: () => void; targetLeverage: number }) {
   const { data: positionData, refetch } = usePosition();
 
   useEffect(() => {
@@ -190,7 +194,12 @@ function UnwindProgress({ onDone }: { onDone: () => void }) {
     return () => clearInterval(interval);
   }, [refetch]);
 
-  const isDone = !positionData?.hasPosition;
+  // Full unwind (targetLeverage=0): done when position is gone
+  // Partial unwind: done when current leverage <= targetLeverage
+  const currentLeverage = positionData?.position?.effectiveLeverage ?? 0;
+  const isDone = targetLeverage === 0
+    ? !positionData?.hasPosition
+    : !positionData?.hasPosition || currentLeverage <= targetLeverage;
 
   return (
     <div className="space-y-5">
@@ -292,7 +301,7 @@ function UnwindTab() {
   };
 
   if (unwindStarted) {
-    return <UnwindProgress onDone={() => setUnwindStarted(false)} />;
+    return <UnwindProgress onDone={() => setUnwindStarted(false)} targetLeverage={targetLeverage} />;
   }
 
   if (!hasPosition) {
