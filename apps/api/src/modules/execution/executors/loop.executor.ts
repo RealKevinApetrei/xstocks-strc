@@ -462,10 +462,14 @@ export class LoopExecutor {
         maxBorrowUsdc = availableLiquidity * 95n / 100n; // 95% of available to leave buffer
       }
 
-      // Skip if borrow is too small for CoW ($10 minimum)
-      if (maxBorrowUsdc > 0n && maxBorrowUsdc < 10_000_000n) {
-        console.log(`[LOOP ${loopId}] Borrow ${Number(maxBorrowUsdc) / 1e6} USDC too small for CoW — skipping (close enough to target)`);
-        return { success: false, strcReceived: 0n };
+      // Ensure minimum $10 for CoW swap — borrow at least $10 even if it slightly overshoots target
+      const COW_MIN = 10_000_000n; // $10 in 6-decimal USDC
+      if (maxBorrowUsdc > 0n && maxBorrowUsdc < COW_MIN) {
+        if (remainingDebtNeeded > 0n && remainingDebtNeeded < COW_MIN) {
+          // Remaining to target is < $10 — borrow $10 to ensure CoW can fill
+          console.log(`[LOOP ${loopId}] Bumping borrow from ${Number(maxBorrowUsdc) / 1e6} to $10 (CoW minimum)`);
+          maxBorrowUsdc = COW_MIN;
+        }
       }
 
       console.log(`[LOOP ${loopId}] Borrow+swap ${iteration}: borrowing ${Number(maxBorrowUsdc) / 1e6} USDC (current debt: ${Number(currentDebtUsdc) / 1e6}, target: ${Number(targetDebtUsdc) / 1e6})`);
