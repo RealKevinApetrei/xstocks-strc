@@ -137,7 +137,7 @@ function ArchBlock({ label, items, accent }: { label: string; items: string[]; a
 
 // ── Demo: Loop Form → Loop Progress ─────────────────────────────────────────────
 
-function DemoLoop({ active }: { active: boolean }) {
+function DemoLoop({ active, onReset }: { active: boolean; onReset?: () => void }) {
   const [phase, setPhase] = useState<'form' | 'progress' | 'done'>('form');
   const [typedAmount, setTypedAmount] = useState('');
   const [selectedLev, setSelectedLev] = useState(0);
@@ -299,9 +299,9 @@ function DemoLoop({ active }: { active: boolean }) {
         </div>
 
         {phase === 'done' && (
-          <div className="rounded-md py-2.5 text-center text-sm font-medium transition-colors" style={{ backgroundColor: '#f0eeea', color: '#0a0a0a' }}>
+          <button onClick={onReset} className="w-full rounded-md py-2.5 text-center text-sm font-medium transition-colors hover:opacity-80" style={{ backgroundColor: '#f0eeea', color: '#0a0a0a' }}>
             Start New Loop
-          </div>
+          </button>
         )}
       </div>
     </div>
@@ -412,7 +412,7 @@ function DemoPosition({ active }: { active: boolean }) {
 
 // ── Demo: Unwind Progress ───────────────────────────────────────────────────────
 
-function DemoUnwind({ active }: { active: boolean }) {
+function DemoUnwind({ active, onReset }: { active: boolean; onReset?: () => void }) {
   const [step, setStep] = useState(0);
   const [progressPct, setProgressPct] = useState(0);
   const [done, setDone] = useState(false);
@@ -483,9 +483,9 @@ function DemoUnwind({ active }: { active: boolean }) {
         </div>
 
         {done && (
-          <div className="rounded-md py-2.5 text-center text-sm font-medium" style={{ backgroundColor: '#f0eeea', color: '#0a0a0a' }}>
+          <button onClick={onReset} className="w-full rounded-md py-2.5 text-center text-sm font-medium hover:opacity-80 transition-colors" style={{ backgroundColor: '#f0eeea', color: '#0a0a0a' }}>
             Done
-          </div>
+          </button>
         )}
       </div>
     </div>
@@ -510,6 +510,7 @@ const SECTIONS = [
 
 export default function PitchPage() {
   const [page, setPage] = useState(0);
+  const [demoKey, setDemoKey] = useState(0);
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
   const transitioning = useRef(false);
 
@@ -802,12 +803,12 @@ export default function PitchPage() {
             <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
               Watch it <span style={{ color: '#e05c00' }}>work</span>.
             </h2>
-            <div className="grid md:grid-cols-3 gap-4">
+            <div key={demoKey} className="grid md:grid-cols-3 gap-4">
               <div>
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   1. Loop &mdash; Open Position
                 </p>
-                <DemoLoop active={isActive(4)} />
+                <DemoLoop active={isActive(4)} onReset={() => setDemoKey(k => k + 1)} />
               </div>
               <div>
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
@@ -819,7 +820,7 @@ export default function PitchPage() {
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   3. Unwind &mdash; Close Position
                 </p>
-                <DemoUnwind active={isActive(4)} />
+                <DemoUnwind active={isActive(4)} onReset={() => setDemoKey(k => k + 1)} />
               </div>
             </div>
           </div>
