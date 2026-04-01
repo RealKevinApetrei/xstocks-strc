@@ -121,6 +121,25 @@ export function DepositWithdrawModal({
   const withdrawWallet = externalWallet || fallbackWallet;
   const externalAddress = withdrawWallet && 'address' in withdrawWallet ? withdrawWallet.address as string : null;
 
+  // External wallet USDC balance on Ink (for Ink deposit tab)
+  const [externalUsdcBalance, setExternalUsdcBalance] = useState<number | null>(null);
+  useEffect(() => {
+    if (!externalAddress || !USDC_ADDRESS) return;
+    const INK_RPC = process.env.NEXT_PUBLIC_INK_RPC || 'https://rpc-gel.inkonchain.com';
+    const paddedAddr = externalAddress.toLowerCase().replace('0x', '').padStart(64, '0');
+    const calldata = '0x70a08231' + paddedAddr;
+    const fetchBal = () => fetch(INK_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: USDC_ADDRESS, data: calldata }, 'latest'] }),
+    }).then(r => r.json()).then(json => {
+      if (!json.error) setExternalUsdcBalance(Number(BigInt(json.result || '0x0')) / 1e6);
+    }).catch(() => {});
+    fetchBal();
+    const iv = setInterval(fetchBal, 15_000);
+    return () => clearInterval(iv);
+  }, [externalAddress]);
+
   const tabs = mode === 'deposit' ? DEPOSIT_TABS : WITHDRAW_TABS;
 
   const resetStatus = () => { setError(null); setSuccess(null); };
@@ -321,8 +340,19 @@ export function DepositWithdrawModal({
             {mode === 'deposit' ? (
               <>
                 <p className="text-xs text-muted-foreground">
-                  Transfer USDC from your connected wallet (MetaMask, etc.) directly to your trading account on Ink.
+                  Transfer USDC from your connected wallet to your trading account on Ink.
                 </p>
+
+                <div className="rounded-md border border-border bg-background p-3 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Your wallet {externalAddress ? `(${externalAddress.slice(0, 6)}...${externalAddress.slice(-4)})` : ''}</span>
+                    <span className="font-mono">{externalUsdcBalance !== null ? `${externalUsdcBalance.toFixed(2)} USDC` : '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Trading account {depositAddress ? `(${depositAddress.slice(0, 6)}...${depositAddress.slice(-4)})` : ''}</span>
+                    <span className="font-mono">{platformBalance.toFixed(2)} USDC</span>
+                  </div>
+                </div>
 
                 <div className="flex gap-2">
                   <input
@@ -332,13 +362,28 @@ export function DepositWithdrawModal({
                     placeholder="0.00"
                     className="flex-1 rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   />
+                  {externalUsdcBalance !== null && externalUsdcBalance > 0 && (
+                    <>
+                      <button
+                        onClick={() => setAmount((externalUsdcBalance * 0.5).toFixed(2))}
+                        className="rounded-md border border-border px-2.5 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                      >
+                        50%
+                      </button>
+                      <button
+                        onClick={() => setAmount(externalUsdcBalance.toFixed(2))}
+                        className="rounded-md border border-border px-2.5 py-2.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                      >
+                        MAX
+                      </button>
+                    </>
+                  )}
                   <span className="flex items-center text-xs text-muted-foreground px-1">USDC</span>
                 </div>
 
-                <div className="text-[10px] text-muted-foreground flex justify-between">
-                  <span>To: {depositAddress ? `${depositAddress.slice(0, 6)}...${depositAddress.slice(-4)}` : '...'}</span>
-                  <span>Network: Ink</span>
-                </div>
+                {amountNum > 0 && externalUsdcBalance !== null && amountNum > externalUsdcBalance && (
+                  <p className="text-[10px] text-destructive">Amount exceeds wallet balance</p>
+                )}
 
                 <button
                   onClick={handleInkDeposit}
@@ -347,10 +392,6 @@ export function DepositWithdrawModal({
                 >
                   {isSubmitting ? 'Processing...' : `DEPOSIT $${amountNum > 0 ? amountNum.toFixed(2) : '0.00'}`}
                 </button>
-
-                <p className="text-[10px] text-muted-foreground">
-                  Make sure your wallet is connected to Ink and has USDC. The transfer is signed by your connected wallet.
-                </p>
               </>
             ) : (
               <>
