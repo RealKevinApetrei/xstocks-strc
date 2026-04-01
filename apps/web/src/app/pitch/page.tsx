@@ -639,9 +639,9 @@ function MiniDipChart({ active }: { active: boolean }) {
     requestAnimationFrame(tick);
   }, [active, prices.length]);
 
-  if (prices.length === 0) return <div style={{ height: 55 }} />;
+  if (prices.length === 0) return <div style={{ height: 110 }} />;
 
-  const w = 180, h = 55, pad = 2;
+  const w = 280, h = 110, pad = 4;
   const minP = Math.floor(Math.min(...prices) - 2);
   const maxP = Math.ceil(Math.max(...prices) + 2);
 
@@ -668,7 +668,7 @@ function MiniDipChart({ active }: { active: boolean }) {
   });
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 55 }}>
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 110 }}>
       {/* $95 threshold */}
       <line x1={pad} y1={threshY} x2={w - pad} y2={threshY} stroke="#d93030" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5" />
       <text x={w - pad} y={threshY - 2} fill="#d93030" fontSize="5" fontFamily="IBM Plex Mono" textAnchor="end" opacity="0.6">$95</text>
@@ -932,21 +932,24 @@ export default function PitchPage() {
             </h2>
             <div className="grid grid-cols-3 gap-5 mt-8">
               {/* Leverage */}
-              <div className="rounded-lg border bg-white px-8 py-16 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-lg font-mono font-bold tracking-widest uppercase mb-4" style={{ color: '#e05c00' }}>Leverage</div>
-                <div className="text-7xl font-mono font-bold" style={{ color: '#16a34a' }}>
+              <div className="rounded-lg border bg-white px-8 pt-8 pb-10 flex flex-col items-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-lg font-mono font-bold tracking-widest uppercase mb-auto" style={{ color: '#e05c00' }}>Leverage</div>
+                <div className="text-7xl font-mono font-bold my-auto" style={{ color: '#16a34a' }}>
                   <AnimatedCounter target={46} suffix="%" active={isActive(2)} />
                 </div>
-                <div className="text-sm font-mono font-semibold mt-2 tracking-widest uppercase" style={{ color: '#6b6866' }}>APY</div>
+                <div className="text-sm font-mono font-semibold mt-auto tracking-widest uppercase" style={{ color: '#6b6866' }}>APY</div>
               </div>
               {/* Trading */}
-              <div className="rounded-lg border bg-white px-8 py-10 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
+              <div className="rounded-lg border bg-white px-4 pt-8 pb-4 flex flex-col items-center" style={{ borderColor: '#e5e7eb' }}>
                 <div className="text-lg font-mono font-bold tracking-widest uppercase mb-4" style={{ color: '#2d2d2d' }}>Trading</div>
-                <MiniDipChart active={isActive(2)} />
+                <div className="flex-1 w-full flex items-center">
+                  <MiniDipChart active={isActive(2)} />
+                </div>
               </div>
               {/* Savings */}
-              <div className="rounded-lg border bg-white px-8 py-10 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-lg font-mono font-bold tracking-widest uppercase mb-5" style={{ color: '#16a34a' }}>Savings</div>
+              <div className="rounded-lg border bg-white px-8 pt-8 pb-10 flex flex-col items-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-lg font-mono font-bold tracking-widest uppercase mb-auto" style={{ color: '#16a34a' }}>Savings</div>
+                <div className="my-auto pt-4" />
                 <div className="flex items-center justify-center gap-3">
                   {/* Netflix */}
                   <div className="w-[72px] h-24 rounded-lg border flex flex-col items-center justify-center shadow-sm" style={{ borderColor: '#e5e7eb', background: 'linear-gradient(135deg, #e50914 0%, #b20710 100%)' }}>
@@ -984,8 +987,8 @@ export default function PitchPage() {
                 <DemoLoop active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
                 {/* Morpho + Ink logos */}
                 <div className="flex items-center justify-center gap-5 mt-auto pt-6">
-                  <img src="/morpho.jpg" alt="Morpho" className="w-12 h-12 rounded-lg object-cover" />
-                  <img src="/ink.jpg" alt="Ink" className="w-12 h-12 rounded-lg object-cover" />
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/morpho.jpg" alt="Morpho" className="w-full h-full object-cover" style={{ transform: 'scale(1.8)' }} /></div>
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/ink.jpg" alt="Ink" className="w-full h-full object-cover" style={{ transform: 'scale(0.85)' }} /></div>
                 </div>
               </div>
               <div className="flex flex-col">
@@ -1001,8 +1004,8 @@ export default function PitchPage() {
                 <DemoUnwind active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
                 {/* Privy + xStocks logos */}
                 <div className="flex items-center justify-center gap-5 mt-auto pt-6">
-                  <img src="/privy.jpg" alt="Privy" className="w-12 h-12 rounded-lg object-cover" />
-                  <img src="/xstocks.jpg" alt="xStocks" className="w-12 h-12 rounded-lg object-cover" />
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/privy.jpg" alt="Privy" className="w-full h-full object-cover" style={{ transform: 'scale(0.85)' }} /></div>
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/xstocks.jpg" alt="xStocks" className="w-full h-full object-cover" /></div>
                 </div>
               </div>
             </div>
