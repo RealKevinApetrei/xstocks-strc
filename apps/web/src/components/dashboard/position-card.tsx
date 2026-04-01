@@ -162,9 +162,7 @@ export function PositionCard() {
   const effectivelyEmpty = p_ && parseFloat(formatBigInt(p_.collateralStrc)) < 0.001 && parseFloat(formatBigInt(p_.debtUsdc, 6, 2)) < 0.01;
 
   // Check for wSTRC balance (stuck from partial loop — wrap succeeded but supply didn't)
-  const wstrcRaw = (positionData as any)?.wstrcBalance;
-  const wstrcFormatted = wstrcRaw ? parseFloat(wstrcRaw) / 1e18 : 0;
-  const hasWalletTokens = strcBalance.formatted > 0.001 || wstrcFormatted > 0.001;
+  const hasWalletTokens = strcBalance.totalFormatted > 0.001;
 
   if (!positionData?.hasPosition || !positionData.position || effectivelyEmpty) {
     return (
@@ -177,9 +175,9 @@ export function PositionCard() {
         )}
         {hasWalletTokens ? (
           <StrcPositionCard
-            strcAmount={strcBalance.formatted + wstrcFormatted}
+            strcAmount={strcBalance.totalFormatted}
             strcPrice={strcPrice}
-            hasWstrc={wstrcFormatted > 0.001}
+            hasWstrc={strcBalance.wstrcFormatted > 0.001}
             onClosed={() => { strcBalance.refresh(); refreshUsdcBalance(); }}
           />
         ) : !((positionData as any)?.error) ? (
