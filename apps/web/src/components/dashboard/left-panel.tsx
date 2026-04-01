@@ -315,9 +315,20 @@ function HistoryTab() {
                   {loop.effectiveLeverage ? `${loop.effectiveLeverage.toFixed(1)}×` : '—'}
                 </td>
                 <td className="py-3 text-right">
-                  <span className={cn('inline-block rounded border px-1.5 py-0.5 text-[10px] font-mono', statusColors[loop.status] ?? statusColors.PENDING)}>
-                    {loop.status.replace('_', ' ')}
-                  </span>
+                  {loop.status === 'COMPLETED_PARTIAL' ? (
+                    <div className="relative inline-block group">
+                      <span className={cn('inline-block rounded border px-1.5 py-0.5 text-[10px] font-mono cursor-default', statusColors['COMPLETED_PARTIAL'])}>
+                        PARTIAL
+                      </span>
+                      <div className="absolute right-0 bottom-full mb-2 w-52 rounded-md border border-border bg-card shadow-lg p-2.5 text-[10px] font-mono text-muted-foreground leading-relaxed z-10 hidden group-hover:block">
+                        Loop reached partial leverage — the health factor got too close to the liquidation threshold before hitting your target. Your position is still open and earning yield.
+                      </div>
+                    </div>
+                  ) : (
+                    <span className={cn('inline-block rounded border px-1.5 py-0.5 text-[10px] font-mono', statusColors[loop.status] ?? statusColors.PENDING)}>
+                      {loop.status.replace('_', ' ')}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

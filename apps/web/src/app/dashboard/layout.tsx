@@ -4,6 +4,8 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Nav } from '@/components/shared/nav';
+import { SpreadsToast } from '@/components/shared/toast';
+import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { ready, authenticated } = usePrivy();
@@ -18,7 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!ready || !authenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <SpreadsSpinner size={36} />
       </div>
     );
   }
@@ -29,6 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
         {children}
       </main>
+      <SpreadsToast />
       <footer className="border-t border-border bg-card mt-8">
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col items-center gap-4">
           <div className="flex items-center gap-2">
