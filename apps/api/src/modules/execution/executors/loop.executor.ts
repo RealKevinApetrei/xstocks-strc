@@ -209,6 +209,7 @@ export class LoopExecutor {
   private async initialSwap(loopId: string, privyId: string, smartAccountAddr: string, usdcAmount: bigint): Promise<bigint> {
     const wallet = await signerService.getWalletForUser(privyId);
     const eoaAddress = wallet.address;
+    console.log(`[LOOP ${loopId}] EOA address: ${eoaAddress}, Smart wallet: ${smartAccountAddr}, Wallet ID: ${wallet.walletId}`);
 
     // Step 1: Transfer USDC from smart wallet → EOA (so EOA can be CoW order owner)
     await this.updateStage(loopId, 'Moving USDC to signing wallet...');
