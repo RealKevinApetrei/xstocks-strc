@@ -315,7 +315,7 @@ executionRouter.get('/market-rate', async (_req: Request, res: Response) => {
     });
   } catch (err) {
     console.error('[MARKET-RATE] Error:', err instanceof Error ? err.message : err);
-    res.json({ borrowApy: 4.2, utilization: null, totalSupply: null, totalBorrow: null });
+    res.json({ borrowApy: null, utilization: null, totalSupply: null, totalBorrow: null });
   }
 });
 

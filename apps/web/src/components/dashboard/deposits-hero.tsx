@@ -37,8 +37,7 @@ function useCountUp(target: number, duration = 1800, decimals = 0) {
 export function DepositsHero() {
   const { data: positionData, loading } = usePosition();
   const { price: strcPrice, change24h, changePct24h } = useStrcxPrice();
-  const { borrowApy } = useMarketRate();
-  const effectiveBorrowApy = borrowApy ?? 4.2;
+  const { borrowApy, loading: rateLoading } = useMarketRate();
 
   // Derive real values from position
   const position = positionData?.position;
@@ -49,8 +48,8 @@ export function DepositsHero() {
   const debtUsd = hasPosition ? parseFloat(formatBigInt(position.debtUsdc, 6, 2)) : 0;
   const equityUsd = collateralUsd - debtUsd;
   const leverage = hasPosition ? position.effectiveLeverage : 0;
-  const netApy = leverage > 0
-    ? STRC_BASE_APY * leverage - effectiveBorrowApy * (leverage - 1)
+  const netApy = leverage > 0 && borrowApy !== null
+    ? STRC_BASE_APY * leverage - borrowApy * (leverage - 1)
     : 0;
 
   // 24h P&L on equity from price movement
