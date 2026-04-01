@@ -828,7 +828,7 @@ export default function PitchPage() {
             style={{
               right: 0, bottom: -104, width: '30vw', height: '100vh',
               objectFit: 'cover', objectPosition: 'center top',
-              zIndex: 1, opacity: 0.5,
+              zIndex: 1, opacity: 0,
               mixBlendMode: 'multiply',
             }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
