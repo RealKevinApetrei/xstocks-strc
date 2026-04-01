@@ -113,140 +113,65 @@ export class UnwindExecutor {
     await pythPriceService.ensureFreshPrice();
 
     for (let step = 1; step <= config.maxUnwindSteps; step++) {
-      // Pre-step: sell any STRC sitting in wallet to get USDC for debt repayment
-      if (targetLeverage === 0) {
-        const provider = getProvider();
-        const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-        const walletStrc: bigint = await strcContract.balanceOf(smartAccountAddr);
-        const walletStrcUsd = Number(walletStrc) / 1e18 * 100;
-
-        if (walletStrc > STRC_DUST && walletStrcUsd >= 10) {
-          console.log(`[UNWIND ${unwindId}] Pre-step: selling ${Number(walletStrc) / 1e18} STRC (~$${walletStrcUsd.toFixed(2)}) from wallet`);
-          try {
-            const aCalls = approvalExecutor.buildApproveCalls({ token: config.strc, spender: config.cowVaultRelayer, amount: walletStrc });
-            await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, aCalls));
-
-            const quote = await cowSwapService.getQuote({ sellToken: config.strc, buyToken: config.usdc, sellAmount: walletStrc, from: smartAccountAddr });
-            const orderUid = await cowSwapService.createOrder(quote, '');
-            const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
-            await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [preSignCall]));
-
-            for (let i = 0; i < 20; i++) {
-              const status = await cowSwapService.pollOrderStatus(orderUid);
-              if (status !== 'presignaturePending') break;
-              await new Promise(r => setTimeout(r, 3000));
-            }
-            await cowSwapService.waitForFill(orderUid);
-            console.log(`[UNWIND ${unwindId}] Pre-step: STRC → USDC swap complete`);
-
-            // Now repay debt with the USDC we just got
-            const pos = await borrowExecutor.getPosition(smartAccountAddr);
-            if (pos.borrowed > 0n) {
-              const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
-              const usdcBal: bigint = await usdc.balanceOf(smartAccountAddr);
-              if (usdcBal > 0n) {
-                const repayAmt = usdcBal < pos.borrowed ? usdcBal : pos.borrowed;
-                console.log(`[UNWIND ${unwindId}] Pre-step: repaying ${Number(repayAmt) / 1e6} USDC debt`);
-                const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: repayAmt });
-                await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
-                const repayCalls = borrowExecutor.buildRepayCalls(repayAmt, smartAccountAddr);
-                await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
-              }
-            }
-          } catch (err) {
-            console.warn(`[UNWIND ${unwindId}] Pre-step STRC sell failed:`, err instanceof Error ? err.message : err);
-          }
-        }
-      }
-
       const position = await borrowExecutor.getPosition(smartAccountAddr);
       console.log(`[UNWIND ${unwindId}] Step ${step}: collateral=${position.collateral}, borrowed=${position.borrowed}, HF=${position.healthFactor.toFixed(2)}`);
 
-      // Target reached?
+      // ── Check if target reached ──
       if (this.isTargetReached(position, targetLeverage)) {
-        if (targetLeverage === 0 && position.collateral > 0n && position.borrowed === 0n) {
-          console.log(`[UNWIND ${unwindId}] Debt cleared, running final cleanup to withdraw collateral...`);
+        // Full unwind: run comprehensive cleanup
+        if (targetLeverage === 0) {
           try {
-            await this.finalCleanup(privyId, smartAccountAddr, position);
-            console.log(`[UNWIND ${unwindId}] Final cleanup complete`);
+            await this.verifyFullUnwind(unwindId, privyId, smartAccountAddr);
           } catch (err) {
-            console.error(`[UNWIND ${unwindId}] Final cleanup failed:`, err instanceof Error ? err.message : err);
-            await query(
-              `UPDATE unwind_executions SET status = 'FAILED', current_step = $2, error = $3 WHERE id = $1`,
-              [unwindId, step, `Final cleanup failed: ${err instanceof Error ? err.message : 'Unknown'}`],
-            );
-            return;
+            console.error(`[UNWIND ${unwindId}] Cleanup failed:`, err instanceof Error ? err.message : err);
           }
         }
-
-        // Final verification for full unwind — ensure everything is cleaned up
-        if (targetLeverage === 0) {
-          await this.verifyFullUnwind(unwindId, privyId, smartAccountAddr);
-        }
-
         const finalPos = await borrowExecutor.getPosition(smartAccountAddr);
         await query(
           `UPDATE unwind_executions SET status = 'COMPLETED', remaining_debt_usdc = $2,
            remaining_collateral_wstrc = $3, current_step = $4 WHERE id = $1`,
           [unwindId, finalPos.borrowed.toString(), finalPos.collateral.toString(), step],
         );
-        console.log(`[UNWIND ${unwindId}] Unwind completed. Remaining collateral=${finalPos.collateral}, debt=${finalPos.borrowed}`);
+        console.log(`[UNWIND ${unwindId}] Completed. collateral=${finalPos.collateral}, debt=${finalPos.borrowed}`);
         return;
       }
 
-      let safeWithdrawWstrc = this.calculateSafeWithdrawAmount(position);
+      // ── Step A: Repay max with any available USDC ──
+      await this.repayMaxUsdc(unwindId, privyId, smartAccountAddr);
 
-      // For tiny positions (< $1 debt), just withdraw everything — liquidation risk is negligible
-      if (safeWithdrawWstrc === 0n && position.borrowed > 0n && position.borrowed < 1_000_000n) {
-        console.log(`[UNWIND ${unwindId}] Tiny debt (${Number(position.borrowed) / 1e6} USDC) — withdrawing all collateral`);
-        safeWithdrawWstrc = position.collateral;
+      // ── Step B: Sell any wallet STRC → USDC and repay ──
+      await this.sellWalletStrcAndRepay(unwindId, privyId, smartAccountAddr);
+
+      // ── Step C: Re-read position, check if done ──
+      const posAfterRepay = await borrowExecutor.getPosition(smartAccountAddr);
+      if (this.isTargetReached(posAfterRepay, targetLeverage)) continue; // loop back to target check
+
+      // ── Step D: Withdraw collateral, unwrap, sell, repay ──
+      let withdrawAmount = this.calculateSafeWithdrawAmount(posAfterRepay);
+
+      // Tiny debt (< $1) — just withdraw everything
+      if (withdrawAmount === 0n && posAfterRepay.borrowed > 0n && posAfterRepay.borrowed < 1_000_000n) {
+        console.log(`[UNWIND ${unwindId}] Tiny debt $${(Number(posAfterRepay.borrowed) / 1e6).toFixed(2)} — force withdrawing all`);
+        withdrawAmount = posAfterRepay.collateral;
       }
 
-      if (safeWithdrawWstrc === 0n && position.borrowed > 0n) {
-        // HF too low to withdraw — try repaying with available USDC first
-        console.log(`[UNWIND ${unwindId}] HF ${position.healthFactor.toFixed(2)} too low to withdraw, trying to repay USDC first`);
-        const provider = getProvider();
-        const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
-        const usdcBalance: bigint = await usdc.balanceOf(smartAccountAddr);
-
-        if (usdcBalance > 0n) {
-          const repayAmount = usdcBalance < position.borrowed ? usdcBalance : position.borrowed;
-          console.log(`[UNWIND ${unwindId}] Repaying ${Number(repayAmount) / 1e6} USDC to raise HF`);
-
-          const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: repayAmount });
-          await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
-
-          const repayCalls = borrowExecutor.buildRepayCalls(repayAmount, smartAccountAddr);
-          await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
-
-          // Re-check position after repay
-          const freshPos = await borrowExecutor.getPosition(smartAccountAddr);
-          console.log(`[UNWIND ${unwindId}] After repay: collateral=${freshPos.collateral}, borrowed=${freshPos.borrowed}, HF=${freshPos.healthFactor.toFixed(2)}`);
-          safeWithdrawWstrc = this.calculateSafeWithdrawAmount(freshPos);
-        }
-
-        if (safeWithdrawWstrc === 0n) {
-          await query(
-            `UPDATE unwind_executions SET status = 'FAILED', current_step = $2,
-             error = 'Cannot safely withdraw — HF ${position.healthFactor.toFixed(2)} too close to liquidation' WHERE id = $1`,
-            [unwindId, step],
-          );
-          return;
-        }
+      if (withdrawAmount === 0n) {
+        await query(
+          `UPDATE unwind_executions SET status = 'FAILED', current_step = $2,
+           error = 'Cannot withdraw — HF ${posAfterRepay.healthFactor.toFixed(2)} too low and no USDC/STRC available' WHERE id = $1`,
+          [unwindId, step],
+        );
+        return;
       }
 
-      // Execute step with retry
-      let success = await this.executeStep(privyId, smartAccountAddr, safeWithdrawWstrc, position);
-
+      const success = await this.executeStep(privyId, smartAccountAddr, withdrawAmount, posAfterRepay);
       if (!success) {
+        // Retry once
         console.log(`[UNWIND ${unwindId}] Step ${step} failed, retrying...`);
         await pythPriceService.ensureFreshPrice();
         const freshPos = await borrowExecutor.getPosition(smartAccountAddr);
         const freshWithdraw = this.calculateSafeWithdrawAmount(freshPos);
-        if (freshWithdraw > 0n) {
-          success = await this.executeStep(privyId, smartAccountAddr, freshWithdraw, freshPos);
-        }
-        if (!success) {
+        if (freshWithdraw <= 0n || !(await this.executeStep(privyId, smartAccountAddr, freshWithdraw > 0n ? freshWithdraw : freshPos.collateral, freshPos))) {
           await query(
             `UPDATE unwind_executions SET status = 'FAILED', current_step = $2, error = 'Step failed after retry' WHERE id = $1`,
             [unwindId, step],
@@ -266,6 +191,57 @@ export class UnwindExecutor {
       `UPDATE unwind_executions SET status = 'FAILED', error = 'Max ${config.maxUnwindSteps} steps reached' WHERE id = $1`,
       [unwindId],
     );
+  }
+
+  /** Repay as much debt as possible with available USDC in wallet */
+  private async repayMaxUsdc(unwindId: string, privyId: string, smartAccountAddr: string): Promise<void> {
+    const provider = getProvider();
+    const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const usdcBal: bigint = await usdc.balanceOf(smartAccountAddr);
+    const pos = await borrowExecutor.getPosition(smartAccountAddr);
+
+    if (usdcBal > 0n && pos.borrowed > 0n) {
+      const repayAmt = usdcBal < pos.borrowed ? usdcBal : pos.borrowed;
+      console.log(`[UNWIND ${unwindId}] Repaying ${Number(repayAmt) / 1e6} USDC (have ${Number(usdcBal) / 1e6}, owe ${Number(pos.borrowed) / 1e6})`);
+      const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: repayAmt });
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
+      const repayCalls = borrowExecutor.buildRepayCalls(repayAmt, smartAccountAddr);
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
+    }
+  }
+
+  /** Sell any STRC in wallet → USDC via CoW, then repay debt */
+  private async sellWalletStrcAndRepay(unwindId: string, privyId: string, smartAccountAddr: string): Promise<void> {
+    const provider = getProvider();
+    const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const strcBal: bigint = await strcContract.balanceOf(smartAccountAddr);
+    const strcUsd = Number(strcBal) / 1e18 * 100;
+
+    if (strcBal <= STRC_DUST || strcUsd < 10) return;
+
+    console.log(`[UNWIND ${unwindId}] Selling ${Number(strcBal) / 1e18} STRC (~$${strcUsd.toFixed(2)}) → USDC`);
+    try {
+      const aCalls = approvalExecutor.buildApproveCalls({ token: config.strc, spender: config.cowVaultRelayer, amount: strcBal });
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, aCalls));
+
+      const quote = await cowSwapService.getQuote({ sellToken: config.strc, buyToken: config.usdc, sellAmount: strcBal, from: smartAccountAddr });
+      const orderUid = await cowSwapService.createOrder(quote, '');
+      const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
+      await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [preSignCall]));
+
+      for (let i = 0; i < 20; i++) {
+        const status = await cowSwapService.pollOrderStatus(orderUid);
+        if (status !== 'presignaturePending') break;
+        await new Promise(r => setTimeout(r, 3000));
+      }
+      await cowSwapService.waitForFill(orderUid);
+      console.log(`[UNWIND ${unwindId}] STRC → USDC swap complete`);
+
+      // Repay with the USDC we got
+      await this.repayMaxUsdc(unwindId, privyId, smartAccountAddr);
+    } catch (err) {
+      console.warn(`[UNWIND ${unwindId}] STRC sell failed:`, err instanceof Error ? err.message : err);
+    }
   }
 
   private async executeStep(

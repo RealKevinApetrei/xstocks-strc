@@ -189,18 +189,25 @@ function LoopTab() {
 
 function UnwindProgress({ onDone, targetLeverage }: { onDone: () => void; targetLeverage: number }) {
   const { data: positionData, refetch } = usePosition();
+  const [startedAt] = useState(Date.now());
+  const [initialDebt] = useState(() => {
+    const d = positionData?.position?.debtUsdc;
+    return d ? parseFloat(formatBigInt(d, 6, 2)) : 0;
+  });
 
   useEffect(() => {
     const interval = setInterval(refetch, 5_000);
     return () => clearInterval(interval);
   }, [refetch]);
 
-  // Full unwind (targetLeverage=0): done when position is gone
-  // Partial unwind: done when current leverage <= targetLeverage
+  // Full unwind: done when no position or debt=0
+  // Partial unwind: done when leverage <= target
   const currentLeverage = positionData?.position?.effectiveLeverage ?? 0;
+  const currentDebt = positionData?.position ? parseFloat(formatBigInt(positionData.position.debtUsdc, 6, 2)) : 0;
+  const elapsed = Date.now() - startedAt;
   const isDone = targetLeverage === 0
-    ? !positionData?.hasPosition
-    : !positionData?.hasPosition || currentLeverage <= targetLeverage;
+    ? (!positionData?.hasPosition || (currentDebt === 0 && elapsed > 10_000))
+    : (!positionData?.hasPosition || (currentLeverage <= targetLeverage && elapsed > 10_000));
 
   return (
     <div className="space-y-5">
