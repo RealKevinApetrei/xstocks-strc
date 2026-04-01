@@ -112,15 +112,39 @@ export class UnwindExecutor {
         return;
       }
 
-      const safeWithdrawWstrc = this.calculateSafeWithdrawAmount(position);
+      let safeWithdrawWstrc = this.calculateSafeWithdrawAmount(position);
 
-      if (safeWithdrawWstrc === 0n) {
-        await query(
-          `UPDATE unwind_executions SET status = 'FAILED', current_step = $2,
-           error = 'Cannot safely withdraw — HF ${position.healthFactor.toFixed(2)} too close to liquidation' WHERE id = $1`,
-          [unwindId, step],
-        );
-        return;
+      if (safeWithdrawWstrc === 0n && position.borrowed > 0n) {
+        // HF too low to withdraw — try repaying with available USDC first
+        console.log(`[UNWIND ${unwindId}] HF ${position.healthFactor.toFixed(2)} too low to withdraw, trying to repay USDC first`);
+        const provider = getProvider();
+        const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
+        const usdcBalance: bigint = await usdc.balanceOf(smartAccountAddr);
+
+        if (usdcBalance > 0n) {
+          const repayAmount = usdcBalance < position.borrowed ? usdcBalance : position.borrowed;
+          console.log(`[UNWIND ${unwindId}] Repaying ${Number(repayAmount) / 1e6} USDC to raise HF`);
+
+          const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: repayAmount });
+          await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
+
+          const repayCalls = borrowExecutor.buildRepayCalls(repayAmount, smartAccountAddr);
+          await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
+
+          // Re-check position after repay
+          const freshPos = await borrowExecutor.getPosition(smartAccountAddr);
+          console.log(`[UNWIND ${unwindId}] After repay: collateral=${freshPos.collateral}, borrowed=${freshPos.borrowed}, HF=${freshPos.healthFactor.toFixed(2)}`);
+          safeWithdrawWstrc = this.calculateSafeWithdrawAmount(freshPos);
+        }
+
+        if (safeWithdrawWstrc === 0n) {
+          await query(
+            `UPDATE unwind_executions SET status = 'FAILED', current_step = $2,
+             error = 'Cannot safely withdraw — HF ${position.healthFactor.toFixed(2)} too close to liquidation' WHERE id = $1`,
+            [unwindId, step],
+          );
+          return;
+        }
       }
 
       // Execute step with retry
