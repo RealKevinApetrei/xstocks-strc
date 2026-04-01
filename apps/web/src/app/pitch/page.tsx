@@ -1004,7 +1004,7 @@ export default function PitchPage() {
                 <DemoUnwind active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
                 {/* Privy + xStocks logos */}
                 <div className="flex items-center justify-center gap-5 mt-auto pt-6">
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0"><img src="/privy.jpg" alt="Privy" className="w-full h-full object-cover" style={{ transform: 'scale(0.65)' }} /></div>
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0"><img src="/privy.jpg" alt="Privy" className="w-full h-full object-cover" style={{ transform: 'scale(0.45)' }} /></div>
                   <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0"><img src="/xstocks.jpg" alt="xStocks" className="w-full h-full object-cover" /></div>
                 </div>
               </div>
