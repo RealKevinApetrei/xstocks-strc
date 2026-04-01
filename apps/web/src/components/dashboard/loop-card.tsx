@@ -493,7 +493,8 @@ export function LoopCard() {
       </div>
 
       <div className="min-h-[420px]">
-        {tab === 'loop' ? <LoopTab /> : <UnwindTab />}
+        <div className={tab === 'loop' ? undefined : 'hidden'}><LoopTab /></div>
+        <div className={tab === 'unwind' ? undefined : 'hidden'}><UnwindTab /></div>
       </div>
     </div>
   );

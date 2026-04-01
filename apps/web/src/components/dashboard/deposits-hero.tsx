@@ -5,6 +5,7 @@ import { cn, formatBigInt } from '@/lib/utils';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
+import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
 
 const STRC_BASE_APY = 11.5;
 
@@ -66,12 +67,8 @@ export function DepositsHero() {
 
   if (loading) {
     return (
-      <div className="flex items-end justify-between py-2 animate-pulse">
-        <div>
-          <div className="h-2.5 w-24 bg-muted rounded mb-3" />
-          <div className="h-12 w-48 bg-muted rounded" />
-        </div>
-        <div className="h-10 w-32 bg-muted rounded" />
+      <div className="flex items-center justify-center py-8">
+        <SpreadsSpinner size={36} />
       </div>
     );
   }

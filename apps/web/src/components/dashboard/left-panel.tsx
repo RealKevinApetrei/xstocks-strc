@@ -9,6 +9,7 @@ import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
 import { PerformanceChart } from '@/components/vaults/performance-chart';
 import { ContractsPanel } from '@/components/dashboard/contracts-panel';
+import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
 
 function HealthFactorGauge({ hf }: { hf: number }) {
   const [displayPct, setDisplayPct] = useState(0);
@@ -123,11 +124,8 @@ function PositionTab() {
 
   if (loading) {
     return (
-      <div className="p-6 animate-pulse space-y-4">
-        <div className="h-4 bg-muted rounded w-24" />
-        <div className="grid grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-muted rounded" />)}
-        </div>
+      <div className="flex items-center justify-center p-12">
+        <SpreadsSpinner size={32} />
       </div>
     );
   }
