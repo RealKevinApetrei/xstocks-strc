@@ -59,18 +59,34 @@ export function DepositWithdrawModal({
   // Deposits go to smart wallet (where loop executor operates)
   const depositAddress = smartWalletAddress;
 
-  // Adapt Privy embedded wallet for Relay SwapWidget
-  const [relayWallet, setRelayWallet] = useState<any>(undefined);
+  // Adapt Privy wallets for Relay SwapWidget
+  const [relayEmbeddedWallet, setRelayEmbeddedWallet] = useState<any>(undefined);
+  const [relayExternalWallet, setRelayExternalWallet] = useState<any>(undefined);
+
   useEffect(() => {
+    // Embedded wallet (for withdraw — has USDC on Ink)
     const privyWallet = wallets.find(w => w.walletClientType === 'privy');
-    if (!privyWallet) return;
-    privyWallet.getEthereumProvider().then((provider) => {
-      const walletClient = createWalletClient({
-        account: privyWallet.address as `0x${string}`,
-        transport: custom(provider),
-      });
-      setRelayWallet(adaptViemWallet(walletClient));
-    }).catch(() => {});
+    if (privyWallet) {
+      privyWallet.getEthereumProvider().then((provider) => {
+        const wc = createWalletClient({
+          account: privyWallet.address as `0x${string}`,
+          transport: custom(provider),
+        });
+        setRelayEmbeddedWallet(adaptViemWallet(wc));
+      }).catch(() => {});
+    }
+
+    // External wallet (for deposit — MetaMask etc. with funds on other chains)
+    const externalW = wallets.find(w => w.walletClientType !== 'privy');
+    if (externalW) {
+      externalW.getEthereumProvider().then((provider) => {
+        const wc = createWalletClient({
+          account: externalW.address as `0x${string}`,
+          transport: custom(provider),
+        });
+        setRelayExternalWallet(adaptViemWallet(wc));
+      }).catch(() => {});
+    }
   }, [wallets]);
   const { balance: platformBalance, refresh: refreshBalance } = useUsdcBalance();
   const [tab, setTab] = useState<Tab>(mode === 'deposit' ? 'bridge' : 'ink');
@@ -251,6 +267,7 @@ export function DepositWithdrawModal({
                   <SwapWidget
                     key={depositAddress}
                     supportedWalletVMs={['evm']}
+                    wallet={relayExternalWallet}
                     toToken={toToken}
                     setToToken={setToToken}
                     fromToken={fromToken}
@@ -279,7 +296,7 @@ export function DepositWithdrawModal({
                   </p>
                   <SwapWidget
                     supportedWalletVMs={['evm']}
-                    wallet={relayWallet}
+                    wallet={relayEmbeddedWallet}
                     fromToken={fromToken}
                     setFromToken={setFromToken}
                     toToken={toToken}
