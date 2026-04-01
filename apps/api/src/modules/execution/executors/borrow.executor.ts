@@ -59,9 +59,14 @@ export class BorrowExecutor {
     return [{ to: config.morpho, data }];
   }
 
-  buildRepayCalls(amount: bigint, onBehalf: string): Call[] {
+  buildRepayCalls(amount: bigint, onBehalf: string, useShares: boolean = false, shares: bigint = 0n): Call[] {
+    // When useShares=true, repay by shares (exact debt closure). Otherwise repay by assets.
     const data = this.iface.encodeFunctionData('repay', [
-      this.getMarketParamsTuple(), amount, 0, onBehalf, '0x',
+      this.getMarketParamsTuple(),
+      useShares ? 0 : amount,   // assets (0 when using shares)
+      useShares ? shares : 0,    // shares (0 when using assets)
+      onBehalf,
+      '0x',
     ]);
     return [{ to: config.morpho, data }];
   }
