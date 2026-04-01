@@ -85,36 +85,26 @@ export class SmartAccountService {
 
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
 
-    // Smart wallets return UserOp hashes — poll immediately, don't waste time on regular tx lookup
-    console.log(`[TX] Polling UserOp ${txHash.slice(0, 10)}...`);
-    for (let attempt = 0; attempt < 24; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 2_500));
+    // UserOp was accepted by Privy's bundler — wait briefly then assume success.
+    // Standard RPCs don't support eth_getUserOperationReceipt.
+    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... waiting for confirmation...`);
+
+    // Try regular tx receipt lookup a few times (bundler may submit as regular tx)
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 3_000));
       try {
-        // Try UserOp receipt first (fast path for smart wallets)
-        const result = await provider.send('eth_getUserOperationReceipt', [txHash]);
-        if (result?.receipt) {
-          const success = result.receipt.status === '0x1' || result.success === true;
-          console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed in ${((attempt + 1) * 2.5).toFixed(0)}s, success=${success}`);
-          return { txHash, success };
+        const receipt = await provider.getTransactionReceipt(txHash);
+        if (receipt) {
+          console.log(`[TX] UserOp ${txHash.slice(0, 10)}... found as tx in ${((attempt + 1) * 3)}s, success=${receipt.status === 1}`);
+          return { txHash, success: receipt.status === 1 };
         }
       } catch {
-        // Bundler RPC not available — fall back to regular tx lookup
-        try {
-          const receipt = await provider.getTransactionReceipt(txHash);
-          if (receipt) {
-            if (receipt.status !== 1) {
-              console.error(`[TX] Reverted: ${txHash} (status=${receipt.status})`);
-            }
-            return { txHash, success: receipt.status === 1 };
-          }
-        } catch {
-          // Neither worked — keep polling
-        }
+        // Not found yet
       }
     }
 
-    // Last resort: UserOp was accepted by Privy, assume success
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... assumed success (accepted by bundler)`);
+    // Privy accepted the UserOp — assume success after 18s
+    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... assumed success (Privy bundler accepted)`);
     return { txHash, success: true };
   }
 }
