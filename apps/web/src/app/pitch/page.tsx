@@ -988,7 +988,7 @@ export default function PitchPage() {
                 {/* Morpho + Ink logos */}
                 <div className="flex items-center justify-center gap-5 mt-auto pt-6">
                   <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/morpho.jpg" alt="Morpho" className="w-full h-full object-cover" style={{ transform: 'scale(1.8)' }} /></div>
-                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/ink.jpg" alt="Ink" className="w-full h-full object-cover" style={{ transform: 'scale(0.85)' }} /></div>
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/ink.png" alt="Ink" className="w-full h-full object-cover" style={{ transform: 'scale(0.85)' }} /></div>
                 </div>
               </div>
               <div className="flex flex-col">
@@ -1004,7 +1004,7 @@ export default function PitchPage() {
                 <DemoUnwind active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
                 {/* Privy + xStocks logos */}
                 <div className="flex items-center justify-center gap-5 mt-auto pt-6">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/privy.jpg" alt="Privy" className="w-full h-full object-cover" style={{ transform: 'scale(0.85)' }} /></div>
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/privy.jpg" alt="Privy" className="w-full h-full object-cover" style={{ transform: 'scale(0.65)' }} /></div>
                   <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"><img src="/xstocks.jpg" alt="xStocks" className="w-full h-full object-cover" /></div>
                 </div>
               </div>
