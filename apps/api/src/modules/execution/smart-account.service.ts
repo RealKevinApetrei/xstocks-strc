@@ -1,6 +1,7 @@
 import { PrivyClient } from '@privy-io/node';
 import { ethers } from 'ethers';
 import { config } from '../../config';
+import { getProvider } from '../../lib/provider';
 import { signerService } from './signer.service';
 
 export interface Call {
@@ -83,7 +84,7 @@ export class SmartAccountService {
   async waitForReceipt(txHash: string): Promise<{ txHash: string; success: boolean }> {
     if (!txHash) throw new Error('No transaction hash provided');
 
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const provider = getProvider();
 
     // UserOp was accepted by Privy's bundler — wait briefly then assume success.
     // Standard RPCs don't support eth_getUserOperationReceipt.

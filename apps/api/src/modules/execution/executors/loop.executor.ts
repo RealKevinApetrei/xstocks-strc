@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { getProvider } from '../../../lib/provider';
 import { query } from '../../../db/pool';
 import { config } from '../../../config';
 import { approvalExecutor } from './approval.executor';
@@ -218,7 +219,7 @@ export class LoopExecutor {
 
     // Verify approval on-chain
     await this.updateStage(loopId, 'Verifying approval on-chain...');
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const provider = getProvider();
     const usdc = new ethers.Contract(config.usdc, [
       'function allowance(address,address) view returns (uint256)',
       'function balanceOf(address) view returns (uint256)',
@@ -287,7 +288,7 @@ export class LoopExecutor {
     );
 
     try {
-      const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      const provider = getProvider();
 
       // Verify STRC is actually in the wallet before trying to wrap
       const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);

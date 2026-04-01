@@ -1,6 +1,7 @@
 import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, MIN_DEPOSIT_USDC } from '@xstocks/shared';
 import { ethers } from 'ethers';
 import { config } from '../../config';
+import { getProvider } from '../../lib/provider';
 import { query } from '../../db/pool';
 import { smartAccountService } from './smart-account.service';
 
@@ -38,7 +39,7 @@ export class PolicyService {
 
     // Check USDC balance in smart account
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(params.privyId);
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const provider = getProvider();
     const usdc = new ethers.Contract(config.usdc, ERC20_BALANCE_ABI, provider);
     const balance: bigint = await usdc.balanceOf(smartAccountAddr);
 

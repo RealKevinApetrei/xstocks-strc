@@ -4,12 +4,7 @@ import { config } from '../../../config';
 import { USDC_DUST } from '@xstocks/shared';
 import MorphoABI from '@xstocks/shared/abis/MorphoBlue.json';
 
-// Singleton provider — avoids creating new HTTP connections on every call
-let _provider: ethers.JsonRpcProvider | null = null;
-function getProvider(): ethers.JsonRpcProvider {
-  if (!_provider) _provider = new ethers.JsonRpcProvider(config.rpcUrl);
-  return _provider;
-}
+import { getProvider } from '../../../lib/provider';
 
 export interface MorphoPosition {
   collateral: bigint;   // wSTRC collateral (raw, 18 decimals)

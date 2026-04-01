@@ -11,6 +11,7 @@ import { approvalExecutor } from './executors/approval.executor';
 import { cowSwapService } from '../cowswap/cowswap.service';
 import { query } from '../../db/pool';
 import { config } from '../../config';
+import { getProvider } from '../../lib/provider';
 import type { StartLoopRequest, StartUnwindRequest } from '@xstocks/shared';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 
@@ -57,7 +58,7 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const provider = getProvider();
     const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
     const strcBalance: bigint = await strc.balanceOf(smartAccountAddr);
 
@@ -119,7 +120,7 @@ executionRouter.post('/withdraw', privyAuth, async (req: Request, res: Response)
 
   // Check balance
   const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-  const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  const provider = getProvider();
   const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
   const balance: bigint = await usdc.balanceOf(smartAccountAddr);
 
@@ -266,7 +267,7 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
 
     if (hasPosition) {
       try {
-        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const provider = getProvider();
         const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
         const rate: bigint = await wstrcContract.strcPerWstrc();
         const strcVal: bigint = await wstrcContract.wstrcToStrc(position.collateral);
@@ -316,7 +317,7 @@ executionRouter.get('/market-rate', async (_req: Request, res: Response) => {
     return;
   }
   try {
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const provider = getProvider();
     const morpho = new ethers.Contract(config.morpho, wSTRCABI.length ? [
       'function market(bytes32 id) external view returns (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee)',
     ] : [], provider);

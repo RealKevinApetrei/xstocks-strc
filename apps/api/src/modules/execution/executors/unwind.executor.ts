@@ -12,11 +12,7 @@ import { pythPriceService } from '../../pyth/pyth-price.service';
 
 const UNWIND_SAFETY_MARGIN = 0.95;
 
-let _provider: ethers.JsonRpcProvider | null = null;
-function getProvider(): ethers.JsonRpcProvider {
-  if (!_provider) _provider = new ethers.JsonRpcProvider(config.rpcUrl);
-  return _provider;
-}
+import { getProvider } from '../../../lib/provider';
 
 export class UnwindExecutor {
   private wstrcIface = new ethers.Interface(wSTRCABI);
