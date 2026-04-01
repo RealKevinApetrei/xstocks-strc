@@ -227,10 +227,14 @@ gridRouter.post('/vault/deposit', privyAuth, async (req: Request, res: Response)
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    const calls = vaultService.buildDepositCalls(BigInt(amount), smartAccountAddr);
-    // Approve first, wait for it to land, then supply
-    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [calls[0]]));
-    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [calls[1]]);
+    // Step 1: Max-approve USDC to L2Pool (idempotent, only costs gas once)
+    const approveCall = vaultService.buildApproveCall();
+    await smartAccountService.waitForReceipt(
+      await smartAccountService.sendBatchUserOp(privyId, [approveCall]),
+    );
+    // Step 2: Supply USDC into Aave (approval already landed)
+    const supplyCall = vaultService.buildSupplyCall(BigInt(amount), smartAccountAddr);
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [supplyCall]);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {
@@ -247,7 +251,14 @@ gridRouter.post('/vault/withdraw', privyAuth, async (req: Request, res: Response
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
+    // For max withdrawal, read maxWithdraw from ERC-4626 to avoid revert
+    const withdrawAmount = amount === 'max'
+      ? await vaultService.getMaxWithdraw(smartAccountAddr)
+      : BigInt(amount);
+    if (withdrawAmount === 0n) {
+      res.status(400).json({ error: 'Nothing to withdraw' });
+      return;
+    }
     const calls = vaultService.buildWithdrawCalls(withdrawAmount, smartAccountAddr);
     const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
@@ -263,7 +274,7 @@ gridRouter.post('/vault/withdraw', privyAuth, async (req: Request, res: Response
 gridRouter.get('/vault/balance/:address', privyAuth, async (req: Request, res: Response) => {
   const balance = await vaultService.getVaultBalance(req.params.address as string);
   res.json({
-    shares: '0',
+    shares: balance.shares.toString(),
     assets: balance.assets.toString(),
     yieldEarned: '0', // TODO: Track deposits to calculate yield
   });
