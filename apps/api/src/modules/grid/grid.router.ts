@@ -6,6 +6,7 @@ import { pythPriceService } from '../pyth/pyth-price.service';
 import { policyService, PolicyViolation } from '../execution/policy.service';
 import { smartAccountService } from '../execution/smart-account.service';
 import { vaultService } from '../vault/vault.service';
+import { lendService } from '../vault/lend.service';
 import { query } from '../../db/pool';
 import { config } from '../../config';
 import { DEFAULT_TRIGGER_PRICE } from '@xstocks/shared';
@@ -255,4 +256,55 @@ gridRouter.get('/vault/balance/:address', privyAuth, async (req: Request, res: R
     assets: balance.assets.toString(),
     yieldEarned: '0', // TODO: Track deposits to calculate yield
   });
+});
+
+// ============================================
+// Lend USDC Vault routes (Morpho supply side)
+// ============================================
+
+// POST /api/lend/deposit — Supply USDC to Morpho as a lender
+gridRouter.post('/lend/deposit', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const { amount } = req.body as { amount: string };
+
+  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+  const calls = lendService.buildSupplyCalls(BigInt(amount), smartAccountAddr);
+  const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
+  const receipt = await smartAccountService.waitForReceipt(userOpHash);
+
+  res.status(201).json({ txHash: receipt.txHash });
+});
+
+// POST /api/lend/withdraw — Withdraw USDC from Morpho lending position
+gridRouter.post('/lend/withdraw', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const { amount } = req.body as { amount: string };
+
+  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+  const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
+  const calls = lendService.buildWithdrawCalls(withdrawAmount, smartAccountAddr, smartAccountAddr);
+  const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
+  const receipt = await smartAccountService.waitForReceipt(userOpHash);
+
+  res.status(201).json({ txHash: receipt.txHash });
+});
+
+// GET /api/lend/balance/:address — Lending position balance
+gridRouter.get('/lend/balance/:address', privyAuth, async (req: Request, res: Response) => {
+  const balance = await lendService.getLendBalance(req.params.address as string);
+  res.json({
+    supplyShares: balance.supplyShares.toString(),
+    assets: balance.assets.toString(),
+  });
+});
+
+// GET /api/lend/apy — Live supply APY from Morpho IRM
+gridRouter.get('/lend/apy', async (_req: Request, res: Response) => {
+  try {
+    const data = await lendService.getSupplyApy();
+    res.json(data);
+  } catch (err) {
+    console.error('[LEND-APY] Error:', err);
+    res.json({ supplyApy: null, borrowApy: null, utilization: null, totalSupply: null, totalBorrow: null });
+  }
 });

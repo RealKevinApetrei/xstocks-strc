@@ -1,6 +1,7 @@
 'use client';
 
 import { OrangeDotVault } from '@/components/vaults/orange-dot-vault';
+import { LendUsdcVault } from '@/components/vaults/lend-usdc-vault';
 
 export default function StrategyVaults() {
   return (
@@ -13,6 +14,7 @@ export default function StrategyVaults() {
       </div>
 
       <OrangeDotVault />
+      <LendUsdcVault />
     </div>
   );
 }
