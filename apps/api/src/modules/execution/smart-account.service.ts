@@ -84,11 +84,20 @@ export class SmartAccountService {
 
     const provider = getProvider();
 
-    // Privy's bundler accepted the UserOp. Wait briefly for on-chain confirmation.
-    // Ink has ~1-2s blocks, so 5s should be enough.
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... waiting for confirmation...`);
-    await new Promise(resolve => setTimeout(resolve, 5_000));
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... assumed success (Privy bundler accepted)`);
+    // Poll every 1s for up to 30s — Ink has ~1-2s blocks
+    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... polling for receipt...`);
+    for (let i = 0; i < 30; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1_000));
+      try {
+        const receipt = await provider.getTransactionReceipt(txHash);
+        if (receipt) {
+          console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed in ${i + 1}s, success=${receipt.status === 1}`);
+          return { txHash, success: receipt.status === 1 };
+        }
+      } catch {}
+    }
+    // Privy accepted it — assume success
+    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... assumed success after 30s`);
     return { txHash, success: true };
   }
 }
