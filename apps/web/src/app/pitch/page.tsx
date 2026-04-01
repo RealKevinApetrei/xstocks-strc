@@ -1303,35 +1303,13 @@ export default function PitchPage() {
             </p>
             <div className="grid md:grid-cols-3 gap-5 mb-10">
               {[
-                {
-                  num: '01',
-                  accent: '#e05c00',
-                  title: 'New Distribution Channel',
-                  desc: 'Spreads brings a new segment of DeFi-native yield farmers to STRCx — users who would never buy a tokenized stock directly, but will come for 46% APY on leverage.',
-                  tag: 'User Acquisition',
-                },
-                {
-                  num: '02',
-                  accent: '#7c3aed',
-                  title: 'New DeFi Tooling',
-                  desc: 'Morpho Blue market, Pyth oracle adapter, ERC-4626 Orange Dot Vault, and CoW batch execution — open infrastructure any Ink protocol can build on top of.',
-                  tag: 'Open Infrastructure',
-                },
-                {
-                  num: '03',
-                  accent: '#16a34a',
-                  title: 'New Strategies',
-                  desc: 'Leverage is first. The foundation we\'ve built supports shorting, delta-neutral yield, options-style payoffs — strategies that only exist because STRC is on-chain.',
-                  tag: 'Leverage & Beyond',
-                },
+                { accent: '#e05c00', title: 'New Users', desc: 'DeFi yield farmers who\'d never buy a stock — but will come for 46% APY.' },
+                { accent: '#7c3aed', title: 'New Infra', desc: 'Morpho market, Pyth oracle, Orange Dot Vault, CoW execution — open for all Ink protocols.' },
+                { accent: '#16a34a', title: 'New Strategies', desc: 'Leverage first. Shorting, delta-neutral, options payoffs — all possible because STRC is on-chain.' },
               ].map((c) => (
-                <div key={c.num} className="rounded-lg border bg-white p-6 space-y-3" style={{ borderColor: '#e5e7eb' }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-mono tracking-widest uppercase px-2 py-1 rounded-full" style={{ color: c.accent, backgroundColor: c.accent + '12' }}>{c.tag}</span>
-                    <span className="text-2xl font-mono font-bold" style={{ color: c.accent + '30' }}>{c.num}</span>
-                  </div>
-                  <p className="text-sm font-bold" style={{ color: '#0a0a0a' }}>{c.title}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
+                <div key={c.title} className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="text-xl font-mono font-bold mb-3" style={{ color: c.accent }}>{c.title}</div>
+                  <p className="text-base leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
                 </div>
               ))}
             </div>
