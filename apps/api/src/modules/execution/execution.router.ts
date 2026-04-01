@@ -260,8 +260,13 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
   }
 });
 
-// GET /api/execution/market-rate — Live Morpho borrow rate
+// GET /api/execution/market-rate — Live Morpho borrow rate (cached 60s)
+let marketRateCache: { data: any; expiry: number } | null = null;
 executionRouter.get('/market-rate', async (_req: Request, res: Response) => {
+  if (marketRateCache && Date.now() < marketRateCache.expiry) {
+    res.json(marketRateCache.data);
+    return;
+  }
   try {
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
     const morpho = new ethers.Contract(config.morpho, wSTRCABI.length ? [
@@ -296,23 +301,27 @@ executionRouter.get('/market-rate', async (_req: Request, res: Response) => {
       const rateFloat = Number(ratePerSecond) / 1e18;
       const borrowApy = (Math.pow(1 + rateFloat, 365.25 * 86400) - 1) * 100;
 
-      res.json({
+      const result = {
         borrowApy: Math.round(borrowApy * 100) / 100,
         utilization: Math.round(utilization * 100) / 100,
         totalSupply: totalSupply.toString(),
         totalBorrow: totalBorrow.toString(),
-      });
+      };
+      marketRateCache = { data: result, expiry: Date.now() + 60_000 };
+      res.json(result);
       return;
     }
 
     // Fallback: estimate from utilization (rough approximation)
-    const estimatedRate = utilization * 0.1; // ~10% at 100% utilization
-    res.json({
+    const estimatedRate = utilization * 0.1;
+    const result = {
       borrowApy: Math.round(estimatedRate * 100) / 100,
       utilization: Math.round(utilization * 100) / 100,
       totalSupply: totalSupply.toString(),
       totalBorrow: totalBorrow.toString(),
-    });
+    };
+    marketRateCache = { data: result, expiry: Date.now() + 60_000 };
+    res.json(result);
   } catch (err) {
     console.error('[MARKET-RATE] Error:', err instanceof Error ? err.message : err);
     res.json({ borrowApy: null, utilization: null, totalSupply: null, totalBorrow: null });

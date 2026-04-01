@@ -76,8 +76,9 @@ export class SignerService {
       },
       caip2: `eip155:${tx.chainId}`,
       chain_type: 'ethereum',
+      sponsor: true,
       authorization_context: getAuthContext(),
-    });
+    } as any);
 
     const data = result.data as any;
     const hash = data.hash ?? data.transaction_hash;
