@@ -34,6 +34,7 @@ function encodeTransfer(to: string, amount: bigint): string {
 
 const DEPOSIT_TABS: { value: Tab; label: string }[] = [
   { value: 'bridge', label: 'CROSS-CHAIN' },
+  { value: 'ink', label: 'INK' },
   { value: 'qr-code', label: 'QR CODE' },
 ];
 
