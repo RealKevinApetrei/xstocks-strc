@@ -118,7 +118,6 @@ export default function Home() {
           objectFit: 'cover',
           objectPosition: 'center top',
           zIndex: 6,
-          ...blend,
           transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
           ...ease,
         }}
