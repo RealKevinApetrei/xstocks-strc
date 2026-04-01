@@ -75,7 +75,7 @@ function HealthFactorGauge({ hf }: { hf: number }) {
   );
 }
 
-function StrcPositionCard({ strcAmount, strcPrice, onClosed }: { strcAmount: number; strcPrice: number; onClosed: () => void }) {
+function StrcPositionCard({ strcAmount, strcPrice, hasWstrc, onClosed }: { strcAmount: number; strcPrice: number; hasWstrc?: boolean; onClosed: () => void }) {
   const { getAccessToken } = usePrivy();
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +104,7 @@ function StrcPositionCard({ strcAmount, strcPrice, onClosed }: { strcAmount: num
     <div className="space-y-3">
       <div className="rounded-md border border-border bg-background p-3 space-y-2">
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">STRCx held</span>
+          <span className="text-muted-foreground">{hasWstrc ? 'STRCx held (inc. wrapped)' : 'STRCx held'}</span>
           <span className="font-mono font-medium">{strcAmount.toFixed(4)} STRCx</span>
         </div>
         <div className="flex justify-between text-xs">
@@ -133,7 +133,7 @@ function StrcPositionCard({ strcAmount, strcPrice, onClosed }: { strcAmount: num
         disabled={closing}
         className="w-full rounded-md bg-secondary py-2.5 text-xs font-medium uppercase tracking-wider text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-40"
       >
-        {closing ? 'Selling...' : 'Sell STRCx → USDC'}
+        {closing ? (hasWstrc ? 'Unwrapping & Selling...' : 'Selling...') : 'Sell STRCx → USDC'}
       </button>
     </div>
   );
@@ -161,6 +161,9 @@ export function PositionCard() {
   const p_ = positionData?.position;
   const effectivelyEmpty = p_ && parseFloat(formatBigInt(p_.collateralStrc)) < 0.001 && parseFloat(formatBigInt(p_.debtUsdc, 6, 2)) < 0.01;
 
+  // Check for wSTRC balance (stuck from partial loop — wrap succeeded but supply didn't)
+  const hasWalletTokens = strcBalance.totalFormatted > 0.001;
+
   if (!positionData?.hasPosition || !positionData.position || effectivelyEmpty) {
     return (
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
@@ -170,8 +173,13 @@ export function PositionCard() {
             <p className="text-xs text-destructive">Failed to load position: {(positionData as any).error}</p>
           </div>
         )}
-        {strcBalance.formatted > 0.001 ? (
-          <StrcPositionCard strcAmount={strcBalance.formatted} strcPrice={strcPrice} onClosed={() => { strcBalance.refresh(); refreshUsdcBalance(); }} />
+        {hasWalletTokens ? (
+          <StrcPositionCard
+            strcAmount={strcBalance.totalFormatted}
+            strcPrice={strcPrice}
+            hasWstrc={strcBalance.wstrcFormatted > 0.001}
+            onClosed={() => { strcBalance.refresh(); refreshUsdcBalance(); }}
+          />
         ) : !((positionData as any)?.error) ? (
           <p className="text-sm text-muted-foreground">No active position. Start a loop to get leveraged exposure to STRCx.</p>
         ) : null}
