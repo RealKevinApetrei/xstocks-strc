@@ -1047,9 +1047,12 @@ export default function PitchPage() {
         {/* ═══ SLIDE 2: SOLUTION ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(2) ? 1 : 0, transform: isActive(2) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight" style={{ color: '#0a0a0a' }}>
-              An <span style={{ color: '#16a34a' }}>ecosystem</span> of products<br />enriching what you can do with STRC.
+            <h2 className="text-4xl md:text-5xl font-bold mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
+              What is <span style={{ color: '#16a34a' }}>Stretch</span> by Spreads?
             </h2>
+            <p className="text-base mb-2 leading-relaxed" style={{ color: '#6b6866' }}>
+              An ecosystem of products enriching what you can do with STRC.
+            </p>
             <div className="grid grid-cols-3 gap-5 mt-8">
               {/* Leverage */}
               <div className="rounded-lg border bg-white px-8 pt-8 pb-10 flex flex-col items-center" style={{ borderColor: '#e5e7eb' }}>
