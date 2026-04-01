@@ -1495,10 +1495,7 @@ export default function PitchPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <SpreadsLogo size={28} />
-                <div>
-                  <span className="text-base font-bold tracking-widest uppercase" style={{ color: '#0a0a0a' }}>Spreads</span>
-                  <p className="text-xs font-mono mt-0.5" style={{ color: '#6b6866' }}>Stretch your yield. Protect your position. Sleep at night.</p>
-                </div>
+                <span className="text-base font-bold tracking-widest uppercase" style={{ color: '#0a0a0a' }}>Spreads</span>
               </div>
               <div className="flex items-center gap-3">
                 <a href="https://x.com/spreads_fi" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-60" style={{ color: '#6b6866' }}>
