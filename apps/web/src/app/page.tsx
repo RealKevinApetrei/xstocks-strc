@@ -132,7 +132,7 @@ export default function Home() {
         className="absolute select-none pointer-events-none"
         style={{
           left: '4vw',
-          bottom: 'calc(15% - 208px)',
+          bottom: 'calc(15% - 156px)',
           height: '52vh',
           zIndex: 5,
           ...blend,
