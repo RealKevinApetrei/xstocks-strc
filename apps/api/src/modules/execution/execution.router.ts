@@ -346,11 +346,22 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
       [privyId],
     );
 
-    // Check for grid strategy (include DCA state)
-    const { rows: [gridStrategy] } = await query(
-      `SELECT id, enabled, dca_active, trades_executed, num_trades FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
-      [privyId],
-    );
+    // Check for grid strategy (DCA columns may not exist if migration 003 hasn't run)
+    let gridStrategy: any = null;
+    try {
+      const { rows: [gs] } = await query(
+        `SELECT id, enabled, dca_active, trades_executed, num_trades FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
+        [privyId],
+      );
+      gridStrategy = gs;
+    } catch {
+      // Fallback: query without DCA columns (pre-migration 003)
+      const { rows: [gs] } = await query(
+        `SELECT id, enabled FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
+        [privyId],
+      );
+      gridStrategy = gs;
+    }
 
     // Vault balance (Aave aToken)
     let vaultBalance = null;
