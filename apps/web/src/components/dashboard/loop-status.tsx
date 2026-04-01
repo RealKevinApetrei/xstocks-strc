@@ -52,6 +52,9 @@ export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () =>
   const progressPct =
     data?.status === 'COMPLETED' ? 100
     : data?.status === 'FAILED' ? Math.min(rawProgress / totalIterations * 100, 90)
+    // Seed values so the bar visibly starts moving before iterations complete
+    : !data || data?.status === 'PENDING' ? 6
+    : data?.status === 'IN_PROGRESS' && completedCount === 0 && !hasActiveIteration ? 14
     : Math.min(rawProgress / totalIterations * 100, 95);
 
   const barColor =
