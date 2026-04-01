@@ -10,6 +10,8 @@ import { usePosition } from '@/hooks/use-position';
 import { api, ApiError } from '@/lib/api';
 import { useStrcBalance } from '@/hooks/use-strc-balance';
 import { LoopStatus } from './loop-status';
+import { useUnwindStatus } from '@/hooks/use-unwind-status';
+import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
 
 const STRC_BASE_APY = 11.5;
 const LEVERAGE_OPTIONS = [2, 3, 5] as const;
@@ -191,73 +193,184 @@ function LoopTab() {
   );
 }
 
-// ── Unwind progress poller ────────────────────────────────────────────────────
-// Since there's no /unwind/:id/status endpoint, we poll the on-chain position
-// until debt reaches zero (full unwind) or leverage drops to target.
+// ── Unwind progress ──────────────────────────────────────────────────────────
 
-function UnwindProgress({ onDone, targetLeverage }: { onDone: () => void; targetLeverage: number }) {
-  const { data: positionData, refetch } = usePosition();
-  const [startedAt] = useState(Date.now());
-  const [initialDebt] = useState(() => {
-    const d = positionData?.position?.debtUsdc;
-    return d ? parseFloat(formatBigInt(d, 6, 2)) : 0;
-  });
+const unwindStepLabels: Record<string, string> = {
+  PENDING: 'Preparing...',
+  REPAYING: 'Repaying USDC debt...',
+  WITHDRAWING: 'Withdrawing collateral...',
+  UNWRAPPING: 'Unwrapping wSTRC → STRCx...',
+  SWAPPING: 'Swapping STRCx → USDC via CoW...',
+  COMPLETED: 'Done',
+  FAILED: 'Failed',
+};
+
+const unwindStatusColors: Record<string, string> = {
+  PENDING: 'border-muted-foreground/30 text-muted-foreground',
+  IN_PROGRESS: 'border-warning/50 text-warning',
+  COMPLETED: 'border-success/50 text-success',
+  COMPLETED_PARTIAL: 'border-warning/50 text-warning',
+  FAILED: 'border-destructive/50 text-destructive',
+};
+
+const UNWIND_STEPS = [
+  'Repaying USDC debt',
+  'Withdrawing collateral',
+  'Unwrapping wSTRC → STRCx',
+  'Swapping STRCx → USDC via CoW',
+] as const;
+
+function UnwindProgress({ unwindId, onDone, targetLeverage }: { unwindId: string; onDone: () => void; targetLeverage: number }) {
+  const { data, loading } = useUnwindStatus(unwindId);
+
+  const isDone = data?.status === 'COMPLETED' || data?.status === 'COMPLETED_PARTIAL' || data?.status === 'FAILED';
 
   useEffect(() => {
-    const interval = setInterval(refetch, 5_000);
-    return () => clearInterval(interval);
-  }, [refetch]);
+    if (data?.status === 'COMPLETED') {
+      document.dispatchEvent(new CustomEvent('spreads-toast', {
+        detail: { message: targetLeverage === 0 ? 'Position fully unwound!' : `Unwound to ${targetLeverage}x`, type: 'success' },
+      }));
+    }
+  }, [data?.status, targetLeverage]);
 
-  // Full unwind: done when no position or debt=0
-  // Partial unwind: done when leverage <= target
-  const currentLeverage = positionData?.position?.effectiveLeverage ?? 0;
-  const currentDebt = positionData?.position ? parseFloat(formatBigInt(positionData.position.debtUsdc, 6, 2)) : 0;
-  const elapsed = Date.now() - startedAt;
-  const isDone = targetLeverage === 0
-    ? (!positionData?.hasPosition || (currentDebt === 0 && elapsed > 10_000))
-    : (!positionData?.hasPosition || (currentLeverage <= targetLeverage && elapsed > 10_000));
+  // Progress: use debt repaid ratio
+  const initialDebt = parseFloat(data?.initialDebtUsdc ?? '0') / 1e6;
+  const remainingDebt = parseFloat(data?.remainingDebtUsdc ?? '0') / 1e6;
+  const debtRepaidPct = initialDebt > 0 ? ((initialDebt - remainingDebt) / initialDebt) * 100 : 0;
+
+  const progressPct =
+    data?.status === 'COMPLETED' ? 100
+    : data?.status === 'FAILED' ? Math.min(debtRepaidPct, 90)
+    : !data || data?.status === 'PENDING' ? 6
+    : data?.status === 'IN_PROGRESS' && debtRepaidPct === 0 ? 14
+    : Math.min(debtRepaidPct, 95);
+
+  const barColor =
+    data?.status === 'COMPLETED' ? 'bg-success'
+    : data?.status === 'FAILED' ? 'bg-destructive'
+    : data?.status === 'COMPLETED_PARTIAL' ? 'bg-warning'
+    : 'bg-warning';
+
+  const currentStep = data?.currentStep ?? 0;
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <span className={cn(
-          'text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border',
-          isDone ? 'border-success/50 text-success' : 'border-primary/50 text-primary',
-        )}>
-          {isDone ? 'COMPLETED' : 'IN PROGRESS'}
-        </span>
+    <div className="rounded-lg border border-border bg-card overflow-hidden space-y-5">
+      {/* Smooth progress bar — top of card */}
+      <div className="h-0.5 bg-muted w-full">
+        <div
+          className={cn('h-full transition-all duration-700 ease-out', barColor)}
+          style={{ width: `${progressPct}%` }}
+        />
       </div>
 
-      <div className="space-y-3">
-        {(['Repaying USDC debt', 'Unwrapping wSTRC → STRCx', 'Withdrawing collateral'] as const).map((step, i) => (
-          <div key={step} className="flex items-center gap-3 text-xs">
-            <div className={cn(
-              'h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-mono font-bold shrink-0',
-              isDone
-                ? 'border-success bg-success/10 text-success'
-                : 'border-primary bg-primary/10 text-primary animate-pulse',
+      <div className="px-6 pb-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">Unwind Progress</h2>
+          {data?.status && (
+            <span className={cn(
+              'text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border',
+              unwindStatusColors[data.status] ?? unwindStatusColors.PENDING,
             )}>
-              {isDone ? '✓' : i + 1}
-            </div>
-            <span className="text-muted-foreground">{step}</span>
+              {data.status.replace('_', ' ')}
+            </span>
+          )}
+        </div>
+
+        {loading && !data && (
+          <div className="flex items-center justify-center py-8">
+            <SpreadsSpinner size={28} />
           </div>
-        ))}
+        )}
+
+        {data && (
+          <>
+            {/* Overall stats */}
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="text-muted-foreground">Target</span>
+                <div className="font-mono font-semibold text-warning mt-0.5">
+                  {targetLeverage === 0 ? 'Full' : `${targetLeverage}x`}
+                </div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Debt Repaid</span>
+                <div className="font-mono font-semibold mt-0.5">
+                  {initialDebt > 0 ? `${Math.round(debtRepaidPct)}%` : '—'}
+                </div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Remaining</span>
+                <div className={cn('font-mono font-semibold mt-0.5',
+                  remainingDebt === 0 ? 'text-success' : 'text-destructive/80',
+                )}>
+                  {remainingDebt > 0 ? `$${remainingDebt.toFixed(2)}` : '$0.00'}
+                </div>
+              </div>
+            </div>
+
+            {/* Unwind steps */}
+            <div className="space-y-2">
+              {UNWIND_STEPS.map((step, i) => {
+                const stepNum = i + 1;
+                const isCompleted = isDone && data.status !== 'FAILED' ? true : currentStep > stepNum;
+                const isActive = !isDone && currentStep === stepNum;
+                const isFailed = data.status === 'FAILED' && currentStep === stepNum;
+                const isPending = !isCompleted && !isActive && !isFailed;
+
+                return (
+                  <div key={step} className="flex items-center gap-3 text-xs">
+                    <div className={cn(
+                      'h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-mono font-bold shrink-0',
+                      isCompleted ? 'border-success bg-success/10 text-success' :
+                      isFailed ? 'border-destructive bg-destructive/10 text-destructive' :
+                      isPending ? 'border-border text-muted-foreground' :
+                      'border-warning bg-warning/10 text-warning animate-pulse',
+                    )}>
+                      {isCompleted ? '✓' : isFailed ? '✗' : stepNum}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-foreground">{step}</div>
+                      {isActive && (
+                        <div className="text-muted-foreground truncate">
+                          {data.error?.startsWith('[ACTIVE]') ? data.error.replace('[ACTIVE] ', '') : 'Processing...'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Active stage label when no steps have started */}
+              {data.status === 'IN_PROGRESS' && currentStep === 0 && (
+                <div className="flex items-center gap-3 text-xs">
+                  <div className="h-6 w-6 rounded-full border border-warning bg-warning/10 animate-pulse flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-warning animate-ping" />
+                  </div>
+                  <span className="text-muted-foreground animate-pulse">
+                    {data.error?.startsWith('[ACTIVE]') ? data.error.replace('[ACTIVE] ', '') : 'Starting unwind...'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Unwind error */}
+            {data.error && !data.error.startsWith('[ACTIVE]') && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-xs text-destructive">{data.error}</p>
+              </div>
+            )}
+
+            {isDone && (
+              <button
+                onClick={onDone}
+                className="w-full rounded-md bg-secondary py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
+                {data.status === 'COMPLETED' ? 'Done' : 'Close'}
+              </button>
+            )}
+          </>
+        )}
       </div>
-
-      {!isDone && (
-        <p className="text-[10px] text-muted-foreground text-center animate-pulse">
-          Checking position every 5s...
-        </p>
-      )}
-
-      {isDone && (
-        <button
-          onClick={onDone}
-          className="w-full rounded-md bg-secondary py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
-        >
-          Done
-        </button>
-      )}
     </div>
   );
 }
@@ -272,8 +385,15 @@ function UnwindTab() {
   const { refresh: refreshUsdcBalance } = useUsdcBalance();
   const [targetLeverage, setTargetLeverage] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [unwindStarted, setUnwindStarted] = useState(false);
+  const [activeUnwindId, setActiveUnwindId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-detect active unwind on mount/refresh
+  useEffect(() => {
+    if ((positionData as any)?.activeUnwind?.id && (positionData as any).activeUnwind.status === 'IN_PROGRESS') {
+      setActiveUnwindId((positionData as any).activeUnwind.id);
+    }
+  }, [(positionData as any)?.activeUnwind]);
 
   const position = positionData?.position;
   const collateralStrc_ = position ? parseFloat(formatBigInt(position.collateralStrc)) : 0;
@@ -307,12 +427,12 @@ function UnwindTab() {
       }
       if (!loopExecutionId) throw new Error('No loop found to unwind');
 
-      await api.startUnwind(token, {
+      const result = await api.startUnwind(token, {
         loopExecutionId,
         ...(targetLeverage > 0 ? { targetLeverage } : {}),
       } as any);
 
-      setUnwindStarted(true);
+      setActiveUnwindId(result.id);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to start unwind');
     } finally {
@@ -320,8 +440,8 @@ function UnwindTab() {
     }
   };
 
-  if (unwindStarted) {
-    return <UnwindProgress onDone={() => setUnwindStarted(false)} targetLeverage={targetLeverage} />;
+  if (activeUnwindId) {
+    return <UnwindProgress unwindId={activeUnwindId} onDone={() => setActiveUnwindId(null)} targetLeverage={targetLeverage} />;
   }
 
   if (!hasPosition) {
@@ -330,19 +450,30 @@ function UnwindTab() {
       const strcValueUsd = strcBalance.formatted * strcPrice;
       return (
         <div className="space-y-5">
+          {/* Position summary — matches leveraged unwind card style */}
           <div className="rounded-md border border-border bg-secondary p-4 space-y-2">
             <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-3">
-              1x STRC Position
+              Position Summary
             </p>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">STRC held</span>
-              <span className="font-mono">{strcBalance.formatted.toFixed(4)} STRC</span>
+              <span className="text-muted-foreground">STRCx held</span>
+              <span className="font-mono">{strcBalance.formatted.toFixed(4)} STRCx</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Value</span>
-              <span className="font-mono">{formatUsd(strcValueUsd)}</span>
+              <span className="text-muted-foreground">Leverage</span>
+              <span className="font-mono">1×</span>
+            </div>
+            <div className="flex justify-between text-xs border-t border-border pt-2 mt-1">
+              <span className="text-muted-foreground font-medium">You receive</span>
+              <span className="font-mono font-semibold text-success">~{formatUsd(strcValueUsd)} USDC</span>
             </div>
           </div>
+
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-xs text-destructive">{error}</p>
+            </div>
+          )}
 
           <button
             onClick={async () => {
@@ -361,16 +492,14 @@ function UnwindTab() {
               }
             }}
             disabled={isSubmitting}
-            className="w-full rounded-md border border-destructive/40 bg-destructive/5 py-3.5 text-xs font-medium tracking-widest uppercase text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full rounded-md bg-primary py-3.5 text-xs font-medium tracking-widest uppercase text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Closing Position...' : 'Close Position → USDC'}
+            {isSubmitting ? 'Selling...' : 'Sell STRCx → USDC'}
           </button>
 
-          {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-xs text-destructive">{error}</p>
-            </div>
-          )}
+          <p className="text-[9px] text-muted-foreground text-center">
+            Swaps STRCx to USDC via CoW Protocol
+          </p>
         </div>
       );
     }

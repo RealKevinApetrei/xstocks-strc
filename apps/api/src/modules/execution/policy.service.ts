@@ -1,4 +1,4 @@
-import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, MIN_DEPOSIT_USDC } from '@xstocks/shared';
+import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, computeMinDepositUsd, usdToUsdc6 } from '@xstocks/shared';
 import { ethers } from 'ethers';
 import { config } from '../../config';
 import { getProvider } from '../../lib/provider';
@@ -30,11 +30,27 @@ export class PolicyService {
       throw new PolicyViolation(`Leverage cannot exceed ${MAX_LEVERAGE}x`);
     }
 
-    // Check minimum deposit for CoW swap minimums
-    const minDeposit = MIN_DEPOSIT_USDC[params.targetLeverage];
-    if (minDeposit && params.usdcAmount < minDeposit) {
-      const minFormatted = (Number(minDeposit) / 1e6).toFixed(0);
-      throw new PolicyViolation(`Minimum deposit for ${params.targetLeverage}x leverage is $${minFormatted} (CoW Protocol requires $10 minimum per swap)`);
+    // Compute minimum deposit dynamically from actual LLTV and targetHF
+    const lltvRaw = config.morphoLltv.trim();
+    const lltvDecimal = lltvRaw.includes('.') ? parseFloat(lltvRaw) : Number(BigInt(lltvRaw)) / 1e18;
+    const { minDepositUsd, achievable } = computeMinDepositUsd(
+      params.targetLeverage, lltvDecimal, config.loopTargetHF, config.maxLoopIterations,
+    );
+
+    if (!achievable) {
+      const maxLev = (1 / (1 - lltvDecimal / config.loopTargetHF)).toFixed(1);
+      throw new PolicyViolation(
+        `${params.targetLeverage}x leverage is unreachable with current parameters (max ~${maxLev}x). ` +
+        `LLTV=${(lltvDecimal * 100).toFixed(0)}%, targetHF=${config.loopTargetHF}`,
+      );
+    }
+
+    const minDepositUsdc = usdToUsdc6(minDepositUsd);
+    if (params.usdcAmount < minDepositUsdc) {
+      throw new PolicyViolation(
+        `Minimum deposit for ${params.targetLeverage}x leverage is $${minDepositUsd} ` +
+        `(ensures every borrow iteration ≥ $10 for CoW Protocol)`,
+      );
     }
 
     // Check USDC balance in smart account

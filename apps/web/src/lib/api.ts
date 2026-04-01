@@ -1,7 +1,7 @@
 import type {
   StartLoopRequest, StartLoopResponse,
   StartUnwindRequest, StartUnwindResponse,
-  LoopStatusResponse,
+  LoopStatusResponse, UnwindStatusResponse,
   PositionResponse,
   GridStrategy, CreateGridStrategyRequest, UpdateGridStrategyRequest,
   GridEventsResponse,
@@ -56,6 +56,9 @@ export const api = {
   // Unwind
   startUnwind: (token: string, body: StartUnwindRequest) =>
     request<StartUnwindResponse>('/api/execution/unwind', { method: 'POST', body: JSON.stringify(body), token }),
+
+  getUnwindStatus: (token: string, id: string) =>
+    request<UnwindStatusResponse>(`/api/execution/unwind/${id}/status`, { token }),
 
   // Position
   getPosition: (token: string, address: string) =>

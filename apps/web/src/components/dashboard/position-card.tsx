@@ -104,12 +104,16 @@ function StrcPositionCard({ strcAmount, strcPrice, onClosed }: { strcAmount: num
     <div className="space-y-3">
       <div className="rounded-md border border-border bg-background p-3 space-y-2">
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">1x STRC Position</span>
-          <span className="font-mono font-medium">{strcAmount.toFixed(4)} STRC</span>
+          <span className="text-muted-foreground">STRCx held</span>
+          <span className="font-mono font-medium">{strcAmount.toFixed(4)} STRCx</span>
         </div>
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">Value</span>
-          <span className="font-mono">{formatUsd(valueUsd)}</span>
+          <span className="text-muted-foreground">Leverage</span>
+          <span className="font-mono">1×</span>
+        </div>
+        <div className="flex justify-between text-xs border-t border-border pt-2 mt-1">
+          <span className="text-muted-foreground font-medium">Value</span>
+          <span className="font-mono font-semibold text-success">{formatUsd(valueUsd)}</span>
         </div>
       </div>
 
@@ -129,7 +133,7 @@ function StrcPositionCard({ strcAmount, strcPrice, onClosed }: { strcAmount: num
         disabled={closing}
         className="w-full rounded-md bg-secondary py-2.5 text-xs font-medium uppercase tracking-wider text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-40"
       >
-        {closing ? 'Closing position...' : 'Close Position → USDC'}
+        {closing ? 'Selling...' : 'Sell STRCx → USDC'}
       </button>
     </div>
   );

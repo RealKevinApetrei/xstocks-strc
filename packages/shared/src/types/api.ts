@@ -111,6 +111,20 @@ export interface LoopStatusResponse {
   updatedAt: string;
 }
 
+export interface UnwindStatusResponse {
+  id: string;
+  status: ExecutionStatus;
+  targetLeverage: number;
+  currentStep: number;
+  initialDebtUsdc: string;
+  remainingDebtUsdc: string;
+  initialCollateralWstrc: string;
+  remainingCollateralWstrc: string;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MorphoPosition {
   collateralWstrc: string;
   collateralStrc: string;
