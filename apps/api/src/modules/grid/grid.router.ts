@@ -228,7 +228,9 @@ gridRouter.post('/vault/deposit', privyAuth, async (req: Request, res: Response)
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
     const calls = vaultService.buildDepositCalls(BigInt(amount), smartAccountAddr);
-    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
+    // Approve first, wait for it to land, then supply
+    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [calls[0]]));
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [calls[1]]);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {
@@ -279,7 +281,9 @@ gridRouter.post('/lend/deposit', privyAuth, async (req: Request, res: Response) 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
     const calls = lendService.buildSupplyCalls(BigInt(amount), smartAccountAddr);
-    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
+    // Approve first, wait for it to land, then supply
+    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [calls[0]]));
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [calls[1]]);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {
