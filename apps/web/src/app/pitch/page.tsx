@@ -531,10 +531,16 @@ function StrcPriceChart({ active }: { active: boolean }) {
     );
   }
 
-  const w = 600, h = 150, padX = 40, padY = 12;
+  const w = 720, h = 200, padX = 44, padY = 14;
   const priceValues = prices.map(p => p.price);
-  const minP = Math.floor(Math.min(...priceValues) - 2);
-  const maxP = Math.ceil(Math.max(...priceValues) + 2);
+  const rawMin = Math.min(...priceValues);
+  const rawMax = Math.max(...priceValues);
+  // Round to nearest $5 to get clean Y-axis ticks
+  const minP = Math.floor(rawMin / 5) * 5;
+  const maxP = Math.ceil(rawMax / 5) * 5;
+  // Generate Y-axis ticks every $5
+  const yTicks: number[] = [];
+  for (let t = minP; t <= maxP; t += 5) yTicks.push(t);
   const chartW = w - padX, chartH = h - padY * 2;
 
   const points = prices.map((p, i) => ({
@@ -571,14 +577,18 @@ function StrcPriceChart({ active }: { active: boolean }) {
           <span className="text-[10px] font-mono" style={{ color: '#6b6866' }}>6M</span>
         </div>
       </div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 150 }}>
-        {/* $100 peg reference line */}
-        {100 >= minP && 100 <= maxP && (
-          <>
-            <line x1={padX} y1={pegY} x2={w} y2={pegY} stroke="#e05c00" strokeWidth="1" strokeDasharray="4 3" opacity="0.35" />
-            <text x={4} y={pegY + 3} fill="#e05c00" fontSize="8" fontFamily="IBM Plex Mono" fontWeight="600" opacity="0.5">$100</text>
-          </>
-        )}
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 200 }}>
+        {/* Y-axis ticks and grid lines */}
+        {yTicks.map((tick) => {
+          const y = padY + (1 - (tick - minP) / (maxP - minP)) * chartH;
+          const is100 = tick === 100;
+          return (
+            <g key={tick}>
+              <line x1={padX} y1={y} x2={w} y2={y} stroke={is100 ? '#e05c00' : '#e5e7eb'} strokeWidth={is100 ? 1 : 0.5} strokeDasharray={is100 ? '4 3' : 'none'} opacity={is100 ? 0.45 : 0.6} />
+              <text x={4} y={y + 3} fill={is100 ? '#e05c00' : '#6b6866'} fontSize="8" fontFamily="IBM Plex Mono" fontWeight={is100 ? '600' : '400'} opacity={is100 ? 0.7 : 0.5}>${tick}</text>
+            </g>
+          );
+        })}
 
         {/* Area fill */}
         <path d={areaPath} fill="url(#strc-gradient)" opacity="0.12" />
