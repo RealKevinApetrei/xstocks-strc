@@ -83,9 +83,23 @@ export function PositionCard() {
 
   if (!positionData?.hasPosition || !positionData.position) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-4">Position</h2>
+      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <h2 className="text-sm font-medium text-muted-foreground">Position</h2>
         <p className="text-sm text-muted-foreground">No active position. Start a loop to get leveraged exposure to STRCx.</p>
+        <div className="rounded-md border border-border bg-background p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Morpho Borrow Rate</span>
+            {rateLoading || borrowApy === null ? (
+              <span className="inline-block h-4 w-10 bg-secondary animate-pulse rounded" />
+            ) : (
+              <span className="text-xs font-mono">-{borrowApy.toFixed(2)}%</span>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">STRC Dividend Yield</span>
+            <span className="text-xs font-mono text-success">+{STRC_STAKING_APY}%</span>
+          </div>
+        </div>
       </div>
     );
   }
