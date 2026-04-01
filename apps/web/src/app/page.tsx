@@ -105,14 +105,17 @@ export default function Home() {
 
       {/* ── LEFT SIDE ── */}
 
-      {/* Saylor B&W — far left, anchored to edge */}
+      {/* Saylor B&W — far left, width-constrained so it stays on edge */}
       <img
         src="/saylor-bw.png"
         alt="Michael Saylor"
-        className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
+        className="absolute bottom-0 select-none pointer-events-none"
         style={{
-          left: '-6%',
-          height: '88vh',
+          left: 0,
+          width: '22vw',
+          height: '90vh',
+          objectFit: 'contain',
+          objectPosition: 'bottom left',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
@@ -121,16 +124,16 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Bitcoin hand — mid-left, overlaps Saylor */}
+      {/* Bitcoin hand — left side, tucked inside Saylor */}
       <img
         src="/bitcoin-hand.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          left: '12%',
+          left: '16%',
           bottom: '18%',
-          height: '32vh',
+          height: '28vh',
           zIndex: 10,
           ...blend,
           transform: `translate(${parallax.x * -18}px, ${parallax.y * 10}px)`,
@@ -141,17 +144,17 @@ export default function Home() {
 
       {/* ── RIGHT SIDE ── */}
 
-      {/* $100 bill — floating mid-right, slight tilt */}
+      {/* $100 bill — right side, tucked inside Saylor */}
       <img
         src="/hundred-dollar.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          right: '2%',
-          top: '28%',
-          width: '26vw',
-          maxWidth: '380px',
+          right: '18%',
+          top: '30%',
+          width: '18vw',
+          maxWidth: '280px',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
@@ -161,14 +164,17 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Saylor colour (orange tie) — far right, anchored to edge */}
+      {/* Saylor colour (orange tie) — far right, width-constrained so it stays on edge */}
       <img
         src="/saylor-colour.png"
         alt="Michael Saylor"
-        className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
+        className="absolute bottom-0 select-none pointer-events-none"
         style={{
-          right: '-6%',
-          height: '88vh',
+          right: 0,
+          width: '22vw',
+          height: '90vh',
+          objectFit: 'contain',
+          objectPosition: 'bottom right',
           zIndex: 10,
           ...blend,
           transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
