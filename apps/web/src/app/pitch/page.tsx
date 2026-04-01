@@ -983,15 +983,9 @@ export default function PitchPage() {
                 </p>
                 <DemoLoop active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
                 {/* Morpho + Ink logos */}
-                <div className="flex items-center justify-center gap-4 mt-3">
-                  <div className="flex items-center gap-1.5">
-                    <svg width="14" height="14" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="none" stroke="#2d2d2d" strokeWidth="8"/><circle cx="50" cy="30" r="12" fill="#2d2d2d"/><path d="M25 75 Q50 50 75 75" fill="none" stroke="#2d2d2d" strokeWidth="8" strokeLinecap="round"/></svg>
-                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Morpho</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#7c3aed' }} />
-                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Ink</span>
-                  </div>
+                <div className="flex items-center justify-center gap-5 mt-auto pt-6">
+                  <img src="/morpho.jpg" alt="Morpho" className="w-12 h-12 rounded-lg object-cover" />
+                  <img src="/ink.jpg" alt="Ink" className="w-12 h-12 rounded-lg object-cover" />
                 </div>
               </div>
               <div className="flex flex-col">
@@ -1005,16 +999,10 @@ export default function PitchPage() {
                   3. Unwind &mdash; Close Position
                 </p>
                 <DemoUnwind active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
-                {/* Privy + Spreads logos */}
-                <div className="flex items-center justify-center gap-4 mt-3">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: '#7c3aed' }} />
-                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Privy</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <SpreadsLogo size={10} color="#6b6866" />
-                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Spreads</span>
-                  </div>
+                {/* Privy + xStocks logos */}
+                <div className="flex items-center justify-center gap-5 mt-auto pt-6">
+                  <img src="/privy.jpg" alt="Privy" className="w-12 h-12 rounded-lg object-cover" />
+                  <img src="/xstocks.jpg" alt="xStocks" className="w-12 h-12 rounded-lg object-cover" />
                 </div>
               </div>
             </div>
