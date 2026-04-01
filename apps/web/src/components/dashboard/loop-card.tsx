@@ -14,7 +14,7 @@ import { useUnwindStatus } from '@/hooks/use-unwind-status';
 import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
 
 const STRC_BASE_APY = 11.5;
-const LEVERAGE_OPTIONS = [2, 3, 5] as const;
+const LEVERAGE_OPTIONS = [2, 3, 3.5] as const;
 
 const UNWIND_OPTIONS = [
   { value: 0, label: 'Full', sublabel: 'Receive USDC' },
