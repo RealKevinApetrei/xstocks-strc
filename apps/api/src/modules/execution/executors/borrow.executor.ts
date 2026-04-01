@@ -84,28 +84,37 @@ export class BorrowExecutor {
    * Read current Morpho position for a user.
    * Borrow shares are converted to assets (rounded UP for safety).
    */
-  async getPosition(user: string): Promise<MorphoPosition> {
-    const provider = getProvider();
-    const morpho = new ethers.Contract(config.morpho, MorphoABI, provider);
+  async getPosition(user: string, retries = 3): Promise<MorphoPosition> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const provider = getProvider();
+        const morpho = new ethers.Contract(config.morpho, MorphoABI, provider);
 
-    const posResult = await morpho.position(config.morphoMarketId, user);
-    const borrowShares = BigInt(posResult[1]);
-    const collateral = BigInt(posResult[2]);
+        const posResult = await morpho.position(config.morphoMarketId, user);
+        const borrowShares = BigInt(posResult[1]);
+        const collateral = BigInt(posResult[2]);
 
-    const mktResult = await morpho.market(config.morphoMarketId);
-    const totalBorrowAssets = BigInt(mktResult[2]);
-    const totalBorrowShares = BigInt(mktResult[3]);
+        const mktResult = await morpho.market(config.morphoMarketId);
+        const totalBorrowAssets = BigInt(mktResult[2]);
+        const totalBorrowShares = BigInt(mktResult[3]);
 
-    // Convert shares → assets, round UP (user owes at least this much)
-    const borrowed = totalBorrowShares > 0n
-      ? (borrowShares * totalBorrowAssets + totalBorrowShares - 1n) / totalBorrowShares
-      : 0n;
+        // Convert shares → assets, round UP (user owes at least this much)
+        const borrowed = totalBorrowShares > 0n
+          ? (borrowShares * totalBorrowAssets + totalBorrowShares - 1n) / totalBorrowShares
+          : 0n;
 
-    // Read oracle price once for HF calculation
-    const oraclePrice = await this.readOraclePrice(provider);
-    const healthFactor = this.computeHF(collateral, borrowed, oraclePrice);
+        // Read oracle price once for HF calculation
+        const oraclePrice = await this.readOraclePrice(provider);
+        const healthFactor = this.computeHF(collateral, borrowed, oraclePrice);
 
-    return { collateral, borrowed, borrowShares, healthFactor };
+        return { collateral, borrowed, borrowShares, healthFactor };
+      } catch (err) {
+        if (attempt === retries) throw err;
+        console.warn(`[MORPHO] getPosition attempt ${attempt}/${retries} failed, retrying in ${attempt * 2}s...`);
+        await new Promise(r => setTimeout(r, attempt * 2000));
+      }
+    }
+    throw new Error('getPosition: unreachable');
   }
 
   /**

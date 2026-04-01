@@ -57,24 +57,34 @@ export class SmartAccountService {
 
     const wallet = await signerService.getWalletForUser(privyId);
 
-    // Send calls sequentially — Privy manages nonces and UserOp bundling.
-    // No intermediate receipt waits: Privy's sendTransaction returns after
-    // the UserOp is accepted by the bundler, so the next call can proceed.
-    // A short delay between calls lets the previous tx propagate on-chain.
-    let lastHash = '';
-    for (let i = 0; i < calls.length; i++) {
-      lastHash = await signerService.sendTransaction(wallet.walletId, {
-        to: calls[i].to,
-        data: calls[i].data,
-        value: calls[i].value?.toString(),
+    if (calls.length === 1) {
+      // Single call — send directly
+      return signerService.sendTransaction(wallet.walletId, {
+        to: calls[0].to,
+        data: calls[0].data,
+        value: calls[0].value?.toString(),
         chainId: config.chainId,
       });
-      // Brief delay between calls to let the previous tx land (Ink ~1s blocks)
-      if (i < calls.length - 1) {
-        await new Promise(r => setTimeout(r, 2000));
-      }
     }
-    return lastHash;
+
+    // Multiple calls — encode as executeBatch on the Kernel smart wallet.
+    // Privy wraps this as a UserOp: smartWallet.execute(smartWallet, 0, executeBatchData)
+    // which triggers smartWallet.executeBatch(calls) — all calls in a single tx.
+    const smartAccountAddr = await this.getSmartAccountAddress(privyId);
+    const batchData = KERNEL_ABI.encodeFunctionData('executeBatch', [
+      calls.map(c => ({
+        to: c.to,
+        value: c.value ?? 0n,
+        data: c.data,
+      })),
+    ]);
+
+    console.log(`[BATCH] Sending ${calls.length} calls as executeBatch to ${smartAccountAddr.slice(0, 10)}...`);
+    return signerService.sendTransaction(wallet.walletId, {
+      to: smartAccountAddr,
+      data: batchData,
+      chainId: config.chainId,
+    });
   }
 
   async waitForReceipt(txHash: string): Promise<{ txHash: string; success: boolean }> {
