@@ -61,7 +61,10 @@ export function DepositsHero() {
 
   const displayDeposits = useCountUp(equityUsd, 1600, 2);
   const displayApy = useCountUp(netApy, 1400, 1);
-  const displayMaxYield = useCountUp(40, 1800, 0);
+  const maxLev = 3.5;
+  const effBorrow = borrowApy ?? 0.89;
+  const maxYield = Math.round(STRC_BASE_APY * maxLev - effBorrow * (maxLev - 1));
+  const displayMaxYield = useCountUp(maxYield, 1800, 0);
 
   const isPositive = (change24hUsd ?? 0) >= 0;
 
