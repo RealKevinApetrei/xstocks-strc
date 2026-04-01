@@ -19,12 +19,11 @@ export interface BitrefillOrder {
 
 // Mocked catalog — replace with real Bitrefill API once approved
 const MOCK_CATALOG: BitrefillProduct[] = [
-  { id: 'amazon-us', name: 'Amazon', category: 'Shopping', minValue: 5, maxValue: 500, currency: 'USD', logoUrl: 'https://logo.clearbit.com/amazon.com' },
-  { id: 'netflix-us', name: 'Netflix', category: 'Entertainment', minValue: 15, maxValue: 100, currency: 'USD', logoUrl: 'https://logo.clearbit.com/netflix.com' },
-  { id: 'spotify-us', name: 'Spotify', category: 'Entertainment', minValue: 10, maxValue: 60, currency: 'USD', logoUrl: 'https://logo.clearbit.com/spotify.com' },
-  { id: 'starbucks-us', name: 'Starbucks', category: 'Food & Drink', minValue: 5, maxValue: 100, currency: 'USD', logoUrl: 'https://logo.clearbit.com/starbucks.com' },
-  { id: 'airbnb-us', name: 'Airbnb', category: 'Travel', minValue: 25, maxValue: 500, currency: 'USD', logoUrl: 'https://logo.clearbit.com/airbnb.com' },
-  { id: 'uber-us', name: 'Uber', category: 'Transport', minValue: 10, maxValue: 200, currency: 'USD', logoUrl: 'https://logo.clearbit.com/uber.com' },
+  { id: 'netflix-us',   name: 'Netflix',     category: 'Entertainment', minValue: 15, maxValue: 100, currency: 'USD', logoUrl: '/logos/Netflix.png' },
+  { id: 'amazon-us',   name: 'Amazon',      category: 'Shopping',      minValue: 5,  maxValue: 500, currency: 'USD', logoUrl: '/logos/Amazon.png' },
+  { id: 'apple-us',    name: 'Apple',       category: 'Tech',          minValue: 10, maxValue: 500, currency: 'USD', logoUrl: '/logos/Apple.png' },
+  { id: 'google-us',   name: 'Google Play', category: 'Entertainment', minValue: 10, maxValue: 200, currency: 'USD', logoUrl: '/logos/Google.png' },
+  { id: 'microsoft-us',name: 'Microsoft',   category: 'Tech',          minValue: 10, maxValue: 100, currency: 'USD', logoUrl: '/logos/Microsoft.png' },
 ];
 
 export class BitrefillService {
