@@ -125,15 +125,18 @@ export class CowSwapService {
       throw new Error('CoW order: quote has expired (validTo passed)');
     }
 
+    const orderPayload = {
+      ...quote.order,
+      feeAmount: '0',
+      signature,
+      signingScheme: 'eip712',
+    };
+    console.log(`[COW] Order payload: from=${(orderPayload as any).from}, receiver=${(orderPayload as any).receiver}, sellAmount=${(orderPayload as any).sellAmount}, sellToken=${(orderPayload as any).sellToken}`);
+
     const response = await this.fetchWithRetry(`${this.baseUrl}/api/v1/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...quote.order,
-        feeAmount: '0',
-        signature,
-        signingScheme: 'eip712',
-      }),
+      body: JSON.stringify(orderPayload),
     });
 
     if (!response.ok) {
