@@ -216,12 +216,24 @@ export class LoopExecutor {
     await this.updateStage(loopId, 'Waiting for USDC approval confirmation...');
     await smartAccountService.waitForReceipt(approveHash);
 
-    // Verify approval landed on-chain before proceeding
-    await this.updateStage(loopId, 'Verifying approval on-chain...');
+    // Verify approval and balance on-chain before proceeding
+    await this.updateStage(loopId, 'Verifying approval and balance on-chain...');
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    const usdc = new ethers.Contract(config.usdc, ['function allowance(address,address) view returns (uint256)'], provider);
+    const usdc = new ethers.Contract(config.usdc, [
+      'function allowance(address,address) view returns (uint256)',
+      'function balanceOf(address) view returns (uint256)',
+    ], provider);
+
+    const balance: bigint = await usdc.balanceOf(smartAccountAddr);
+    console.log(`[LOOP ${loopId}] Smart wallet ${smartAccountAddr} USDC balance: ${balance} (need ${usdcAmount})`);
+
+    if (balance < usdcAmount) {
+      throw new Error(`Smart wallet has insufficient USDC: ${Number(balance) / 1e6} vs ${Number(usdcAmount) / 1e6} needed. Deposit USDC first.`);
+    }
+
     for (let i = 0; i < 10; i++) {
       const allowance: bigint = await usdc.allowance(smartAccountAddr, config.cowVaultRelayer);
+      console.log(`[LOOP ${loopId}] Allowance check ${i + 1}: ${allowance} (need ${usdcAmount})`);
       if (allowance >= usdcAmount) break;
       if (i === 9) throw new Error('USDC approval not confirmed on-chain after 30s');
       await new Promise(r => setTimeout(r, 3000));
