@@ -164,20 +164,32 @@ export class UnwindExecutor {
         return;
       }
 
-      const success = await this.executeStep(privyId, smartAccountAddr, withdrawAmount, posAfterRepay);
-      if (!success) {
-        // Retry once
-        console.log(`[UNWIND ${unwindId}] Step ${step} failed, retrying...`);
-        await pythPriceService.ensureFreshPrice();
-        const freshPos = await borrowExecutor.getPosition(smartAccountAddr);
-        const freshWithdraw = this.calculateSafeWithdrawAmount(freshPos);
-        if (freshWithdraw <= 0n || !(await this.executeStep(privyId, smartAccountAddr, freshWithdraw > 0n ? freshWithdraw : freshPos.collateral, freshPos))) {
+      let success = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const pos = attempt === 1 ? posAfterRepay : await borrowExecutor.getPosition(smartAccountAddr);
+        const amt = attempt === 1 ? withdrawAmount : (this.calculateSafeWithdrawAmount(pos) || pos.collateral);
+
+        success = await this.executeStep(privyId, smartAccountAddr, amt, pos);
+        if (success) break;
+
+        if (attempt < 3) {
+          const waitSecs = attempt * 15;
+          console.log(`[UNWIND ${unwindId}] Step ${step} attempt ${attempt} failed, retrying in ${waitSecs}s...`);
           await query(
-            `UPDATE unwind_executions SET status = 'FAILED', current_step = $2, error = 'Step failed after retry' WHERE id = $1`,
-            [unwindId, step],
+            `UPDATE unwind_executions SET error = $2 WHERE id = $1 AND status = 'IN_PROGRESS'`,
+            [unwindId, `[ACTIVE] Solver unavailable — retrying in ${waitSecs}s (attempt ${attempt}/3)`],
           );
-          return;
+          await new Promise(r => setTimeout(r, waitSecs * 1000));
+          await pythPriceService.ensureFreshPrice();
         }
+      }
+
+      if (!success) {
+        await query(
+          `UPDATE unwind_executions SET status = 'FAILED', current_step = $2, error = 'Step failed after 3 attempts — CoW solvers may be unavailable' WHERE id = $1`,
+          [unwindId, step],
+        );
+        return;
       }
 
       const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
