@@ -97,7 +97,9 @@ export function LendUsdcVault() {
     try {
       const token = await getAccessToken();
       if (!token) return;
-      const amount = withdrawAmount === 'max' ? 'max' : toUsdc6(withdrawAmount);
+      // Send 'max' if withdrawing full balance (avoids dust left behind from rounding)
+      const isMax = parseFloat(withdrawAmount) >= Math.floor(LEND_BALANCE * 100) / 100;
+      const amount = isMax ? 'max' : toUsdc6(withdrawAmount);
       await api.withdrawFromLend(token, amount);
       setWithdrawAmount('');
     } catch (err) {
@@ -177,7 +179,7 @@ export function LendUsdcVault() {
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 {activeTab === 'withdraw' && LEND_BALANCE > 0 && (
                   <button
-                    onClick={() => setWithdrawAmount('max')}
+                    onClick={() => setWithdrawAmount((Math.floor(LEND_BALANCE * 100) / 100).toFixed(2))}
                     className="text-[10px] font-medium text-primary hover:text-primary/80"
                   >
                     MAX

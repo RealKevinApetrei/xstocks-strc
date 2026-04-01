@@ -225,12 +225,19 @@ gridRouter.post('/vault/deposit', privyAuth, async (req: Request, res: Response)
   const { privyId } = (req as AuthenticatedRequest).user;
   const { amount } = req.body as VaultDepositRequest;
 
-  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-  const calls = vaultService.buildDepositCalls(BigInt(amount), smartAccountAddr);
-  const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
-  const receipt = await smartAccountService.waitForReceipt(userOpHash);
-
-  res.status(201).json({ txHash: receipt.txHash });
+  try {
+    const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+    const calls = vaultService.buildDepositCalls(BigInt(amount), smartAccountAddr);
+    // Approve first, wait for it to land, then supply
+    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [calls[0]]));
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [calls[1]]);
+    const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    res.status(201).json({ txHash: receipt.txHash });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[VAULT] Deposit failed:', msg);
+    res.status(400).json({ error: `Vault deposit failed: ${msg}` });
+  }
 });
 
 // POST /api/vault/withdraw
@@ -238,14 +245,18 @@ gridRouter.post('/vault/withdraw', privyAuth, async (req: Request, res: Response
   const { privyId } = (req as AuthenticatedRequest).user;
   const { amount } = req.body as VaultWithdrawRequest;
 
-  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-  // Use MaxUint256 for "max" withdrawal, otherwise parse the amount
-  const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
-  const calls = vaultService.buildWithdrawCalls(withdrawAmount, smartAccountAddr);
-  const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
-  const receipt = await smartAccountService.waitForReceipt(userOpHash);
-
-  res.status(201).json({ txHash: receipt.txHash });
+  try {
+    const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+    const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
+    const calls = vaultService.buildWithdrawCalls(withdrawAmount, smartAccountAddr);
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
+    const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    res.status(201).json({ txHash: receipt.txHash });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[VAULT] Withdraw failed:', msg);
+    res.status(400).json({ error: `Vault withdraw failed: ${msg}` });
+  }
 });
 
 // GET /api/vault/balance/:address
@@ -267,12 +278,19 @@ gridRouter.post('/lend/deposit', privyAuth, async (req: Request, res: Response) 
   const { privyId } = (req as AuthenticatedRequest).user;
   const { amount } = req.body as { amount: string };
 
-  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-  const calls = lendService.buildSupplyCalls(BigInt(amount), smartAccountAddr);
-  const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
-  const receipt = await smartAccountService.waitForReceipt(userOpHash);
-
-  res.status(201).json({ txHash: receipt.txHash });
+  try {
+    const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+    const calls = lendService.buildSupplyCalls(BigInt(amount), smartAccountAddr);
+    // Approve first, wait for it to land, then supply
+    await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [calls[0]]));
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [calls[1]]);
+    const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    res.status(201).json({ txHash: receipt.txHash });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[LEND] Deposit failed:', msg);
+    res.status(400).json({ error: `Lend deposit failed: ${msg}` });
+  }
 });
 
 // POST /api/lend/withdraw — Withdraw USDC from Morpho lending position
@@ -280,13 +298,18 @@ gridRouter.post('/lend/withdraw', privyAuth, async (req: Request, res: Response)
   const { privyId } = (req as AuthenticatedRequest).user;
   const { amount } = req.body as { amount: string };
 
-  const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-  const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
-  const calls = lendService.buildWithdrawCalls(withdrawAmount, smartAccountAddr, smartAccountAddr);
-  const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
-  const receipt = await smartAccountService.waitForReceipt(userOpHash);
-
-  res.status(201).json({ txHash: receipt.txHash });
+  try {
+    const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+    const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
+    const calls = lendService.buildWithdrawCalls(withdrawAmount, smartAccountAddr, smartAccountAddr);
+    const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
+    const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    res.status(201).json({ txHash: receipt.txHash });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[LEND] Withdraw failed:', msg);
+    res.status(400).json({ error: `Lend withdraw failed: ${msg}` });
+  }
 });
 
 // GET /api/lend/balance/:address — Lending position balance
