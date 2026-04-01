@@ -93,7 +93,7 @@ export function validateConfig(): void {
 
   // Validate LLTV is reasonable (50-95%)
   // Support both decimal (0.86) and wei (860000000000000000) formats
-  const lltvRaw = config.morphoLltv;
+  const lltvRaw = config.morphoLltv.trim();
   const lltv = lltvRaw.includes('.') ? BigInt(Math.floor(parseFloat(lltvRaw) * 1e18)) : BigInt(lltvRaw);
   if (lltv < 500000000000000000n || lltv > 950000000000000000n) {
     throw new Error(`MORPHO_LLTV out of range: ${config.morphoLltv}. Expected 0.5e18 to 0.95e18`);
