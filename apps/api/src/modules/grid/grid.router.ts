@@ -227,15 +227,19 @@ gridRouter.post('/vault/deposit', privyAuth, async (req: Request, res: Response)
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    // Step 1: Max-approve USDC to L2Pool (idempotent, only costs gas once)
     const approveCall = vaultService.buildApproveCall();
     await smartAccountService.waitForReceipt(
       await smartAccountService.sendBatchUserOp(privyId, [approveCall]),
     );
-    // Step 2: Supply USDC into Aave (approval already landed)
     const supplyCall = vaultService.buildSupplyCall(BigInt(amount), smartAccountAddr);
     const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [supplyCall]);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    // Log to execution_requests for activity feed
+    await query(
+      `INSERT INTO execution_requests (privy_id, type, status, smart_account_address, tx_hash, metadata)
+       VALUES ($1, 'VAULT_DEPOSIT', 'COMPLETED', $2, $3, $4)`,
+      [privyId, smartAccountAddr, receipt.txHash, JSON.stringify({ amount, vault: 'tydro' })],
+    );
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -251,7 +255,6 @@ gridRouter.post('/vault/withdraw', privyAuth, async (req: Request, res: Response
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    // For max withdrawal, read maxWithdraw from ERC-4626 to avoid revert
     const withdrawAmount = amount === 'max'
       ? await vaultService.getMaxWithdraw(smartAccountAddr)
       : BigInt(amount);
@@ -262,6 +265,11 @@ gridRouter.post('/vault/withdraw', privyAuth, async (req: Request, res: Response
     const calls = vaultService.buildWithdrawCalls(withdrawAmount, smartAccountAddr);
     const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    await query(
+      `INSERT INTO execution_requests (privy_id, type, status, smart_account_address, tx_hash, metadata)
+       VALUES ($1, 'VAULT_WITHDRAW', 'COMPLETED', $2, $3, $4)`,
+      [privyId, smartAccountAddr, receipt.txHash, JSON.stringify({ amount: withdrawAmount.toString(), vault: 'tydro' })],
+    );
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -296,6 +304,11 @@ gridRouter.post('/lend/deposit', privyAuth, async (req: Request, res: Response) 
     await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [calls[0]]));
     const userOpHash = await smartAccountService.sendBatchUserOp(privyId, [calls[1]]);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    await query(
+      `INSERT INTO execution_requests (privy_id, type, status, smart_account_address, tx_hash, metadata)
+       VALUES ($1, 'VAULT_DEPOSIT', 'COMPLETED', $2, $3, $4)`,
+      [privyId, smartAccountAddr, receipt.txHash, JSON.stringify({ amount, vault: 'morpho_lend' })],
+    );
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -311,12 +324,16 @@ gridRouter.post('/lend/withdraw', privyAuth, async (req: Request, res: Response)
 
   try {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-    // Max withdrawal reads exact supply shares to avoid Morpho arithmetic overflow
     const calls = amount === 'max'
       ? await lendService.buildWithdrawMaxCalls(smartAccountAddr, smartAccountAddr)
       : lendService.buildWithdrawByAssets(BigInt(amount), smartAccountAddr, smartAccountAddr);
     const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
     const receipt = await smartAccountService.waitForReceipt(userOpHash);
+    await query(
+      `INSERT INTO execution_requests (privy_id, type, status, smart_account_address, tx_hash, metadata)
+       VALUES ($1, 'VAULT_WITHDRAW', 'COMPLETED', $2, $3, $4)`,
+      [privyId, smartAccountAddr, receipt.txHash, JSON.stringify({ amount, vault: 'morpho_lend' })],
+    );
     res.status(201).json({ txHash: receipt.txHash });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -343,4 +360,73 @@ gridRouter.get('/lend/apy', async (_req: Request, res: Response) => {
     console.error('[LEND-APY] Error:', err);
     res.json({ supplyApy: null, borrowApy: null, utilization: null, totalSupply: null, totalBorrow: null });
   }
+});
+
+// ============================================
+// Activity feed — all user transactions
+// ============================================
+
+// GET /api/activity — All execution_requests + grid_events for the user
+gridRouter.get('/activity', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const limit = Math.min(parseInt((req.query as any).limit ?? '20', 10), 100);
+  const offset = parseInt((req.query as any).offset ?? '0', 10);
+
+  // Fetch execution_requests (vault deposits, withdrawals, loops, unwinds, swaps)
+  const { rows: execRows } = await query(
+    `SELECT id, type, status, tx_hash, metadata, created_at
+     FROM execution_requests WHERE privy_id = $1
+     ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+    [privyId, limit, offset],
+  );
+
+  // Fetch grid_events (DCA buys)
+  const { rows: gridRows } = await query(
+    `SELECT id, direction, trigger_price, amount_usdc, amount_strc, cow_order_uid, status, created_at
+     FROM grid_events WHERE privy_id = $1
+     ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+    [privyId, limit, offset],
+  );
+
+  // Count totals
+  const { rows: [execCount] } = await query(
+    `SELECT COUNT(*)::int as count FROM execution_requests WHERE privy_id = $1`, [privyId],
+  );
+  const { rows: [gridCount] } = await query(
+    `SELECT COUNT(*)::int as count FROM grid_events WHERE privy_id = $1`, [privyId],
+  );
+
+  // Merge and sort
+  type ActivityItem = { id: string; type: string; status: string; txHash: string | null; amount: string | null; detail: string | null; createdAt: string };
+
+  const activities: ActivityItem[] = [
+    ...execRows.map((r: any): ActivityItem => {
+      const meta = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : (r.metadata ?? {});
+      const amt = meta.amount ? `$${(parseFloat(meta.amount) / 1e6).toFixed(2)}` : null;
+      const vaultLabel = meta.vault === 'morpho_lend' ? 'Lend Vault' : meta.vault === 'tydro' ? 'Orange Dot' : '';
+      return {
+        id: r.id,
+        type: r.type.replace('_', ' '),
+        status: r.status,
+        txHash: r.tx_hash,
+        amount: amt,
+        detail: vaultLabel || null,
+        createdAt: r.created_at.toISOString(),
+      };
+    }),
+    ...gridRows.map((r: any): ActivityItem => ({
+      id: r.id,
+      type: 'DCA BUY',
+      status: r.status,
+      txHash: r.cow_order_uid,
+      amount: r.amount_usdc ? `$${(parseFloat(r.amount_usdc) / 1e6).toFixed(2)}` : null,
+      detail: r.amount_strc ? `${(parseFloat(r.amount_strc) / 1e18).toFixed(2)} STRC` : `@ $${r.trigger_price}`,
+      createdAt: r.created_at.toISOString(),
+    })),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  res.json({
+    activities: activities.slice(0, limit),
+    total: (execCount?.count ?? 0) + (gridCount?.count ?? 0),
+  });
 });

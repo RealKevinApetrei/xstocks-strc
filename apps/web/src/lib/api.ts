@@ -131,6 +131,16 @@ export const api = {
       method: 'POST', body: JSON.stringify({ amount, to }), token,
     }),
 
+  // Activity feed (all transactions: vault, lend, DCA, loops)
+  getActivity: (token: string, limit: number = 20, offset: number = 0) =>
+    request<{
+      activities: Array<{
+        id: string; type: string; status: string; txHash: string | null;
+        amount: string | null; detail: string | null; createdAt: string;
+      }>;
+      total: number;
+    }>(`/api/grid/activity?limit=${limit}&offset=${offset}`, { token }),
+
   // Loop history (paginated)
   getLoopHistory: (token: string, limit: number = 20, offset: number = 0) =>
     request<{

@@ -75,11 +75,19 @@ const statusColors: Record<string, string> = {
 
 const PAGE_SIZE = 10;
 
+const typeColors: Record<string, string> = {
+  'VAULT DEPOSIT': 'text-orange-500 bg-orange-500/10 border-orange-500/20',
+  'VAULT WITHDRAW': 'text-orange-500 bg-orange-500/10 border-orange-500/20',
+  'DCA BUY': 'text-orange-500 bg-orange-500/10 border-orange-500/20',
+  'LOOP': 'text-primary bg-primary/10 border-primary/20',
+  'UNWIND': 'text-warning bg-warning/10 border-warning/20',
+  'SWAP': 'text-primary bg-primary/10 border-primary/20',
+  'APPROVAL': 'text-muted-foreground bg-muted/50 border-border',
+};
+
 function RecentActivity() {
   const { getAccessToken } = usePrivy();
-  const { data: posData } = usePosition();
-  const [loops, setLoops] = useState<any[]>([]);
-  const [gridEvents, setGridEvents] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -88,15 +96,11 @@ function RecentActivity() {
     try {
       const token = await getAccessToken();
       if (!token) return;
-      const [loopData, gridData] = await Promise.all([
-        api.getLoopHistory(token, PAGE_SIZE, offset),
-        posData?.gridStrategy?.id ? api.getGridEvents(token, posData.gridStrategy.id).catch(() => ({ events: [] })) : Promise.resolve({ events: [] }),
-      ]);
-      setLoops(loopData.loops);
-      setGridEvents(gridData.events);
-      setTotal(loopData.total + gridData.events.length);
+      const data = await api.getActivity(token, PAGE_SIZE, offset);
+      setActivities(data.activities);
+      setTotal(data.total);
     } catch {} finally { setLoading(false); }
-  }, [getAccessToken, posData?.gridStrategy?.id]);
+  }, [getAccessToken]);
 
   useEffect(() => {
     setLoading(true);
@@ -107,35 +111,12 @@ function RecentActivity() {
 
   if (loading) return <div className="flex items-center justify-center p-12"><SpreadsSpinner size={28} /></div>;
 
-  // Merge loop and grid events into unified activity list
-  type Activity = { id: string; type: string; date: string; amount: string; detail: string; status: string; txHash: string | null };
-  const activities: Activity[] = [
-    ...loops.map((l): Activity => ({
-      id: l.id,
-      type: 'Loop',
-      date: l.createdAt,
-      amount: formatUsd(parseFloat(l.strcAmount) / 1e6),
-      detail: `${l.targetLeverage}× → ${l.effectiveLeverage ? `${l.effectiveLeverage.toFixed(1)}×` : '—'}`,
-      status: l.status,
-      txHash: l.txHash ?? null,
-    })),
-    ...gridEvents.map((e): Activity => ({
-      id: e.id,
-      type: 'DCA Buy',
-      date: e.createdAt,
-      amount: e.amountUsdc ? formatUsd(parseFloat(e.amountUsdc) / 1e6) : '—',
-      detail: e.amountStrc ? `${(parseFloat(e.amountStrc) / 1e18).toFixed(2)} STRC` : `@ $${e.triggerPrice}`,
-      status: e.status,
-      txHash: e.cowOrderUid ?? null,
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
   if (activities.length === 0) return (
     <div className="p-8 text-center"><p className="text-sm text-muted-foreground">No activity yet.</p></div>
   );
 
-  const totalPages = Math.max(1, Math.ceil(activities.length / PAGE_SIZE));
-  const pageItems = activities.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageItems = activities;
 
   return (
     <div className="p-6">
@@ -152,17 +133,17 @@ function RecentActivity() {
             </tr>
           </thead>
           <tbody>
-            {pageItems.map((a) => (
+            {pageItems.map((a: any) => (
               <tr key={a.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors">
-                <td className="py-3 text-left font-mono text-xs">{new Date(a.date).toLocaleDateString()}</td>
+                <td className="py-3 text-left font-mono text-xs">{new Date(a.createdAt).toLocaleDateString()}</td>
                 <td className="py-3 text-left text-xs">
                   <span className={cn(
                     'inline-block rounded px-1.5 py-0.5 text-[10px] font-mono border',
-                    a.type === 'DCA Buy' ? 'text-orange-500 bg-orange-500/10 border-orange-500/20' : 'text-primary bg-primary/10 border-primary/20',
+                    typeColors[a.type] ?? 'text-primary bg-primary/10 border-primary/20',
                   )}>{a.type}</span>
                 </td>
-                <td className="py-3 text-right font-mono text-xs">{a.amount}</td>
-                <td className="py-3 text-right font-mono text-xs text-muted-foreground">{a.detail}</td>
+                <td className="py-3 text-right font-mono text-xs">{a.amount ?? '—'}</td>
+                <td className="py-3 text-right font-mono text-xs text-muted-foreground">{a.detail ?? '—'}</td>
                 <td className="py-3 text-right">
                   <span className={cn('inline-block rounded border px-1.5 py-0.5 text-[10px] font-mono', statusColors[a.status] ?? statusColors.PENDING)}>
                     {a.status.replace('_', ' ')}
@@ -182,7 +163,7 @@ function RecentActivity() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-4">
           <span className="text-[10px] text-muted-foreground font-mono">
-            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, activities.length)} of {activities.length}
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
           </span>
           <div className="flex gap-1">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
