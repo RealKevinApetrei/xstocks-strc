@@ -112,7 +112,7 @@ export default function Home() {
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           left: 0,
-          bottom: '-8vh',
+          bottom: 'calc(-8vh - 104px)',
           width: '30vw',
           height: '100vh',
           objectFit: 'cover',
@@ -132,7 +132,7 @@ export default function Home() {
         className="absolute select-none pointer-events-none"
         style={{
           left: '4vw',
-          bottom: '15%',
+          bottom: 'calc(15% - 104px)',
           height: '52vh',
           zIndex: 10,
           ...blend,
@@ -152,7 +152,7 @@ export default function Home() {
         className="absolute select-none pointer-events-none"
         style={{
           right: '14vw',
-          top: '30%',
+          top: 'calc(30% + 104px)',
           width: '28.6vw',
           maxWidth: '442px',
           zIndex: 3,
@@ -168,9 +168,10 @@ export default function Home() {
       <img
         src="/saylor-colour.png"
         alt="Michael Saylor"
-        className="absolute bottom-0 select-none pointer-events-none"
+        className="absolute select-none pointer-events-none"
         style={{
           right: 0,
+          bottom: -104,
           width: '30vw',
           height: '100vh',
           objectFit: 'cover',
