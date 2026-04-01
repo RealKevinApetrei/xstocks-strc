@@ -130,6 +130,7 @@ export class CowSwapService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...quote.order,
+        feeAmount: '0',
         signature,
         signingScheme: 'eip712',
       }),
