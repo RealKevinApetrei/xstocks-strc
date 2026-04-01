@@ -846,7 +846,7 @@ export default function PitchPage() {
             <div>
               <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#d93030' }}>The Problem</span>
               <p className="text-lg font-medium mt-2 leading-relaxed" style={{ color: '#0a0a0a' }}>
-                An incredibly unique instrument with no on-chain products built for it.
+                An incredibly unique instrument with<br /><span style={{ color: '#d93030' }}>no</span> on-chain products built for it.
               </p>
             </div>
 
