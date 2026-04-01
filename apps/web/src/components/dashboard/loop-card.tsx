@@ -288,7 +288,7 @@ function UnwindTab() {
 
   if (!hasPosition) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex flex-col items-center justify-center h-full min-h-[380px] text-center">
         <div className="w-8 h-8 rounded-full border border-border flex items-center justify-center mb-3">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </div>
@@ -413,7 +413,9 @@ export function LoopCard() {
         )}
       </div>
 
-      {tab === 'loop' ? <LoopTab /> : <UnwindTab />}
+      <div className="min-h-[420px]">
+        {tab === 'loop' ? <LoopTab /> : <UnwindTab />}
+      </div>
     </div>
   );
 }
