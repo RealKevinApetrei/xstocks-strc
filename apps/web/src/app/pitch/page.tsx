@@ -687,6 +687,124 @@ function MiniDipChart({ active }: { active: boolean }) {
   );
 }
 
+// ── Buy the Dip Chart (real API data, highlights dip zones) ─────────────────────
+
+function BuyDipChart({ active }: { active: boolean }) {
+  const [drawn, setDrawn] = useState(0);
+  const [prices, setPrices] = useState<Array<{ price: number; timestamp: number }>>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/grid/price/history?days=180`)
+      .then(r => r.json())
+      .then(data => { if (data.history?.length) setPrices(data.history); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!active || prices.length === 0) return;
+    const start = performance.now();
+    function tick(now: number) {
+      const progress = Math.min((now - start) / 2000, 1);
+      setDrawn(progress);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }, [active, prices.length]);
+
+  if (prices.length === 0) {
+    return <div className="h-[120px] flex items-center justify-center"><span className="text-xs font-mono" style={{ color: '#d1d5db' }}>Loading...</span></div>;
+  }
+
+  const w = 700, h = 130, padX = 40, padY = 10;
+  const priceValues = prices.map(p => p.price);
+  const minP = Math.floor(Math.min(...priceValues) / 5) * 5;
+  const maxP = Math.ceil(Math.max(...priceValues) / 5) * 5;
+  const chartW = w - padX, chartH = h - padY * 2;
+
+  const points = prices.map((p, i) => ({
+    x: padX + (i / (prices.length - 1)) * chartW,
+    y: padY + (1 - (p.price - minP) / (maxP - minP)) * chartH,
+    price: p.price,
+  }));
+
+  const visibleCount = Math.floor(drawn * points.length);
+  const visible = points.slice(0, Math.max(visibleCount, 1));
+  const linePath = visible.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  // $95 buy zone threshold
+  const threshY = padY + (1 - (95 - minP) / (maxP - minP)) * chartH;
+  // $100 peg line
+  const pegY = padY + (1 - (100 - minP) / (maxP - minP)) * chartH;
+
+  // Find dip zones (contiguous runs below $95)
+  const dipZones: Array<{ startX: number; endX: number; minY: number }> = [];
+  let inDip = false;
+  let dipStart = 0;
+  let dipMinY = 0;
+  visible.forEach((p, i) => {
+    if (p.price < 95 && !inDip) { inDip = true; dipStart = p.x; dipMinY = p.y; }
+    if (inDip && p.price < 95) { dipMinY = Math.max(dipMinY, p.y); }
+    if (inDip && (p.price >= 95 || i === visible.length - 1)) {
+      dipZones.push({ startX: dipStart, endX: p.x, minY: dipMinY });
+      inDip = false;
+    }
+  });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-mono font-bold tracking-widest uppercase" style={{ color: '#6b6866' }}>STRC / USD &mdash; Buy Zone Below $95</span>
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5 text-[9px] font-mono" style={{ color: '#16a34a' }}>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} /> Buy zone
+          </span>
+          <span className="flex items-center gap-1.5 text-[9px] font-mono" style={{ color: '#e05c00' }}>
+            <div className="w-2 h-0.5" style={{ backgroundColor: '#e05c00' }} /> $100 peg
+          </span>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 130 }}>
+        {/* Y-axis */}
+        {[minP, 95, 100, maxP].filter((v, i, a) => a.indexOf(v) === i).map((tick) => {
+          const y = padY + (1 - (tick - minP) / (maxP - minP)) * chartH;
+          const is95 = tick === 95;
+          const is100 = tick === 100;
+          return (
+            <g key={tick}>
+              <line x1={padX} y1={y} x2={w} y2={y} stroke={is100 ? '#e05c00' : is95 ? '#16a34a' : '#e5e7eb'} strokeWidth={is100 || is95 ? 1 : 0.5} strokeDasharray={is100 || is95 ? '4 3' : 'none'} opacity={is100 || is95 ? 0.5 : 0.4} />
+              <text x={4} y={y + 3} fill={is100 ? '#e05c00' : is95 ? '#16a34a' : '#6b6866'} fontSize="8" fontFamily="IBM Plex Mono" fontWeight={is100 || is95 ? '600' : '400'} opacity={0.7}>${tick}</text>
+            </g>
+          );
+        })}
+
+        {/* Dip highlight zones */}
+        {dipZones.map((zone, i) => (
+          <rect key={i} x={zone.startX} y={threshY} width={zone.endX - zone.startX} height={h - padY - threshY} fill="#16a34a" opacity="0.08" rx="2" />
+        ))}
+
+        {/* Price line */}
+        <path d={linePath} fill="none" stroke="#2d2d2d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Orange dots on dip bottoms */}
+        {(() => {
+          const bottoms = visible.filter((p, i) => {
+            if (p.price >= 95) return false;
+            const prev = visible[i - 1];
+            const next = visible[i + 1];
+            return prev && next && p.price <= prev.price && p.price <= next.price;
+          });
+          return bottoms.map((p, i) => (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r="4" fill="#16a34a" />
+              <text x={p.x} y={p.y - 7} fill="#16a34a" fontSize="7" fontFamily="IBM Plex Mono" fontWeight="700" textAnchor="middle">BUY ${p.price.toFixed(0)}</text>
+            </g>
+          ));
+        })()}
+      </svg>
+    </div>
+  );
+}
+
 // ── Section labels ──────────────────────────────────────────────────────────────
 
 const SECTIONS = [
@@ -1021,55 +1139,38 @@ export default function PitchPage() {
         {/* ═══ SLIDE 4: BUY THE DIP VAULT ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-5xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-8 leading-tight" style={{ color: '#0a0a0a' }}>
-              The Buy the Dip <span style={{ color: '#16a34a' }}>Vault</span>.
+            <h2 className="text-4xl md:text-5xl font-bold mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
+              Buy the Dip <span style={{ color: '#16a34a' }}>Vault</span>.
             </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
-                <p className="text-[10px] font-mono font-bold tracking-widest uppercase mb-5" style={{ color: '#6b6866' }}>How It Triggers</p>
-                <div className="space-y-4">
-                  {[
-                    { step: '01', label: 'STRCx price drops', desc: 'Pyth oracle streams real-time price. Backend detects decline.', color: '#e05c00' },
-                    { step: '02', label: 'Health factor falls below 1.2', desc: 'Position health checked against Morpho. Alert fires.', color: '#d93030' },
-                    { step: '03', label: 'Vault deploys USDC', desc: 'Protection capital auto-withdrawn from ERC-4626 vault.', color: '#c47a1a' },
-                    { step: '04', label: 'Buys STRCx via CoW', desc: 'USDC swapped to STRCx, supplied to Morpho. HF restored.', color: '#16a34a' },
-                  ].map((s) => (
-                    <div key={s.step} className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-mono font-bold" style={{ backgroundColor: s.color + '18', color: s.color }}>{s.step}</div>
-                      <div>
-                        <p className="text-xs font-semibold" style={{ color: '#0a0a0a' }}>{s.label}</p>
-                        <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: '#6b6866' }}>{s.desc}</p>
-                      </div>
-                    </div>
-                  ))}
+            <p className="text-base mb-6 leading-relaxed" style={{ color: '#6b6866' }}>
+              Idle USDC earns yield and Ink points via Tydro. When STRC dips, it auto-buys generational entries.
+            </p>
+
+            {/* Real STRC chart with dip zones */}
+            <div className="rounded-lg border bg-white p-5 mb-6" style={{ borderColor: '#e5e7eb' }}>
+              <BuyDipChart active={isActive(4)} />
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-3xl font-mono font-bold mb-1" style={{ color: '#16a34a' }}>+10%</div>
+                <div className="text-xs font-semibold mb-1" style={{ color: '#0a0a0a' }}>Recovery Yield</div>
+                <div className="text-[10px] leading-relaxed" style={{ color: '#6b6866' }}>
+                  Last time STRC fell below $95 it recovered within two weeks. Instant 10%+ return on the dip buy.
                 </div>
               </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'HF Trigger', val: '1.2×', color: '#d93030' },
-                    { label: 'Grid Price', val: '$103', color: '#c47a1a' },
-                    { label: 'Monitoring', val: '24/7', color: '#16a34a' },
-                    { label: 'Oracle', val: 'Pyth', color: '#2d2d2d' },
-                  ].map((s) => (
-                    <div key={s.label} className="rounded-lg border bg-white p-4" style={{ borderColor: '#e5e7eb' }}>
-                      <div className="text-[9px] font-mono tracking-widest uppercase mb-1.5" style={{ color: '#6b6866' }}>{s.label}</div>
-                      <div className="text-2xl font-mono font-bold" style={{ color: s.color }}>{s.val}</div>
-                    </div>
-                  ))}
+              <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-3xl font-mono font-bold mb-1" style={{ color: '#c47a1a' }}>Tydro + Ink</div>
+                <div className="text-xs font-semibold mb-1" style={{ color: '#0a0a0a' }}>Idle Yield</div>
+                <div className="text-[10px] leading-relaxed" style={{ color: '#6b6866' }}>
+                  USDC earns vault yield and Ink chain points while waiting. Your capital is never idle.
                 </div>
-                <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
-                  <div className="text-[9px] font-mono tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>STRCx Price — Vault Active Zone</div>
-                  <svg viewBox="0 0 320 72" className="w-full" style={{ height: 72 }}>
-                    <line x1="0" y1="22" x2="320" y2="22" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,4" />
-                    <line x1="0" y1="48" x2="320" y2="48" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,4" />
-                    <polyline points="0,14 55,17 95,19 125,21 150,40 165,53 180,46 198,33 225,22 258,18 288,16 320,14" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinejoin="round" />
-                    <rect x="150" y="40" width="48" height="16" fill="#16a34a12" />
-                    <line x1="150" y1="0" x2="150" y2="72" stroke="#d93030" strokeWidth="1" strokeDasharray="3,3" />
-                    <line x1="198" y1="0" x2="198" y2="72" stroke="#16a34a" strokeWidth="1" strokeDasharray="3,3" />
-                    <text x="120" y="69" fontSize="7" fill="#d93030" fontFamily="monospace">dip detected</text>
-                    <text x="201" y="69" fontSize="7" fill="#16a34a" fontFamily="monospace">HF restored</text>
-                  </svg>
+              </div>
+              <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-3xl font-mono font-bold mb-1" style={{ color: '#2d2d2d' }}>Auto-Route</div>
+                <div className="text-xs font-semibold mb-1" style={{ color: '#0a0a0a' }}>Liquidation Shield</div>
+                <div className="text-[10px] leading-relaxed" style={{ color: '#6b6866' }}>
+                  DCA entries are supplied as collateral to Morpho, automatically protecting leveraged positions from liquidation.
                 </div>
               </div>
             </div>
