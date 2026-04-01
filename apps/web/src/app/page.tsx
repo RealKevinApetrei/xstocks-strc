@@ -153,8 +153,8 @@ export default function Home() {
         style={{
           right: '23vw',
           top: '30%',
-          width: '22vw',
-          maxWidth: '340px',
+          width: '28.6vw',
+          maxWidth: '442px',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
