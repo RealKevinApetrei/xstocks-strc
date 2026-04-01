@@ -24,7 +24,9 @@ async function fetchBalance(tokenAddress: string, walletAddress: string): Promis
 
   const json = await res.json();
   if (json.error) return 0n;
-  return BigInt(json.result || '0x0');
+  const hex = json.result;
+  if (!hex || hex === '0x' || hex === '0x0') return 0n;
+  return BigInt(hex);
 }
 
 export function useStrcBalance() {
