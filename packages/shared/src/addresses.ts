@@ -44,12 +44,11 @@ export const STRC_DUST = 10n ** 14n; // 0.0001 STRC (18 decimals)
 export const COW_MIN_SWAP_USDC = 10_000_000n; // $10 in 6-decimal USDC
 
 // Minimum deposit per leverage level
-// Each loop iteration needs >= $10 for CoW swap. With 86% LLTV:
-// 2x: initial swap + ~2 iterations → min $20
-// 3x: initial swap + ~4 iterations → min $30
-// 5x: initial swap + ~8 iterations → min $50
+// Constraint: initial swap >= $10, first borrow (deposit * 0.86) >= $10
+// → deposit >= $12 minimum. Using $15 with buffer for slippage.
+// Higher leverage needs more iterations but each borrow is bumped to $10 min.
 export const MIN_DEPOSIT_USDC: Record<number, bigint> = {
-  2: 20_000_000n,  // $20
-  3: 30_000_000n,  // $30
-  5: 50_000_000n,  // $50
+  2: 15_000_000n,  // $15
+  3: 15_000_000n,  // $15
+  5: 15_000_000n,  // $15
 };
