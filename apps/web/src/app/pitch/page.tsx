@@ -1031,7 +1031,7 @@ export default function PitchPage() {
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
-              Not just another <span style={{ color: '#7c3aed' }}>yield farm</span>.
+              The Highest RWA Yield <span style={{ color: '#7c3aed' }}>In DeFi</span> today.
             </h2>
             <div className="grid md:grid-cols-2 gap-5">
               {[
