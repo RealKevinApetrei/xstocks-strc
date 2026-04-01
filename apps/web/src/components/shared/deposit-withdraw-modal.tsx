@@ -35,14 +35,12 @@ function encodeTransfer(to: string, amount: bigint): string {
 }
 
 const DEPOSIT_TABS: { value: Tab; label: string }[] = [
-  { value: 'bridge', label: 'CROSS-CHAIN' },
   { value: 'ink', label: 'INK' },
   { value: 'qr-code', label: 'QR CODE' },
 ];
 
 const WITHDRAW_TABS: { value: Tab; label: string }[] = [
   { value: 'ink', label: 'INK' },
-  { value: 'bridge', label: 'CROSS-CHAIN' },
 ];
 
 export function DepositWithdrawModal({
@@ -90,7 +88,7 @@ export function DepositWithdrawModal({
     }
   }, [wallets]);
   const { balance: platformBalance, refresh: refreshBalance } = useUsdcBalance();
-  const [tab, setTab] = useState<Tab>(mode === 'deposit' ? 'bridge' : 'ink');
+  const [tab, setTab] = useState<Tab>('ink');
   const [amount, setAmount] = useState('');
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -251,21 +249,23 @@ export function DepositWithdrawModal({
           </div>
         )}
 
-        {/* Tabs */}
-        <div className={cn('grid mx-4 mt-4 border border-border rounded-md overflow-hidden', `grid-cols-${tabs.length}`)}>
-          {tabs.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => { setTab(value); resetStatus(); }}
-              className={cn(
-                'py-2 text-xs font-mono font-medium tracking-wider transition-colors',
-                tab === value ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* Tabs (hide when only one option) */}
+        {tabs.length > 1 && (
+          <div className={cn('grid mx-4 mt-4 border border-border rounded-md overflow-hidden', `grid-cols-${tabs.length}`)}>
+            {tabs.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => { setTab(value); resetStatus(); }}
+                className={cn(
+                  'py-2 text-xs font-mono font-medium tracking-wider transition-colors',
+                  tab === value ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* === BRIDGE TAB (deposit or withdraw) === */}
         {tab === 'bridge' && (

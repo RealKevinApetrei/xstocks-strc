@@ -38,7 +38,7 @@ export const DCA_TRADE_OPTIONS = [2, 4, 6, 10] as const;
 export const DCA_INTERVAL_OPTIONS = [6, 12, 24] as const;
 
 // Aave V3 / Tydro (Ink chain)
-export const AAVE_L2_POOL = '0x7F6036c2A9244E766F9CcD8dE78D8f79F80e5408';
+export const AAVE_L2_POOL = '0x2816cf15F6d2A220E789aA011D5EE4eB6c47FEbA';
 export const AAVE_AUSDC_TOKEN = '0x70A38B0c90441e991346B7A0Cd98C8528dD1c234';
 
 // CoW Protocol polling
