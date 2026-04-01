@@ -8,6 +8,7 @@ import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useStrcBalance } from '@/hooks/use-strc-balance';
 import { useTbill } from '@/hooks/use-tbill';
+import { useMorphoSupply } from '@/hooks/use-morpho-supply';
 import { api } from '@/lib/api';
 import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
 
@@ -155,11 +156,12 @@ function RecentActivity() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const ASSET_COLORS = {
-  usdc:   '#16a34a',
-  looped: '#1a3520',
-  strc:   '#e05c00',
-  wstrc:  '#b84500',
-  tbill:  '#3b82f6',
+  usdc:        '#16a34a',
+  looped:      '#1a3520',
+  strc:        '#e05c00',
+  wstrc:       '#b84500',
+  tbill:       '#3b82f6',
+  morphoLend:  '#0ea5e9',
 };
 
 export default function Portfolio() {
@@ -169,8 +171,9 @@ export default function Portfolio() {
   const { price: strcPrice, change24h, changePct24h } = useStrcxPrice();
   const strcBalance = useStrcBalance();
   const { balance: tbillBalance, price: tbillPrice, loading: tbillLoading } = useTbill();
+  const { supplyUsd: morphoSupplyUsd, loading: morphoSupplyLoading } = useMorphoSupply();
 
-  const loading = usdcLoading || posLoading || strcBalance.loading || tbillLoading;
+  const loading = usdcLoading || posLoading || strcBalance.loading || tbillLoading || morphoSupplyLoading;
 
   // Looped position
   const position = positionData?.hasPosition ? positionData.position : null;
@@ -187,7 +190,7 @@ export default function Portfolio() {
   const unloopedUsd      = strcBalance.formatted     * strcPrice;
   const unloopedWstrcUsd = strcBalance.wstrcFormatted * strcPrice;
   const tbillUsd = tbillBalance * tbillPrice;
-  const totalValue = usdcBalance + loopedEquity + unloopedUsd + unloopedWstrcUsd + tbillUsd;
+  const totalValue = usdcBalance + loopedEquity + unloopedUsd + unloopedWstrcUsd + tbillUsd + morphoSupplyUsd;
 
   // 24h P&L (STRC only — USDC and T-bill are stable)
   const looped24h = change24h !== null && position ? change24h * collateralStrc * leverage : 0;
@@ -202,11 +205,12 @@ export default function Portfolio() {
     ...(hasLoopedPosition ? [{ label: 'Looped Position', value: loopedEquity, color: ASSET_COLORS.looped }] : []),
     { label: 'STRC',  value: unloopedUsd,        color: ASSET_COLORS.strc  },
     { label: 'wSTRC', value: unloopedWstrcUsd,   color: ASSET_COLORS.wstrc },
-    { label: 'T-Bill',value: tbillUsd,           color: ASSET_COLORS.tbill },
+    { label: 'T-Bill',      value: tbillUsd,        color: ASSET_COLORS.tbill      },
+    { label: 'USDC Lent',  value: morphoSupplyUsd, color: ASSET_COLORS.morphoLend },
   ].filter(s => s.value > 0.01);
 
   // Active positions count
-  const activeCount = [usdcBalance > 0, hasLoopedPosition, unloopedUsd > 0, unloopedWstrcUsd > 0, tbillUsd > 0].filter(Boolean).length;
+  const activeCount = [usdcBalance > 0, hasLoopedPosition, unloopedUsd > 0, unloopedWstrcUsd > 0, tbillUsd > 0, morphoSupplyUsd > 0.01].filter(Boolean).length;
 
   const openDepositModal = () => document.dispatchEvent(new CustomEvent('open-deposit-modal'));
 
@@ -264,6 +268,17 @@ export default function Portfolio() {
       amountLabel: `${tbillBalance.toFixed(4)} TBLL`,
       value: tbillUsd as number | null,
       price: tbillPrice,
+      change24h: null,
+    }] : []),
+    ...(morphoSupplyUsd > 0.01 ? [{
+      key: 'morpho-lend',
+      label: 'USDC Lent',
+      sublabel: 'Morpho market · earning yield',
+      color: ASSET_COLORS.morphoLend,
+      amount: morphoSupplyUsd,
+      amountLabel: `${morphoSupplyUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`,
+      value: morphoSupplyUsd as number | null,
+      price: 1,
       change24h: null,
     }] : []),
   ];
