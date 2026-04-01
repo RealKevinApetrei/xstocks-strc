@@ -201,11 +201,18 @@ export class UnwindExecutor {
     const pos = await borrowExecutor.getPosition(smartAccountAddr);
 
     if (usdcBal > 0n && pos.borrowed > 0n) {
-      const repayAmt = usdcBal < pos.borrowed ? usdcBal : pos.borrowed;
-      console.log(`[UNWIND ${unwindId}] Repaying ${Number(repayAmt) / 1e6} USDC (have ${Number(usdcBal) / 1e6}, owe ${Number(pos.borrowed) / 1e6})`);
-      const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: repayAmt });
+      // If we have enough USDC to repay full debt, use shares for exact closure
+      const canRepayFull = usdcBal >= pos.borrowed;
+      const approveAmt = canRepayFull ? pos.borrowed + 1_000n : usdcBal; // +buffer for rounding
+      console.log(`[UNWIND ${unwindId}] Repaying ${canRepayFull ? 'FULL' : 'partial'} debt: ${Number(canRepayFull ? pos.borrowed : usdcBal) / 1e6} USDC (have ${Number(usdcBal) / 1e6}, owe ${Number(pos.borrowed) / 1e6})`);
+
+      const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: approveAmt });
       await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
-      const repayCalls = borrowExecutor.buildRepayCalls(repayAmt, smartAccountAddr);
+
+      // Full repay: use borrow shares to avoid rounding issues
+      const repayCalls = canRepayFull
+        ? borrowExecutor.buildRepayCalls(0n, smartAccountAddr, true, pos.borrowShares)
+        : borrowExecutor.buildRepayCalls(usdcBal, smartAccountAddr);
       await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
     }
   }
