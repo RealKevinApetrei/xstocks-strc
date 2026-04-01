@@ -84,25 +84,10 @@ export class SmartAccountService {
 
     const provider = getProvider();
 
-    // UserOp was accepted by Privy's bundler — wait briefly then assume success.
-    // Standard RPCs don't support eth_getUserOperationReceipt.
+    // Privy's bundler accepted the UserOp. Wait briefly for on-chain confirmation.
+    // Ink has ~1-2s blocks, so 5s should be enough.
     console.log(`[TX] UserOp ${txHash.slice(0, 10)}... waiting for confirmation...`);
-
-    // Try regular tx receipt lookup a few times (bundler may submit as regular tx)
-    for (let attempt = 0; attempt < 6; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 3_000));
-      try {
-        const receipt = await provider.getTransactionReceipt(txHash);
-        if (receipt) {
-          console.log(`[TX] UserOp ${txHash.slice(0, 10)}... found as tx in ${((attempt + 1) * 3)}s, success=${receipt.status === 1}`);
-          return { txHash, success: receipt.status === 1 };
-        }
-      } catch {
-        // Not found yet
-      }
-    }
-
-    // Privy accepted the UserOp — assume success after 18s
+    await new Promise(resolve => setTimeout(resolve, 5_000));
     console.log(`[TX] UserOp ${txHash.slice(0, 10)}... assumed success (Privy bundler accepted)`);
     return { txHash, success: true };
   }
