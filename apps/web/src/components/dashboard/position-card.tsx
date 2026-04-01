@@ -165,11 +165,16 @@ export function PositionCard() {
     return (
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
         <h2 className="text-sm font-medium text-muted-foreground">Position</h2>
+        {(positionData as any)?.error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+            <p className="text-xs text-destructive">Failed to load position: {(positionData as any).error}</p>
+          </div>
+        )}
         {strcBalance.formatted > 0.001 ? (
           <StrcPositionCard strcAmount={strcBalance.formatted} strcPrice={strcPrice} onClosed={() => { strcBalance.refresh(); refreshUsdcBalance(); }} />
-        ) : (
+        ) : !((positionData as any)?.error) ? (
           <p className="text-sm text-muted-foreground">No active position. Start a loop to get leveraged exposure to STRCx.</p>
-        )}
+        ) : null}
       </div>
     );
   }

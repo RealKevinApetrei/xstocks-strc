@@ -411,8 +411,10 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
       vaultBalance,
       strcBalance,
     });
-  } catch {
-    res.json({ address, hasPosition: false, position: null, activeLoop: null, activeUnwind: null, gridStrategy: null, vaultBalance: null, strcBalance: undefined });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[POSITION] Error fetching position for ${address}:`, msg);
+    res.json({ address, hasPosition: false, position: null, activeLoop: null, activeUnwind: null, gridStrategy: null, vaultBalance: null, strcBalance: undefined, error: msg });
   }
 });
 
