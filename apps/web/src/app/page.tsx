@@ -112,6 +112,7 @@ export default function Home() {
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           left: 0,
+          bottom: '-8vh',
           width: '30vw',
           height: '100vh',
           objectFit: 'cover',
@@ -151,7 +152,7 @@ export default function Home() {
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          right: '8vw',
+          right: '14vw',
           top: '30%',
           width: '28.6vw',
           maxWidth: '442px',
