@@ -59,11 +59,11 @@ export function BtcHedgeVault() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Expiry</span>
-              <span className="font-mono">Weekly rolling</span>
+              <span className="font-mono">Monthly rolling</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Max cost</span>
-              <span className="font-mono">~0.5% of notional/week</span>
+              <span className="font-mono">~0.5% of notional/month</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Downside protection</span>
