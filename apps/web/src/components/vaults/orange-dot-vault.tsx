@@ -91,7 +91,8 @@ export function OrangeDotVault() {
     try {
       const token = await getAccessToken();
       if (!token) return;
-      const amount = withdrawAmount === 'max' ? 'max' : toUsdc6(withdrawAmount);
+      const isMax = parseFloat(withdrawAmount) >= Math.floor(VAULT_BALANCE_USDC * 100) / 100;
+      const amount = isMax ? 'max' : toUsdc6(withdrawAmount);
       await api.withdrawFromVault(token, amount);
       setWithdrawAmount('');
     } catch (err) {
@@ -235,7 +236,7 @@ export function OrangeDotVault() {
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 {activeTab === 'withdraw' && VAULT_BALANCE_USDC > 0 && (
                   <button
-                    onClick={() => setWithdrawAmount('max')}
+                    onClick={() => setWithdrawAmount((Math.floor(VAULT_BALANCE_USDC * 100) / 100).toFixed(2))}
                     className="text-[10px] font-medium text-primary hover:text-primary/80"
                   >
                     MAX
