@@ -19,11 +19,7 @@ export function ContractsPanel({ embedded = false }: { embedded?: boolean }) {
         </h2>
       )}
 
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Deposit USDC to get leveraged exposure to STRC dividends. Your deposit is looped through Morpho Blue — wrapped into wSTRC, supplied as collateral, USDC borrowed against it, swapped back to STRC, and repeated to reach your target leverage. All execution is automated and non-custodial.
-      </p>
-
-      <div className="space-y-2 pt-2 border-t border-border/50">
+      <div className="space-y-2 border-t border-border/50">
         {CONTRACTS.map(({ label, address }) => (
           <div key={address} className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{label}</span>

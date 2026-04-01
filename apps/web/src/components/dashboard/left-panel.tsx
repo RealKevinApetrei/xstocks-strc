@@ -107,30 +107,6 @@ function HowItWorks() {
         ))}
       </div>
 
-      {/* Yield callout */}
-      <div className="rounded-md border border-border bg-secondary p-4 mt-2">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Example at 5×</span>
-        </div>
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">STRC base yield</span>
-            <span className="font-mono text-success">+11.5%</span>
-          </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Leveraged yield (5×)</span>
-            <span className="font-mono text-success">+57.5%</span>
-          </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Borrow cost (4× debt)</span>
-            <span className="font-mono text-destructive/70">−16.8%</span>
-          </div>
-          <div className="flex justify-between text-xs border-t border-border pt-1.5">
-            <span className="font-medium">Net APY</span>
-            <span className="font-mono font-bold text-success">+40.7%</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
