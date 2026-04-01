@@ -55,12 +55,13 @@ export class SmartAccountService {
       if (!call.data || call.data.length < 10) throw new Error(`Invalid call data for ${call.to}`);
     }
 
-    // Use smart wallet for gas-sponsored transactions
-    const smartWallet = await signerService.getSmartWalletForUser(privyId);
+    // Use embedded wallet ID for RPC — Privy routes through smart wallet
+    // when smart wallets are enabled (gas sponsorship handled automatically)
+    const wallet = await signerService.getWalletForUser(privyId);
     const smartAccountAddr = await this.getSmartAccountAddress(privyId);
 
     if (calls.length === 1) {
-      return signerService.sendTransaction(smartWallet.walletId, {
+      return signerService.sendTransaction(wallet.walletId, {
         to: calls[0].to,
         data: calls[0].data,
         value: calls[0].value?.toString(),
@@ -72,7 +73,7 @@ export class SmartAccountService {
       calls.map((c) => ({ to: c.to, value: c.value ?? 0n, data: c.data })),
     ]);
 
-    return signerService.sendTransaction(smartWallet.walletId, {
+    return signerService.sendTransaction(wallet.walletId, {
       to: smartAccountAddr,
       data: batchCalldata,
       chainId: config.chainId,

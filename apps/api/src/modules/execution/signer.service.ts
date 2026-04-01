@@ -41,16 +41,23 @@ export class SignerService {
    */
   async getSmartWalletForUser(privyId: string): Promise<{ address: string; walletId: string }> {
     const user = await (privy.users() as any)._get(privyId);
+
+    // Log all wallets for debugging
+    const walletAccounts = user.linked_accounts.filter((a: any) => a.type === 'wallet' || a.type === 'smart_wallet');
+    console.log('[SIGNER] User wallets:', walletAccounts.map((a: any) => ({ type: a.type, address: a.address, id: a.id, walletClientType: a.wallet_client_type })));
+
     const smartWallet = user.linked_accounts.find(
       (a: any) => a.type === 'smart_wallet',
     );
 
     if (smartWallet?.address) {
       const walletId = smartWallet.id ?? smartWallet.address;
+      console.log('[SIGNER] Using smart wallet:', { address: smartWallet.address, walletId });
       return { address: smartWallet.address, walletId };
     }
 
     // Fallback to embedded EOA
+    console.warn('[SIGNER] No smart wallet found, falling back to EOA');
     return this.getWalletForUser(privyId);
   }
 
