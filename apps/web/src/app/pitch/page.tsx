@@ -1438,10 +1438,10 @@ export default function PitchPage() {
               {/* Right: Key highlights */}
               <div className="space-y-5 flex flex-col justify-center">
                 {[
-                  { accent: '#f59e0b', title: 'Derive Protocol', desc: 'Decentralised BTC options. No CEX risk.' },
-                  { accent: '#16a34a', title: 'Monthly OTM Puts', desc: 'Cheap downside protection, big payoff in crashes.' },
-                  { accent: '#7c3aed', title: 'One-click hedge', desc: 'Vault handles everything. No Greeks required.' },
-                  { accent: '#e05c00', title: 'Delta reduction', desc: 'Sleep through BTC volatility on your STRC loop.' },
+                  { accent: '#f59e0b', title: 'On-chain options', desc: 'BTC puts via Derive. Fully decentralised.' },
+                  { accent: '#16a34a', title: 'Crash insurance', desc: 'Pays out when BTC drops. Costs ~0.5%/month.' },
+                  { accent: '#7c3aed', title: 'One click', desc: 'Deposit USDC. Vault does the rest.' },
+                  { accent: '#e05c00', title: 'Loop with confidence', desc: 'Earn 46% APY without worrying about drawdowns.' },
                 ].map((f) => (
                   <div key={f.title} className="flex items-start gap-4">
                     <div className="h-2.5 w-2.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: f.accent }} />
