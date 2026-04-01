@@ -5,10 +5,11 @@ import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { usePosition } from '@/hooks/use-position';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 const DCA_TRADE_OPTIONS = [2, 4, 6, 10] as const;
 const DCA_INTERVAL_OPTIONS = [6, 12, 24] as const;
+const MIN_DEPOSIT_USD = 1; // Minimum $1 deposit
 
 function useVaultData() {
   const { data: position } = usePosition();
@@ -28,6 +29,19 @@ function useTydroApy() {
   return apy;
 }
 
+function StatusBanner({ error, success, onDismiss }: { error: string | null; success: string | null; onDismiss: () => void }) {
+  if (!error && !success) return null;
+  return (
+    <div className={cn(
+      'rounded-md border p-2.5 text-xs flex items-center justify-between',
+      error ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-success/30 bg-success/5 text-success',
+    )}>
+      <span>{error || success}</span>
+      <button onClick={onDismiss} className="ml-2 opacity-60 hover:opacity-100">&times;</button>
+    </div>
+  );
+}
+
 export function OrangeDotVault() {
   const { getAccessToken } = usePrivy();
   const { price: strcPrice } = useStrcxPrice();
@@ -43,11 +57,15 @@ export function OrangeDotVault() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasStrategy, setHasStrategy] = useState(false);
   const [strategyId, setStrategyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const VAULT_BALANCE_USDC = vaultData.balance;
   const STRC_BALANCE = vaultData.strcBalance;
   const STRC_PRICE_USD = strcPrice;
   const dcaState = vaultData.gridStrategy;
+
+  const clearStatus = () => { setError(null); setSuccess(null); };
 
   // Load existing strategy on mount
   useEffect(() => {
@@ -67,26 +85,42 @@ export function OrangeDotVault() {
     })();
   }, [getAccessToken]);
 
-  /** Convert dollar input to 6-decimal USDC string for the API. */
   const toUsdc6 = (usd: string) => BigInt(Math.round(parseFloat(usd) * 1e6)).toString();
 
   const handleDeposit = async () => {
-    if (!depositAmount || parseFloat(depositAmount) <= 0 || isSubmitting) return;
+    clearStatus();
+    const amt = parseFloat(depositAmount);
+    if (!depositAmount || amt <= 0 || isSubmitting) return;
+    if (amt < MIN_DEPOSIT_USD) {
+      setError(`Minimum deposit is $${MIN_DEPOSIT_USD}`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
       await api.depositToVault(token, toUsdc6(depositAmount));
+      setSuccess(`Deposited $${amt.toFixed(2)} to vault`);
       setDepositAmount('');
     } catch (err) {
-      console.error('Deposit failed:', err);
+      setError(err instanceof ApiError ? err.message : 'Deposit failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleWithdraw = async () => {
+    clearStatus();
     if (!withdrawAmount || isSubmitting) return;
+    const amt = parseFloat(withdrawAmount);
+    if (amt <= 0 && withdrawAmount !== 'max') {
+      setError('Enter an amount to withdraw');
+      return;
+    }
+    if (amt > VAULT_BALANCE_USDC && withdrawAmount !== 'max') {
+      setError(`Insufficient balance. You have ${formatUsd(VAULT_BALANCE_USDC)}`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const token = await getAccessToken();
@@ -94,16 +128,26 @@ export function OrangeDotVault() {
       const isMax = parseFloat(withdrawAmount) >= Math.floor(VAULT_BALANCE_USDC * 100) / 100;
       const amount = isMax ? 'max' : toUsdc6(withdrawAmount);
       await api.withdrawFromVault(token, amount);
+      setSuccess(isMax ? 'Withdrew full balance' : `Withdrew $${amt.toFixed(2)}`);
       setWithdrawAmount('');
     } catch (err) {
-      console.error('Withdraw failed:', err);
+      setError(err instanceof ApiError ? err.message : 'Withdraw failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleSaveStrategy = useCallback(async () => {
+    clearStatus();
     if (isSubmitting) return;
+
+    // Validate minimum: vault needs at least $10 * numTrades for DCA
+    const minRequired = 10 * numTrades;
+    if (VAULT_BALANCE_USDC > 0 && VAULT_BALANCE_USDC < minRequired) {
+      setError(`Need at least $${minRequired} in vault for ${numTrades} trades ($10 CoW minimum per trade). Deposit more or reduce trade count.`);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const token = await getAccessToken();
@@ -114,6 +158,7 @@ export function OrangeDotVault() {
           tradeIntervalHours: intervalHours,
           enabled: strategyEnabled,
         });
+        setSuccess('Strategy updated');
       } else {
         const strategy = await api.createGridStrategy(token, {
           numTrades,
@@ -121,23 +166,26 @@ export function OrangeDotVault() {
         });
         setHasStrategy(true);
         setStrategyId(strategy.id);
+        setSuccess('Strategy enabled — monitoring STRC price');
       }
     } catch (err) {
-      console.error('Strategy save failed:', err);
+      setError(err instanceof ApiError ? err.message : 'Failed to save strategy. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [getAccessToken, hasStrategy, strategyId, numTrades, intervalHours, strategyEnabled, isSubmitting]);
+  }, [getAccessToken, hasStrategy, strategyId, numTrades, intervalHours, strategyEnabled, isSubmitting, VAULT_BALANCE_USDC]);
 
   const handleClaimStrc = async () => {
+    clearStatus();
     if (STRC_BALANCE <= 0 || isSubmitting) return;
     setIsSubmitting(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
       await api.closeStrc(token);
+      setSuccess('STRC sold for USDC');
     } catch (err) {
-      console.error('Claim STRC failed:', err);
+      setError(err instanceof ApiError ? err.message : 'Sell failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -145,6 +193,8 @@ export function OrangeDotVault() {
 
   const perTradeUsdc = VAULT_BALANCE_USDC / numTrades;
   const belowMinimum = VAULT_BALANCE_USDC > 0 && perTradeUsdc < 10;
+  const depositNum = parseFloat(depositAmount) || 0;
+  const withdrawNum = parseFloat(withdrawAmount) || 0;
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -172,6 +222,9 @@ export function OrangeDotVault() {
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
         {/* Left: Vault Balance + Deposit/Withdraw */}
         <div className="p-6 space-y-5">
+          {/* Status */}
+          <StatusBanner error={error} success={success} onDismiss={clearStatus} />
+
           {/* Balance */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -186,7 +239,7 @@ export function OrangeDotVault() {
             </div>
           </div>
 
-          {/* Claim STRC button */}
+          {/* Sell STRC button */}
           {STRC_BALANCE > 0 && (
             <div className="rounded-md border border-orange-500/20 bg-orange-500/5 p-3 space-y-2">
               <div className="flex items-center justify-between text-xs">
@@ -208,7 +261,7 @@ export function OrangeDotVault() {
             {(['deposit', 'withdraw'] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => { setActiveTab(tab); clearStatus(); }}
                 className={cn(
                   'flex-1 pb-2 text-xs font-medium transition-colors border-b-2',
                   activeTab === tab
@@ -229,6 +282,7 @@ export function OrangeDotVault() {
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^0-9.]/g, '');
                   activeTab === 'deposit' ? setDepositAmount(val) : setWithdrawAmount(val);
+                  clearStatus();
                 }}
                 placeholder="0.0"
                 className="w-full rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -245,17 +299,25 @@ export function OrangeDotVault() {
                 <span className="text-xs text-muted-foreground">USDC</span>
               </div>
             </div>
+
+            {/* Inline validation */}
+            {activeTab === 'withdraw' && withdrawNum > VAULT_BALANCE_USDC && VAULT_BALANCE_USDC > 0 && (
+              <p className="text-[10px] text-destructive">Amount exceeds vault balance</p>
+            )}
+
             <button
               onClick={activeTab === 'deposit' ? handleDeposit : handleWithdraw}
-              disabled={isSubmitting}
+              disabled={isSubmitting || (activeTab === 'deposit' && depositNum <= 0) || (activeTab === 'withdraw' && withdrawNum <= 0 && withdrawAmount !== 'max')}
               className={cn(
-                'w-full rounded-md py-2.5 text-sm font-medium transition-colors disabled:opacity-50',
+                'w-full rounded-md py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
                 activeTab === 'deposit'
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
               )}
             >
-              {isSubmitting ? 'Processing...' : activeTab === 'deposit' ? 'Deposit to Vault' : 'Withdraw from Vault'}
+              {isSubmitting ? 'Processing...' : activeTab === 'deposit'
+                ? depositNum > 0 ? `Deposit ${formatUsd(depositNum)}` : 'Deposit to Vault'
+                : withdrawNum > 0 ? `Withdraw ${formatUsd(withdrawNum)}` : 'Withdraw from Vault'}
             </button>
           </div>
         </div>
@@ -299,7 +361,7 @@ export function OrangeDotVault() {
               {DCA_TRADE_OPTIONS.map((n) => (
                 <button
                   key={n}
-                  onClick={() => setNumTrades(n)}
+                  onClick={() => { setNumTrades(n); clearStatus(); }}
                   className={cn(
                     'flex-1 py-1.5 text-xs font-mono rounded-md border transition-colors',
                     numTrades === n
@@ -345,7 +407,7 @@ export function OrangeDotVault() {
             </div>
             {belowMinimum && (
               <p className="text-[10px] text-destructive">
-                Minimum $10 per trade required. Deposit more USDC or reduce number of trades.
+                Minimum $10 per trade required (CoW Protocol). Deposit at least {formatUsd(10 * numTrades)} or reduce trades.
               </p>
             )}
             <div className="flex justify-between text-xs">
@@ -377,8 +439,11 @@ export function OrangeDotVault() {
           {/* Save / Status */}
           <button
             onClick={handleSaveStrategy}
-            disabled={isSubmitting}
-            className="w-full rounded-md py-2 text-sm font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-50"
+            disabled={isSubmitting || belowMinimum}
+            className={cn(
+              'w-full rounded-md py-2 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+              belowMinimum ? 'bg-muted text-muted-foreground' : 'bg-orange-500 text-white hover:bg-orange-600',
+            )}
           >
             {isSubmitting ? 'Saving...' : hasStrategy ? 'Update Strategy' : 'Enable Strategy'}
           </button>

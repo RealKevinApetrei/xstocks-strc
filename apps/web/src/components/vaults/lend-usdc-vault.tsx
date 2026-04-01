@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
+
+const MIN_LEND_USD = 1;
 
 interface LendApy {
   supplyApy: number | null;
@@ -58,6 +60,25 @@ function useLendApy() {
   return data;
 }
 
+function StatusBanner({ error, success, onDismiss }: { error: string | null; success: string | null; onDismiss: () => void }) {
+  if (!error && !success) return null;
+  return (
+    <div className={cn(
+      'rounded-md border p-2.5 text-xs flex items-center justify-between',
+      error ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-success/30 bg-success/5 text-success',
+    )}>
+      <span>{error || success}</span>
+      <button onClick={onDismiss} className="ml-2 opacity-60 hover:opacity-100">&times;</button>
+    </div>
+  );
+}
+
+function formatApy(apy: number | null | undefined): string {
+  if (apy === null || apy === undefined) return '—';
+  if (apy < 0.01 && apy > 0) return `+${apy.toFixed(4)}%`;
+  return `+${apy.toFixed(2)}%`;
+}
+
 export function LendUsdcVault() {
   const { getAccessToken } = usePrivy();
   const lendData = useLendData();
@@ -67,6 +88,8 @@ export function LendUsdcVault() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const LEND_BALANCE = lendData.assets;
   const SUPPLY_APY = apyData?.supplyApy;
@@ -74,36 +97,54 @@ export function LendUsdcVault() {
   const TOTAL_SUPPLY = apyData ? parseFloat(apyData.totalSupply) / 1e6 : 0;
   const TOTAL_BORROW = apyData ? parseFloat(apyData.totalBorrow) / 1e6 : 0;
 
+  const clearStatus = () => { setError(null); setSuccess(null); };
   const toUsdc6 = (usd: string) => BigInt(Math.round(parseFloat(usd) * 1e6)).toString();
+  const depositNum = parseFloat(depositAmount) || 0;
+  const withdrawNum = parseFloat(withdrawAmount) || 0;
 
   const handleDeposit = async () => {
-    if (!depositAmount || parseFloat(depositAmount) <= 0 || isSubmitting) return;
+    clearStatus();
+    if (!depositAmount || depositNum <= 0 || isSubmitting) return;
+    if (depositNum < MIN_LEND_USD) {
+      setError(`Minimum supply is $${MIN_LEND_USD}`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
       await api.depositToLend(token, toUsdc6(depositAmount));
+      setSuccess(`Supplied $${depositNum.toFixed(2)} USDC to Morpho`);
       setDepositAmount('');
     } catch (err) {
-      console.error('Lend deposit failed:', err);
+      setError(err instanceof ApiError ? err.message : 'Supply failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleWithdraw = async () => {
+    clearStatus();
     if (!withdrawAmount || isSubmitting) return;
+    if (withdrawNum <= 0 && withdrawAmount !== 'max') {
+      setError('Enter an amount to withdraw');
+      return;
+    }
+    if (withdrawNum > LEND_BALANCE && withdrawAmount !== 'max') {
+      setError(`Insufficient balance. You have ${formatUsd(LEND_BALANCE)}`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
-      // Send 'max' if withdrawing full balance (avoids dust left behind from rounding)
       const isMax = parseFloat(withdrawAmount) >= Math.floor(LEND_BALANCE * 100) / 100;
       const amount = isMax ? 'max' : toUsdc6(withdrawAmount);
       await api.withdrawFromLend(token, amount);
+      setSuccess(isMax ? 'Withdrew full balance' : `Withdrew $${withdrawNum.toFixed(2)}`);
       setWithdrawAmount('');
     } catch (err) {
-      console.error('Lend withdraw failed:', err);
+      setError(err instanceof ApiError ? err.message : 'Withdraw failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -126,7 +167,7 @@ export function LendUsdcVault() {
           <div className="text-right">
             <div className="text-xs text-muted-foreground">Supply APY</div>
             <div className="text-sm font-mono font-semibold text-success">
-              {SUPPLY_APY !== null && SUPPLY_APY !== undefined ? `+${SUPPLY_APY < 0.01 && SUPPLY_APY > 0 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}%` : '—'}
+              {formatApy(SUPPLY_APY)}
             </div>
           </div>
         </div>
@@ -135,11 +176,14 @@ export function LendUsdcVault() {
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
         {/* Left: Balance + Deposit/Withdraw */}
         <div className="p-6 space-y-5">
+          {/* Status */}
+          <StatusBanner error={error} success={success} onDismiss={clearStatus} />
+
           {/* Balance */}
           <div>
             <div className="text-xs text-muted-foreground mb-1">Your Lending Balance</div>
             <div className="text-xl font-mono font-semibold">{formatUsd(LEND_BALANCE)}</div>
-            {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && (
+            {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && SUPPLY_APY > 0 && (
               <div className="text-[10px] text-muted-foreground mt-0.5">
                 Earning ~{formatUsd(LEND_BALANCE * SUPPLY_APY / 100)}/yr at current rate
               </div>
@@ -151,7 +195,7 @@ export function LendUsdcVault() {
             {(['deposit', 'withdraw'] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => { setActiveTab(tab); clearStatus(); }}
                 className={cn(
                   'flex-1 pb-2 text-xs font-medium transition-colors border-b-2',
                   activeTab === tab
@@ -172,6 +216,7 @@ export function LendUsdcVault() {
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^0-9.]/g, '');
                   activeTab === 'deposit' ? setDepositAmount(val) : setWithdrawAmount(val);
+                  clearStatus();
                 }}
                 placeholder="0.0"
                 className="w-full rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -188,17 +233,25 @@ export function LendUsdcVault() {
                 <span className="text-xs text-muted-foreground">USDC</span>
               </div>
             </div>
+
+            {/* Inline validation */}
+            {activeTab === 'withdraw' && withdrawNum > LEND_BALANCE && LEND_BALANCE > 0 && (
+              <p className="text-[10px] text-destructive">Amount exceeds lending balance</p>
+            )}
+
             <button
               onClick={activeTab === 'deposit' ? handleDeposit : handleWithdraw}
-              disabled={isSubmitting}
+              disabled={isSubmitting || (activeTab === 'deposit' && depositNum <= 0) || (activeTab === 'withdraw' && withdrawNum <= 0)}
               className={cn(
-                'w-full rounded-md py-2.5 text-sm font-medium transition-colors disabled:opacity-50',
+                'w-full rounded-md py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
                 activeTab === 'deposit'
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
               )}
             >
-              {isSubmitting ? 'Processing...' : activeTab === 'deposit' ? 'Supply USDC' : 'Withdraw USDC'}
+              {isSubmitting ? 'Processing...' : activeTab === 'deposit'
+                ? depositNum > 0 ? `Supply ${formatUsd(depositNum)}` : 'Supply USDC'
+                : withdrawNum > 0 ? `Withdraw ${formatUsd(withdrawNum)}` : 'Withdraw USDC'}
             </button>
           </div>
         </div>
@@ -215,7 +268,7 @@ export function LendUsdcVault() {
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Supply APY</span>
                 <span className="font-mono font-semibold text-success">
-                  {SUPPLY_APY !== null && SUPPLY_APY !== undefined ? `+${SUPPLY_APY < 0.01 && SUPPLY_APY > 0 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}%` : '—'}
+                  {formatApy(SUPPLY_APY)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
