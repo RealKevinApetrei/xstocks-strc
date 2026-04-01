@@ -701,16 +701,9 @@ export default function PitchPage() {
         {/* ═══ SLIDE 1: WHAT IS STRC ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(1) ? 1 : 0, transform: isActive(1) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <div className="flex items-center gap-4 mb-6">
-              <img src="/strc-logo.png" alt="STRC" className="w-12 h-12 rounded-full border" style={{ borderColor: '#e5e7eb' }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              <div>
-                <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#e05c00' }}>Meet the Asset</span>
-                <h2 className="text-4xl md:text-5xl font-bold leading-tight" style={{ color: '#0a0a0a' }}>
-                  What is <span style={{ color: '#e05c00' }}>STRC</span>?
-                </h2>
-              </div>
-            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
+              What is <span style={{ color: '#e05c00' }}>STRC</span>?
+            </h2>
 
             <div className="rounded-lg border-2 p-6 mb-8" style={{ borderColor: '#e05c0040', backgroundColor: 'rgba(224,92,0,0.04)' }}>
               <p className="text-lg font-medium leading-relaxed" style={{ color: '#0a0a0a' }}>
