@@ -615,6 +615,78 @@ function StrcPriceChart({ active }: { active: boolean }) {
   );
 }
 
+// ── Mini Dip Chart (buy-the-dip visualization, real API data) ────────────────────
+
+function MiniDipChart({ active }: { active: boolean }) {
+  const [drawn, setDrawn] = useState(0);
+  const [prices, setPrices] = useState<number[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/grid/price/history?days=180`)
+      .then(r => r.json())
+      .then(data => { if (data.history?.length) setPrices(data.history.map((p: any) => p.price)); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!active || prices.length === 0) return;
+    const start = performance.now();
+    function tick(now: number) {
+      const progress = Math.min((now - start) / 1500, 1);
+      setDrawn(progress);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }, [active, prices.length]);
+
+  if (prices.length === 0) return <div style={{ height: 55 }} />;
+
+  const w = 180, h = 55, pad = 2;
+  const minP = Math.floor(Math.min(...prices) - 2);
+  const maxP = Math.ceil(Math.max(...prices) + 2);
+
+  const points = prices.map((p, i) => ({
+    x: pad + (i / (prices.length - 1)) * (w - pad * 2),
+    y: pad + (1 - (p - minP) / (maxP - minP)) * (h - pad * 2),
+    price: p,
+  }));
+
+  const visibleCount = Math.floor(drawn * points.length);
+  const visible = points.slice(0, Math.max(visibleCount, 1));
+  const linePath = visible.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  // $95 threshold line
+  const threshY = pad + (1 - (95 - minP) / (maxP - minP)) * (h - pad * 2);
+
+  // Find local minima (dip bottoms) below $95
+  const dipBottoms = visible.filter((p, i) => {
+    if (p.price >= 95) return false;
+    const prev = visible[i - 1];
+    const next = visible[i + 1];
+    if (!prev || !next) return false;
+    return p.price <= prev.price && p.price <= next.price;
+  });
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 55 }}>
+      {/* $95 threshold */}
+      <line x1={pad} y1={threshY} x2={w - pad} y2={threshY} stroke="#d93030" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5" />
+      <text x={w - pad} y={threshY - 2} fill="#d93030" fontSize="5" fontFamily="IBM Plex Mono" textAnchor="end" opacity="0.6">$95</text>
+
+      {/* Price line */}
+      <path d={linePath} fill="none" stroke="#2d2d2d" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* Orange dots on dip bottoms + BUY labels */}
+      {dipBottoms.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="3.5" fill="#e05c00" />
+          <text x={p.x} y={p.y - 5.5} fill="#e05c00" fontSize="4.5" fontFamily="IBM Plex Mono" fontWeight="700" textAnchor="middle">BUY</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 // ── Section labels ──────────────────────────────────────────────────────────────
 
 const SECTIONS = [
@@ -866,8 +938,9 @@ export default function PitchPage() {
                   <AnimatedCounter target={46} suffix="%" active={isActive(2)} /> <span className="text-xs font-normal" style={{ color: '#6b6866' }}>APY</span>
                 </div>
               </div>
-              <div className="rounded-md border bg-white px-5 py-6 text-center" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-sm font-mono font-semibold tracking-widest uppercase" style={{ color: '#2d2d2d' }}>Trading</div>
+              <div className="rounded-md border bg-white px-5 py-4 text-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-sm font-mono font-semibold tracking-widest uppercase mb-2" style={{ color: '#2d2d2d' }}>Trading</div>
+                <MiniDipChart active={isActive(2)} />
               </div>
               <div className="rounded-md border bg-white px-5 py-6 text-center" style={{ borderColor: '#e5e7eb' }}>
                 <div className="text-sm font-mono font-semibold tracking-widest uppercase" style={{ color: '#16a34a' }}>Savings</div>
