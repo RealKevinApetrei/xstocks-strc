@@ -86,11 +86,7 @@ executionRouter.post('/withdraw', privyAuth, async (req: Request, res: Response)
       { to: config.usdc, data },
     ]);
 
-    const receipt = await smartAccountService.waitForReceipt(txHash);
-    if (!receipt.success) {
-      res.status(500).json({ error: 'Withdraw transaction reverted' });
-      return;
-    }
+    // UserOp submitted — don't wait for receipt (UserOp hashes differ from tx hashes)
 
     res.json({ txHash, success: true });
   } catch (err) {
