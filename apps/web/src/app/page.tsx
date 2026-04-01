@@ -112,10 +112,8 @@ export default function Home() {
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           left: 0,
-          width: '32vw',
           height: '95vh',
-          objectFit: 'contain',
-          objectPosition: 'bottom left',
+          width: 'auto',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
@@ -171,10 +169,8 @@ export default function Home() {
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           right: 0,
-          width: '32vw',
           height: '95vh',
-          objectFit: 'contain',
-          objectPosition: 'bottom right',
+          width: 'auto',
           zIndex: 10,
           ...blend,
           transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
