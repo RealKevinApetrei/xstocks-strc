@@ -147,7 +147,11 @@ export function PositionCard() {
     );
   }
 
-  if (!positionData?.hasPosition || !positionData.position) {
+  // Treat as no position if collateral and debt are effectively zero
+  const p_ = positionData?.position;
+  const effectivelyEmpty = p_ && parseFloat(formatBigInt(p_.collateralStrc)) < 0.001 && parseFloat(formatBigInt(p_.debtUsdc, 6, 2)) < 0.01;
+
+  if (!positionData?.hasPosition || !positionData.position || effectivelyEmpty) {
     return (
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
         <h2 className="text-sm font-medium text-muted-foreground">Position</h2>
