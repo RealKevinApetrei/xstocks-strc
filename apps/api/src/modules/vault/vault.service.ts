@@ -1,54 +1,83 @@
 import { ethers } from 'ethers';
 import type { Call } from '../execution/smart-account.service';
 import { config } from '../../config';
-import AaveL2PoolABI from '@xstocks/shared/abis/AaveL2Pool.json';
 import ERC20ABI from '@xstocks/shared/abis/ERC20.json';
 
+// Tydro exposes ERC-4626 interface (deposit/withdraw/balanceOf/convertToAssets)
+const ERC4626_ABI = [
+  'function deposit(uint256 assets, address receiver) external returns (uint256 shares)',
+  'function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares)',
+  'function balanceOf(address owner) external view returns (uint256)',
+  'function convertToAssets(uint256 shares) external view returns (uint256)',
+  'function maxWithdraw(address owner) external view returns (uint256)',
+];
+
 export class VaultService {
-  private poolIface = new ethers.Interface(AaveL2PoolABI);
+  private vaultIface = new ethers.Interface(ERC4626_ABI);
   private erc20Iface = new ethers.Interface(ERC20ABI);
 
+  /** The Tydro vault address — uses aaveL2Pool config which is Tydro's ERC-4626 vault on Ink */
+  private get vaultAddress(): string {
+    return config.tydroVault || config.aaveL2Pool;
+  }
+
   /**
-   * Build calls to deposit USDC into Aave V3 / Tydro for yield.
-   * Approval goes to the L2Pool (not the aToken).
+   * Build calls to deposit USDC into Tydro (ERC-4626).
+   * Approval goes to the vault address.
    */
-  buildDepositCalls(usdcAmount: bigint, onBehalfOf: string): Call[] {
+  buildDepositCalls(usdcAmount: bigint, receiver: string): Call[] {
     return [
-      // Approve USDC → L2Pool
+      // Approve USDC → Tydro vault
       {
         to: config.usdc,
-        data: this.erc20Iface.encodeFunctionData('approve', [config.aaveL2Pool, usdcAmount]),
+        data: this.erc20Iface.encodeFunctionData('approve', [this.vaultAddress, usdcAmount]),
       },
-      // Supply USDC into Aave V3 pool
+      // Deposit USDC into Tydro (ERC-4626)
       {
-        to: config.aaveL2Pool,
-        data: this.poolIface.encodeFunctionData('supply', [config.usdc, usdcAmount, onBehalfOf, 0]),
+        to: this.vaultAddress,
+        data: this.vaultIface.encodeFunctionData('deposit', [usdcAmount, receiver]),
       },
     ];
   }
 
   /**
-   * Build calls to withdraw USDC from Aave V3 / Tydro.
-   * Pass ethers.MaxUint256 for full withdrawal.
+   * Build calls to withdraw USDC from Tydro (ERC-4626).
+   * For full withdrawal, use maxWithdraw first then withdraw that amount,
+   * or pass type(uint256).max to withdraw all via shares.
    */
-  buildWithdrawCalls(usdcAmount: bigint, to: string): Call[] {
+  buildWithdrawCalls(usdcAmount: bigint, receiver: string): Call[] {
+    // ERC-4626 withdraw(assets, receiver, owner) — owner = receiver for self-withdrawal
     return [
       {
-        to: config.aaveL2Pool,
-        data: this.poolIface.encodeFunctionData('withdraw', [config.usdc, usdcAmount, to]),
+        to: this.vaultAddress,
+        data: this.vaultIface.encodeFunctionData('withdraw', [usdcAmount, receiver, receiver]),
       },
     ];
   }
 
   /**
-   * Read vault balance for a user via aToken balanceOf.
-   * aToken is 1:1 with USDC and includes accrued yield.
+   * Read vault balance for a user: shares → USDC value via convertToAssets.
    */
   async getVaultBalance(user: string): Promise<{ shares: bigint; assets: bigint }> {
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    const aToken = new ethers.Contract(config.aaveAUsdcToken, ERC20ABI, provider);
-    const balance: bigint = await aToken.balanceOf(user);
-    return { shares: 0n, assets: balance };
+    const vault = new ethers.Contract(this.vaultAddress, ERC4626_ABI, provider);
+
+    const shares: bigint = await vault.balanceOf(user);
+    if (shares === 0n) {
+      return { shares: 0n, assets: 0n };
+    }
+    const assets: bigint = await vault.convertToAssets(shares);
+    return { shares, assets };
+  }
+
+  /**
+   * Get the maximum withdrawable amount for a user.
+   * Useful for "max" withdrawals to avoid rounding issues.
+   */
+  async getMaxWithdraw(user: string): Promise<bigint> {
+    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const vault = new ethers.Contract(this.vaultAddress, ERC4626_ABI, provider);
+    return vault.maxWithdraw(user);
   }
 }
 

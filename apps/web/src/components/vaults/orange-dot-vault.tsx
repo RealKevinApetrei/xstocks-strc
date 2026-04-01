@@ -5,6 +5,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { usePosition } from '@/hooks/use-position';
+import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { api, ApiError } from '@/lib/api';
 
 const DCA_TRADE_OPTIONS = [2, 4, 6, 10] as const;
@@ -47,6 +48,7 @@ export function OrangeDotVault() {
   const { price: strcPrice } = useStrcxPrice();
   const vaultData = useVaultData();
   const tydroApy = useTydroApy();
+  const { balance: walletUsdc } = useUsdcBalance();
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -275,6 +277,14 @@ export function OrangeDotVault() {
           </div>
 
           <div className="space-y-3">
+            {/* Available balance */}
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground px-0.5">
+              <span>{activeTab === 'deposit' ? 'Wallet balance' : 'Vault balance'}</span>
+              <span className="font-mono">
+                {activeTab === 'deposit' ? formatUsd(walletUsdc) : formatUsd(VAULT_BALANCE_USDC)} USDC
+              </span>
+            </div>
+
             <div className="relative">
               <input
                 type="text"
@@ -288,6 +298,14 @@ export function OrangeDotVault() {
                 className="w-full rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {activeTab === 'deposit' && walletUsdc > 0 && (
+                  <button
+                    onClick={() => setDepositAmount((Math.floor(walletUsdc * 100) / 100).toFixed(2))}
+                    className="text-[10px] font-medium text-primary hover:text-primary/80"
+                  >
+                    MAX
+                  </button>
+                )}
                 {activeTab === 'withdraw' && VAULT_BALANCE_USDC > 0 && (
                   <button
                     onClick={() => setWithdrawAmount((Math.floor(VAULT_BALANCE_USDC * 100) / 100).toFixed(2))}
@@ -301,6 +319,9 @@ export function OrangeDotVault() {
             </div>
 
             {/* Inline validation */}
+            {activeTab === 'deposit' && depositNum > walletUsdc && walletUsdc > 0 && (
+              <p className="text-[10px] text-destructive">Amount exceeds wallet balance</p>
+            )}
             {activeTab === 'withdraw' && withdrawNum > VAULT_BALANCE_USDC && VAULT_BALANCE_USDC > 0 && (
               <p className="text-[10px] text-destructive">Amount exceeds vault balance</p>
             )}

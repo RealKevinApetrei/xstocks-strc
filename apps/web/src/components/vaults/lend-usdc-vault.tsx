@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
+import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { api, ApiError } from '@/lib/api';
 
 const MIN_LEND_USD = 1;
@@ -83,6 +84,7 @@ export function LendUsdcVault() {
   const { getAccessToken } = usePrivy();
   const lendData = useLendData();
   const apyData = useLendApy();
+  const { balance: walletUsdc } = useUsdcBalance();
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -209,6 +211,14 @@ export function LendUsdcVault() {
           </div>
 
           <div className="space-y-3">
+            {/* Available balance */}
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground px-0.5">
+              <span>{activeTab === 'deposit' ? 'Wallet balance' : 'Lending balance'}</span>
+              <span className="font-mono">
+                {activeTab === 'deposit' ? formatUsd(walletUsdc) : formatUsd(LEND_BALANCE)} USDC
+              </span>
+            </div>
+
             <div className="relative">
               <input
                 type="text"
@@ -222,6 +232,14 @@ export function LendUsdcVault() {
                 className="w-full rounded-md border border-border bg-background px-3 py-2.5 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {activeTab === 'deposit' && walletUsdc > 0 && (
+                  <button
+                    onClick={() => setDepositAmount((Math.floor(walletUsdc * 100) / 100).toFixed(2))}
+                    className="text-[10px] font-medium text-primary hover:text-primary/80"
+                  >
+                    MAX
+                  </button>
+                )}
                 {activeTab === 'withdraw' && LEND_BALANCE > 0 && (
                   <button
                     onClick={() => setWithdrawAmount((Math.floor(LEND_BALANCE * 100) / 100).toFixed(2))}
@@ -235,6 +253,9 @@ export function LendUsdcVault() {
             </div>
 
             {/* Inline validation */}
+            {activeTab === 'deposit' && depositNum > walletUsdc && walletUsdc > 0 && (
+              <p className="text-[10px] text-destructive">Amount exceeds wallet balance</p>
+            )}
             {activeTab === 'withdraw' && withdrawNum > LEND_BALANCE && LEND_BALANCE > 0 && (
               <p className="text-[10px] text-destructive">Amount exceeds lending balance</p>
             )}
