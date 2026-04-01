@@ -492,6 +492,119 @@ function DemoUnwind({ active, onReset }: { active: boolean; onReset?: () => void
   );
 }
 
+// ── STRC Price Chart (real API data) ─────────────────────────────────────────────
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+function StrcPriceChart({ active }: { active: boolean }) {
+  const [drawn, setDrawn] = useState(0);
+  const [prices, setPrices] = useState<Array<{ price: number; timestamp: number }>>([]);
+
+  // Fetch real price data
+  useEffect(() => {
+    fetch(`${API_URL}/api/grid/price/history?days=180`)
+      .then(r => r.json())
+      .then(data => { if (data.history?.length) setPrices(data.history); })
+      .catch(() => {});
+  }, []);
+
+  // Animate draw when active and data is loaded
+  useEffect(() => {
+    if (!active || prices.length === 0) return;
+    const start = performance.now();
+    const duration = 2000;
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      setDrawn(progress);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }, [active, prices.length]);
+
+  if (prices.length === 0) {
+    return (
+      <div className="rounded-lg border bg-white p-4" style={{ borderColor: '#e5e7eb' }}>
+        <div className="h-[160px] flex items-center justify-center">
+          <span className="text-xs font-mono" style={{ color: '#d1d5db' }}>Loading chart...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const w = 600, h = 150, padX = 40, padY = 12;
+  const priceValues = prices.map(p => p.price);
+  const minP = Math.floor(Math.min(...priceValues) - 2);
+  const maxP = Math.ceil(Math.max(...priceValues) + 2);
+  const chartW = w - padX, chartH = h - padY * 2;
+
+  const points = prices.map((p, i) => ({
+    x: padX + (i / (prices.length - 1)) * chartW,
+    y: padY + (1 - (p.price - minP) / (maxP - minP)) * chartH,
+    price: p.price,
+    ts: p.timestamp,
+  }));
+
+  const visibleCount = Math.floor(drawn * points.length);
+  const visible = points.slice(0, Math.max(visibleCount, 1));
+  const last = visible[visible.length - 1];
+
+  const linePath = visible.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaPath = linePath + ` L${last.x.toFixed(1)},${h} L${padX},${h} Z`;
+
+  // $100 peg line
+  const pegY = padY + (1 - (100 - minP) / (maxP - minP)) * chartH;
+
+  // Date labels from actual data
+  const firstDate = new Date(prices[0].timestamp * 1000);
+  const lastDate = new Date(prices[prices.length - 1].timestamp * 1000);
+  const midDate = new Date(prices[Math.floor(prices.length / 2)].timestamp * 1000);
+  const q1Date = new Date(prices[Math.floor(prices.length / 4)].timestamp * 1000);
+  const q3Date = new Date(prices[Math.floor(prices.length * 3 / 4)].timestamp * 1000);
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short' });
+
+  return (
+    <div className="rounded-lg border bg-white p-4" style={{ borderColor: '#e5e7eb' }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-mono font-bold tracking-widest uppercase" style={{ color: '#6b6866' }}>STRC / USD</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono font-semibold" style={{ color: '#e05c00' }}>${last.price.toFixed(2)}</span>
+          <span className="text-[10px] font-mono" style={{ color: '#6b6866' }}>6M</span>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 150 }}>
+        {/* $100 peg reference line */}
+        {100 >= minP && 100 <= maxP && (
+          <>
+            <line x1={padX} y1={pegY} x2={w} y2={pegY} stroke="#e05c00" strokeWidth="1" strokeDasharray="4 3" opacity="0.35" />
+            <text x={4} y={pegY + 3} fill="#e05c00" fontSize="8" fontFamily="IBM Plex Mono" fontWeight="600" opacity="0.5">$100</text>
+          </>
+        )}
+
+        {/* Area fill */}
+        <path d={areaPath} fill="url(#strc-gradient)" opacity="0.12" />
+
+        {/* Price line */}
+        <path d={linePath} fill="none" stroke="#e05c00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Current price dot */}
+        {visible.length > 1 && <circle cx={last.x} cy={last.y} r="3.5" fill="#e05c00" />}
+
+        <defs>
+          <linearGradient id="strc-gradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#e05c00" />
+            <stop offset="100%" stopColor="#e05c00" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="flex items-center justify-between mt-1">
+        {[firstDate, q1Date, midDate, q3Date, lastDate].map((d, i) => (
+          <span key={i} className="text-[9px] font-mono" style={{ color: '#d1d5db' }}>{fmt(d)}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Section labels ──────────────────────────────────────────────────────────────
 
 const SECTIONS = [
@@ -706,12 +819,8 @@ export default function PitchPage() {
               What is <span style={{ color: '#e05c00' }}>STRC</span>?
             </h2>
 
-            <div className="rounded-lg border-2 p-6 mb-10" style={{ borderColor: '#e05c0040', backgroundColor: 'rgba(224,92,0,0.04)' }}>
-              <p className="text-lg font-medium leading-relaxed" style={{ color: '#0a0a0a' }}>
-                STRC is a <span className="font-bold">preferred share</span> issued by
-                Strategy (formerly MicroStrategy) &mdash; the company that pioneered the corporate Bitcoin treasury
-                strategy, now holding <span className="font-bold">over 500,000 BTC</span>.
-              </p>
+            <div className="mb-8">
+              <StrcPriceChart active={isActive(1)} />
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-10">
