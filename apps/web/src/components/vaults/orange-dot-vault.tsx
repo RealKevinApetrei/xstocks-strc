@@ -67,13 +67,16 @@ export function OrangeDotVault() {
     })();
   }, [getAccessToken]);
 
+  /** Convert dollar input to 6-decimal USDC string for the API. */
+  const toUsdc6 = (usd: string) => BigInt(Math.round(parseFloat(usd) * 1e6)).toString();
+
   const handleDeposit = async () => {
-    if (!depositAmount || isSubmitting) return;
+    if (!depositAmount || parseFloat(depositAmount) <= 0 || isSubmitting) return;
     setIsSubmitting(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
-      await api.depositToVault(token, depositAmount);
+      await api.depositToVault(token, toUsdc6(depositAmount));
       setDepositAmount('');
     } catch (err) {
       console.error('Deposit failed:', err);
@@ -88,7 +91,7 @@ export function OrangeDotVault() {
     try {
       const token = await getAccessToken();
       if (!token) return;
-      const amount = withdrawAmount === 'max' ? 'max' : withdrawAmount;
+      const amount = withdrawAmount === 'max' ? 'max' : toUsdc6(withdrawAmount);
       await api.withdrawFromVault(token, amount);
       setWithdrawAmount('');
     } catch (err) {
@@ -140,6 +143,7 @@ export function OrangeDotVault() {
   };
 
   const perTradeUsdc = VAULT_BALANCE_USDC / numTrades;
+  const belowMinimum = VAULT_BALANCE_USDC > 0 && perTradeUsdc < 10;
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -330,11 +334,19 @@ export function OrangeDotVault() {
           </div>
 
           {/* Preview */}
-          <div className="rounded-md border border-border bg-background p-3 space-y-1.5">
+          <div className={cn(
+            'rounded-md border bg-background p-3 space-y-1.5',
+            belowMinimum ? 'border-destructive/50' : 'border-border',
+          )}>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Per trade</span>
-              <span className="font-mono">{formatUsd(perTradeUsdc)}</span>
+              <span className={cn('font-mono', belowMinimum && 'text-destructive')}>{formatUsd(perTradeUsdc)}</span>
             </div>
+            {belowMinimum && (
+              <p className="text-[10px] text-destructive">
+                Minimum $10 per trade required. Deposit more USDC or reduce number of trades.
+              </p>
+            )}
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Buys ~</span>
               <span className="font-mono">{STRC_PRICE_USD > 0 ? (perTradeUsdc / STRC_PRICE_USD).toFixed(2) : '—'} STRC per trade</span>

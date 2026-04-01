@@ -1,4 +1,3 @@
-import { ethers } from 'ethers';
 import { query } from '../../db/pool';
 import { config } from '../../config';
 import { COW_MIN_SWAP_USDC } from '@xstocks/shared';
@@ -52,6 +51,7 @@ export class GridExecutor {
 
   /**
    * Activate DCA: calculate per-trade amount and execute first trade immediately.
+   * Enforces CoW $10 minimum per trade — reduces numTrades if needed.
    */
   private async activateDca(strategy: GridStrategy, currentPrice: number): Promise<void> {
     const smartAccountAddr = await smartAccountService.getSmartAccountAddress(strategy.privy_id);
@@ -61,22 +61,32 @@ export class GridExecutor {
       return; // No USDC to deploy — silently skip
     }
 
-    const usdcPerTrade = vaultBalance.assets / BigInt(strategy.num_trades);
+    // Enforce $10 minimum per trade: reduce num_trades if balance too low
+    let effectiveNumTrades = strategy.num_trades;
+    let usdcPerTrade = vaultBalance.assets / BigInt(effectiveNumTrades);
+
+    while (usdcPerTrade < COW_MIN_SWAP_USDC && effectiveNumTrades > 1) {
+      effectiveNumTrades--;
+      usdcPerTrade = vaultBalance.assets / BigInt(effectiveNumTrades);
+    }
+
+    // If even 1 trade is below $10, total balance is too low
     if (usdcPerTrade < COW_MIN_SWAP_USDC) {
-      await this.recordGridEvent(strategy, currentPrice, 'FAILED', `Per-trade amount $${Number(usdcPerTrade) / 1e6} below CoW $10 minimum`);
+      await this.recordGridEvent(strategy, currentPrice, 'FAILED',
+        `Vault balance $${(Number(vaultBalance.assets) / 1e6).toFixed(2)} below CoW $10 minimum`);
       return;
     }
 
-    // Activate DCA state
+    // Activate DCA state (use effective num_trades which may be lower than configured)
     await query(
       `UPDATE grid_strategies
        SET dca_active = true, dca_activated_at = NOW(), trades_executed = 0,
-           usdc_per_trade = $2
+           usdc_per_trade = $2, num_trades = $3
        WHERE id = $1`,
-      [strategy.id, usdcPerTrade.toString()],
+      [strategy.id, usdcPerTrade.toString(), effectiveNumTrades],
     );
 
-    console.log(`DCA activated: strategy ${strategy.id}, ${strategy.num_trades} trades of $${Number(usdcPerTrade) / 1e6} every ${strategy.trade_interval_hours}h`);
+    console.log(`DCA activated: strategy ${strategy.id}, ${effectiveNumTrades} trades of $${(Number(usdcPerTrade) / 1e6).toFixed(2)} every ${strategy.trade_interval_hours}h`);
 
     // Execute first trade immediately
     await this.executeDcaTrade(strategy, currentPrice, usdcPerTrade);
@@ -123,6 +133,7 @@ export class GridExecutor {
   /**
    * Execute a single DCA trade: withdraw from Tydro → CoW swap USDC→STRC.
    * STRC stays in the smart wallet.
+   * Enforces CoW $10 minimum — deactivates DCA if balance too low.
    */
   private async executeDcaTrade(
     strategy: GridStrategy,
@@ -133,12 +144,19 @@ export class GridExecutor {
 
     // Check actual vault balance — may be less than target if user withdrew
     const vaultBalance = await vaultService.getVaultBalance(smartAccountAddr);
-    const buyAmount = vaultBalance.assets < targetAmount ? vaultBalance.assets : targetAmount;
+    let buyAmount = vaultBalance.assets < targetAmount ? vaultBalance.assets : targetAmount;
 
+    // For the last trade, use remaining balance to avoid dust
+    const remainingTrades = strategy.num_trades - strategy.trades_executed;
+    if (remainingTrades === 1 && vaultBalance.assets > 0n && vaultBalance.assets >= COW_MIN_SWAP_USDC) {
+      buyAmount = vaultBalance.assets; // Sweep remaining
+    }
+
+    // Enforce $10 CoW minimum
     if (buyAmount < COW_MIN_SWAP_USDC) {
-      // Not enough for CoW minimum — deactivate DCA
       await query(`UPDATE grid_strategies SET dca_active = false WHERE id = $1`, [strategy.id]);
-      await this.recordGridEvent(strategy, triggerPrice, 'FAILED', 'Remaining balance below CoW $10 minimum');
+      await this.recordGridEvent(strategy, triggerPrice, 'FAILED',
+        `Trade amount $${(Number(buyAmount) / 1e6).toFixed(2)} below CoW $10 minimum — DCA stopped`);
       return;
     }
 
@@ -149,52 +167,64 @@ export class GridExecutor {
       [strategy.id, strategy.privy_id, triggerPrice, buyAmount.toString()],
     );
 
-    // 1. Withdraw USDC from Tydro/Aave
-    const withdrawCalls = vaultService.buildWithdrawCalls(buyAmount, smartAccountAddr);
-    const withdrawHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, withdrawCalls);
-    await smartAccountService.waitForReceipt(withdrawHash);
+    try {
+      // 1. Withdraw USDC from Tydro/Aave
+      const withdrawCalls = vaultService.buildWithdrawCalls(buyAmount, smartAccountAddr);
+      const withdrawHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, withdrawCalls);
+      await smartAccountService.waitForReceipt(withdrawHash);
 
-    // 2. Approve USDC for CoW + swap USDC → STRC
-    const approveCowCalls = approvalExecutor.buildApproveCalls({
-      token: config.usdc, spender: config.cowVaultRelayer, amount: buyAmount,
-    });
-    const approveHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, approveCowCalls);
-    await smartAccountService.waitForReceipt(approveHash);
+      // 2. Approve USDC for CoW VaultRelayer
+      const approveCowCalls = approvalExecutor.buildApproveCalls({
+        token: config.usdc, spender: config.cowVaultRelayer, amount: buyAmount,
+      });
+      const approveHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, approveCowCalls);
+      await smartAccountService.waitForReceipt(approveHash);
 
-    const quote = await cowSwapService.getQuote({
-      sellToken: config.usdc, buyToken: config.strc,
-      sellAmount: buyAmount, from: smartAccountAddr,
-    });
+      // 3. Get CoW quote and create presign order
+      const quote = await cowSwapService.getQuote({
+        sellToken: config.usdc, buyToken: config.strc,
+        sellAmount: buyAmount, from: smartAccountAddr,
+      });
 
-    // Presign scheme: submit order, then sign on-chain via setPreSignature
-    const orderUid = await cowSwapService.createOrder(quote, '');
-    await query(`UPDATE grid_events SET cow_order_uid = $2 WHERE id = $1`, [event.id, orderUid]);
+      const orderUid = await cowSwapService.createOrder(quote, '');
+      await query(`UPDATE grid_events SET cow_order_uid = $2 WHERE id = $1`, [event.id, orderUid]);
 
-    // On-chain pre-signature (required for smart wallet orders)
-    const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
-    const preSignHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, [preSignCall]);
-    await smartAccountService.waitForReceipt(preSignHash);
+      // 4. On-chain pre-signature (required for smart wallet orders)
+      const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
+      const preSignHash = await smartAccountService.sendBatchUserOp(strategy.privy_id, [preSignCall]);
+      await smartAccountService.waitForReceipt(preSignHash);
 
-    const fill = await cowSwapService.waitForFill(orderUid);
+      // 5. Wait for CoW fill
+      const fill = await cowSwapService.waitForFill(orderUid);
 
-    // STRC stays in smart wallet — no wrap/supply/borrow
+      // STRC stays in smart wallet — no wrap/supply/borrow
 
-    // 3. Update DCA state
-    await query(
-      `UPDATE grid_strategies
-       SET trades_executed = trades_executed + 1, last_trade_at = NOW()
-       WHERE id = $1`,
-      [strategy.id],
-    );
+      // 6. Update DCA state
+      await query(
+        `UPDATE grid_strategies
+         SET trades_executed = trades_executed + 1, last_trade_at = NOW()
+         WHERE id = $1`,
+        [strategy.id],
+      );
 
-    // 4. Record success
-    await query(
-      `UPDATE grid_events SET status = 'COMPLETED', amount_strc = $2, completed_at = NOW() WHERE id = $1`,
-      [event.id, fill.buyAmount.toString()],
-    );
+      // 7. Record success
+      await query(
+        `UPDATE grid_events SET status = 'COMPLETED', amount_strc = $2, completed_at = NOW() WHERE id = $1`,
+        [event.id, fill.buyAmount.toString()],
+      );
 
-    const tradeNum = strategy.trades_executed + 1;
-    console.log(`DCA trade ${tradeNum}/${strategy.num_trades} completed: strategy ${strategy.id}, $${Number(buyAmount) / 1e6} USDC → ${Number(fill.buyAmount) / 1e18} STRC`);
+      const tradeNum = strategy.trades_executed + 1;
+      console.log(`DCA trade ${tradeNum}/${strategy.num_trades}: strategy ${strategy.id}, $${(Number(buyAmount) / 1e6).toFixed(2)} USDC → ${(Number(fill.buyAmount) / 1e18).toFixed(4)} STRC`);
+    } catch (err) {
+      // Trade failed — mark event as FAILED but keep DCA active for retry on next tick
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      await query(
+        `UPDATE grid_events SET status = 'FAILED', error = $2, completed_at = NOW() WHERE id = $1`,
+        [event.id, errorMsg.slice(0, 500)],
+      );
+      console.error(`DCA trade failed for strategy ${strategy.id}:`, errorMsg);
+      // Don't rethrow — let DCA retry on next interval tick
+    }
   }
 
   private async recordGridEvent(
