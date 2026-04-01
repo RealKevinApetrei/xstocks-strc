@@ -875,7 +875,7 @@ export default function PitchPage() {
 
         {/* ═══ SLIDE 3: HOW IT WORKS — LIVE DEMO ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-6xl w-full" style={{ opacity: isActive(2) ? 1 : 0, transform: isActive(2) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+          <div className="max-w-6xl w-full" style={{ opacity: isActive(3) ? 1 : 0, transform: isActive(3) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#2d2d2d' }}>Live Demo</span>
             <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
               Watch it <span style={{ color: '#e05c00' }}>work</span>.
@@ -885,19 +885,19 @@ export default function PitchPage() {
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   1. Loop &mdash; Open Position
                 </p>
-                <DemoLoop active={isActive(2)} onReset={() => setDemoKey(k => k + 1)} />
+                <DemoLoop active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
               </div>
               <div>
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   2. Position View
                 </p>
-                <DemoPosition active={isActive(2)} />
+                <DemoPosition active={isActive(3)} />
               </div>
               <div>
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   3. Unwind &mdash; Close Position
                 </p>
-                <DemoUnwind active={isActive(2)} onReset={() => setDemoKey(k => k + 1)} />
+                <DemoUnwind active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
               </div>
             </div>
           </div>
@@ -911,7 +911,7 @@ export default function PitchPage() {
 
         {/* ═══ SLIDE 4: WHAT'S UNIQUE ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-4xl w-full" style={{ opacity: isActive(2) ? 1 : 0, transform: isActive(2) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+          <div className="max-w-4xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#7c3aed' }}>What&apos;s Unique</span>
             <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
               Not just another <span style={{ color: '#7c3aed' }}>yield farm</span>.
@@ -937,7 +937,7 @@ export default function PitchPage() {
 
         {/* ═══ SLIDE 5: ARCHITECTURE ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-5xl w-full" style={{ opacity: isActive(2) ? 1 : 0, transform: isActive(2) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+          <div className="max-w-5xl w-full" style={{ opacity: isActive(5) ? 1 : 0, transform: isActive(5) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#e05c00' }}>Implementation</span>
             <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
               Built on <span style={{ color: '#e05c00' }}>production-grade</span><br />infrastructure.
@@ -976,7 +976,7 @@ export default function PitchPage() {
 
         {/* ═══ SLIDE 6: VIABILITY ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-4xl w-full" style={{ opacity: isActive(2) ? 1 : 0, transform: isActive(2) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+          <div className="max-w-4xl w-full" style={{ opacity: isActive(6) ? 1 : 0, transform: isActive(6) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#c47a1a' }}>Viability &amp; Uptake</span>
             <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
               Real yield. Real <span style={{ color: '#c47a1a' }}>demand</span>.
@@ -1016,17 +1016,17 @@ export default function PitchPage() {
               </div>
             </div>
             <div className="grid md:grid-cols-4 gap-4">
-              <StatCard label="Target Leverage" accent="#e05c00"><AnimatedCounter target={5} suffix="x" active={isActive(2)} /></StatCard>
-              <StatCard label="Max APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(2)} /></StatCard>
+              <StatCard label="Target Leverage" accent="#e05c00"><AnimatedCounter target={5} suffix="x" active={isActive(6)} /></StatCard>
+              <StatCard label="Max APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(6)} /></StatCard>
               <StatCard label="Gas Cost" accent="#16a34a">$0</StatCard>
-              <StatCard label="Time to Loop"><AnimatedCounter target={60} suffix="s" active={isActive(2)} /></StatCard>
+              <StatCard label="Time to Loop"><AnimatedCounter target={60} suffix="s" active={isActive(6)} /></StatCard>
             </div>
           </div>
         </section>
 
         {/* ═══ SLIDE 7: IMPACT ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-4xl w-full text-center" style={{ opacity: isActive(2) ? 1 : 0, transform: isActive(2) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+          <div className="max-w-4xl w-full text-center" style={{ opacity: isActive(7) ? 1 : 0, transform: isActive(7) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#1a3520' }}>Impact</span>
             <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
               What Spreads means<br />for <span style={{ color: '#1a3520' }}>xStocks</span>.
@@ -1037,8 +1037,8 @@ export default function PitchPage() {
             </p>
             <div className="grid md:grid-cols-3 gap-5 mb-16 text-left">
               {[
-                { val: <AnimatedCounter target={3} suffix="x" active={isActive(2)} />, color: '#16a34a', title: 'Yield Multiplication', desc: 'Turn 11.5% base APY into 35-46% effective yield through automated leveraged looping.' },
-                { val: <AnimatedCounter target={0} suffix=" txns" active={isActive(2)} />, color: '#e05c00', title: 'User Friction', desc: 'Gasless smart wallets eliminate every UX hurdle. No ETH for gas. No manual signing. No complexity.' },
+                { val: <AnimatedCounter target={3} suffix="x" active={isActive(7)} />, color: '#16a34a', title: 'Yield Multiplication', desc: 'Turn 11.5% base APY into 35-46% effective yield through automated leveraged looping.' },
+                { val: <AnimatedCounter target={0} suffix=" txns" active={isActive(7)} />, color: '#e05c00', title: 'User Friction', desc: 'Gasless smart wallets eliminate every UX hurdle. No ETH for gas. No manual signing. No complexity.' },
                 { val: '24/7', color: '#7c3aed', title: 'Protection', desc: 'Buy the Dip Vault watches prices around the clock. When STRC dips, it buys automatically to protect your position.' },
               ].map((c) => (
                 <div key={c.title} className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
