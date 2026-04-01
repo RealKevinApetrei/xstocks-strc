@@ -7,6 +7,7 @@ import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
 import { useStrcBalance } from '@/hooks/use-strc-balance';
+import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { api, ApiError } from '@/lib/api';
 
 const STRC_STAKING_APY = 11.5;
@@ -133,6 +134,7 @@ export function PositionCard() {
   const { price: strcPrice, stale, source } = useStrcxPrice();
   const { borrowApy, loading: rateLoading } = useMarketRate();
   const strcBalance = useStrcBalance();
+  const { refresh: refreshUsdcBalance } = useUsdcBalance();
 
   if (loading) {
     return (
@@ -150,7 +152,7 @@ export function PositionCard() {
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
         <h2 className="text-sm font-medium text-muted-foreground">Position</h2>
         {strcBalance.formatted > 0.001 ? (
-          <StrcPositionCard strcAmount={strcBalance.formatted} strcPrice={strcPrice} onClosed={strcBalance.refresh} />
+          <StrcPositionCard strcAmount={strcBalance.formatted} strcPrice={strcPrice} onClosed={() => { strcBalance.refresh(); refreshUsdcBalance(); }} />
         ) : (
           <p className="text-sm text-muted-foreground">No active position. Start a loop to get leveraged exposure to STRCx.</p>
         )}
