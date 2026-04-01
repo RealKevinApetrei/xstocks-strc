@@ -8,6 +8,7 @@ import { smartAccountService, type Call } from '../smart-account.service';
 import { cowSwapService } from '../../cowswap/cowswap.service';
 import { signerService } from '../signer.service';
 import { MAX_LEVERAGE, STRC_DUST, LEVERAGE_TARGET_HF } from '@xstocks/shared';
+import { retryCall } from '../../../lib/provider';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 import { pythPriceService } from '../../pyth/pyth-price.service';
 
@@ -245,8 +246,8 @@ export class LoopExecutor {
     ], provider);
 
     for (let i = 0; i < 15; i++) {
-      const balance: bigint = await usdc.balanceOf(smartAccountAddr);
-      const allowance: bigint = await usdc.allowance(smartAccountAddr, config.cowVaultRelayer);
+      const balance: bigint = await retryCall(() => usdc.balanceOf(smartAccountAddr), 3, 'USDC balanceOf');
+      const allowance: bigint = await retryCall(() => usdc.allowance(smartAccountAddr, config.cowVaultRelayer), 3, 'USDC allowance');
       console.log(`[LOOP ${loopId}] Check ${i + 1}: balance=${balance}, allowance=${allowance} (need ${usdcAmount})`);
       if (balance >= usdcAmount && allowance >= usdcAmount) break;
       if (i === 14) throw new Error(`Not ready after 45s: balance=${Number(balance) / 1e6}, allowance=${Number(allowance) / 1e6}`);
@@ -312,7 +313,7 @@ export class LoopExecutor {
 
       // Verify STRC is actually in the wallet before trying to wrap
       const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-      const actualStrcBalance: bigint = await strcContract.balanceOf(smartAccountAddr);
+      const actualStrcBalance: bigint = await retryCall(() => strcContract.balanceOf(smartAccountAddr), 3, 'STRC balanceOf');
       console.log(`[LOOP ${loopId}] Iteration ${iterationNumber}: STRC balance=${actualStrcBalance}, expected=${strcAmount}`);
       if (actualStrcBalance < strcAmount) {
         throw new Error(`STRC balance ${Number(actualStrcBalance) / 1e18} < expected ${Number(strcAmount) / 1e18}. CoW swap may not have filled.`);
@@ -321,7 +322,7 @@ export class LoopExecutor {
       const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
 
       // Calculate expected wSTRC from wrapping
-      const wstrcAmount: bigint = await wstrcContract.strcToWstrc(strcAmount);
+      const wstrcAmount: bigint = await retryCall(() => wstrcContract.strcToWstrc(strcAmount), 3, 'strcToWstrc');
       if (wstrcAmount <= 0n) {
         throw new Error('wSTRC amount rounds to zero');
       }
@@ -419,7 +420,7 @@ export class LoopExecutor {
     try {
       const provider = getProvider();
       const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-      const actualStrcBalance: bigint = await strcContract.balanceOf(smartAccountAddr);
+      const actualStrcBalance: bigint = await retryCall(() => strcContract.balanceOf(smartAccountAddr), 3, 'STRC balanceOf');
       console.log(`[LOOP ${loopId}] Wrap+supply ${iteration}: STRC balance=${Number(actualStrcBalance) / 1e18}, using=${Number(strcAmount) / 1e18}`);
 
       if (actualStrcBalance < strcAmount) {
@@ -433,7 +434,7 @@ export class LoopExecutor {
       }
 
       const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
-      const wstrcAmount: bigint = await wstrcContract.strcToWstrc(strcAmount);
+      const wstrcAmount: bigint = await retryCall(() => wstrcContract.strcToWstrc(strcAmount), 3, 'strcToWstrc');
       if (wstrcAmount <= 0n) return false;
 
       // Approve STRC → wrap → approve wSTRC → supply (4 sequential calls)
@@ -481,7 +482,7 @@ export class LoopExecutor {
       const morpho = new ethers.Contract(config.morpho, [
         'function market(bytes32 id) external view returns (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee)',
       ], provider);
-      const mkt = await morpho.market(config.morphoMarketId);
+      const mkt = await retryCall(() => morpho.market(config.morphoMarketId), 3, 'morpho.market');
       const availableLiquidity = BigInt(mkt[0]) - BigInt(mkt[2]); // totalSupply - totalBorrow
       if (availableLiquidity > 0n && maxBorrowUsdc > availableLiquidity) {
         console.log(`[LOOP ${loopId}] Capping borrow by pool liquidity: ${Number(maxBorrowUsdc) / 1e6} → ${Number(availableLiquidity) / 1e6} USDC`);
