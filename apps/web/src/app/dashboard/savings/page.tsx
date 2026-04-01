@@ -109,10 +109,7 @@ function ReadyToSpendHero({ rewards, products }: { rewards: number; products: Pr
   }
 
   return (
-    <div
-      className="rounded-lg p-6 flex items-center justify-between gap-6"
-      style={{ background: 'linear-gradient(135deg, #1c1a17 0%, #2d1f0a 100%)' }}
-    >
+    <div className="rounded-lg border border-border bg-card p-6 flex items-center justify-between gap-6 border-l-4" style={{ borderLeftColor: '#d97706' }}>
       <div>
         <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
           Ready to Spend
