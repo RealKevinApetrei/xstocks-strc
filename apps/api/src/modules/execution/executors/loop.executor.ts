@@ -116,11 +116,11 @@ export class LoopExecutor {
     }
 
     // Loop iterations
+    // Each iteration: wrap STRC → supply → check leverage → borrow → swap USDC→STRC
+    // The leverage check happens AFTER supply (so swapped STRC is included in collateral)
     for (let iteration = 1; iteration <= config.maxLoopIterations; iteration++) {
-      // Read fresh position before each iteration
-      const position = await borrowExecutor.getPosition(smartAccountAddr);
-
       // Emergency stop: HF in liquidation danger zone
+      const position = await borrowExecutor.getPosition(smartAccountAddr);
       if (position.borrowed > 0n && position.healthFactor < config.emergencyHF) {
         await query(
           `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
@@ -130,37 +130,13 @@ export class LoopExecutor {
         return;
       }
 
-      // Check if target leverage reached
-      if (iteration > 1) {
-        const currentLeverage = borrowExecutor.calculateLeverage(position.healthFactor);
-        if (currentLeverage >= targetLeverage) {
-          await query(
-            `UPDATE loop_executions SET status = 'COMPLETED', current_iteration = $2, health_factor = $3,
-             effective_leverage = $4 WHERE id = $1`,
-            [loopId, iteration - 1, position.healthFactor, currentLeverage],
-          );
-          return;
-        }
-
-        // HF too low to continue safely
-        if (position.healthFactor < config.loopTargetHF && position.borrowed > 0n) {
-          await query(
-            `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', current_iteration = $2, health_factor = $3,
-             effective_leverage = $4, error = 'Health factor too low to add more leverage' WHERE id = $1`,
-            [loopId, iteration - 1, position.healthFactor, currentLeverage],
-          );
-          return;
-        }
-      }
-
-      // Execute iteration (with auto-retry once on failure)
+      // Execute iteration: wrap + supply + borrow + swap
       let result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount, targetLeverage);
 
       if (!result.success) {
-        // Retry once with fresh position state
         console.log(`[LOOP ${loopId}] Iteration ${iteration} failed, retrying once...`);
-        await pythPriceService.ensureFreshPrice(); // Refresh price before retry
-        result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount);
+        await pythPriceService.ensureFreshPrice();
+        result = await this.executeIteration(loopId, privyId, smartAccountAddr, iteration, currentStrcAmount, targetLeverage);
 
         if (!result.success) {
           const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
@@ -173,7 +149,21 @@ export class LoopExecutor {
         }
       }
 
-      // Validate CoW fill returned meaningful STRC
+      // Check leverage AFTER iteration (collateral now includes the supplied STRC)
+      const posAfterIter = await borrowExecutor.getPosition(smartAccountAddr);
+      const currentLeverage = borrowExecutor.calculateLeverage(posAfterIter.healthFactor);
+      console.log(`[LOOP ${loopId}] After iteration ${iteration}: leverage=${currentLeverage.toFixed(2)}x, target=${targetLeverage}x, HF=${posAfterIter.healthFactor.toFixed(2)}`);
+
+      if (currentLeverage >= targetLeverage) {
+        await query(
+          `UPDATE loop_executions SET status = 'COMPLETED', current_iteration = $2, health_factor = $3,
+           effective_leverage = $4 WHERE id = $1`,
+          [loopId, iteration, posAfterIter.healthFactor, currentLeverage],
+        );
+        return;
+      }
+
+      // If no more STRC was received, can't continue
       if (result.strcReceived <= STRC_DUST) {
         const posAfter = await borrowExecutor.getPosition(smartAccountAddr);
         await query(
