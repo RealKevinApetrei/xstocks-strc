@@ -249,7 +249,17 @@ export class LoopExecutor {
     const preSignHash = await smartAccountService.sendBatchUserOp(privyId, [preSignCall]);
     await smartAccountService.waitForReceipt(preSignHash);
 
-    // Step 5: Wait for CoW to fill the order
+    // Step 5: Wait for presign to be picked up by CoW, then wait for fill
+    await this.updateStage(loopId, 'Waiting for presign confirmation...');
+    for (let i = 0; i < 20; i++) {
+      try {
+        const status = await cowSwapService.pollOrderStatus(orderUid);
+        console.log(`[LOOP ${loopId}] CoW order status: ${status}`);
+        if (status !== 'presignaturePending') break;
+      } catch {}
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
     await this.updateStage(loopId, 'Waiting for CoW swap to fill...');
     const fill = await cowSwapService.waitForFill(orderUid);
 

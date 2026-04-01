@@ -10,7 +10,7 @@ export interface CowQuote {
   expectedBuyAmount: bigint;
 }
 
-export type OrderStatus = 'open' | 'fulfilled' | 'cancelled' | 'expired';
+export type OrderStatus = 'open' | 'fulfilled' | 'cancelled' | 'expired' | 'presignaturePending';
 
 const COW_ORDER_TYPES = {
   Order: [
@@ -179,6 +179,7 @@ export class CowSwapService {
     if (data.status === 'fulfilled') return 'fulfilled';
     if (data.status === 'cancelled') return 'cancelled';
     if (data.status === 'expired') return 'expired';
+    if (data.status === 'presignaturePending') return 'presignaturePending';
     return 'open';
   }
 
