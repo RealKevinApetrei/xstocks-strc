@@ -217,9 +217,21 @@ export class UnwindExecutor {
     }
   }
 
-  /** Sell any STRC in wallet → USDC via CoW, then repay debt */
+  /** Unwrap any wSTRC in wallet, sell STRC → USDC via CoW, then repay debt */
   private async sellWalletStrcAndRepay(unwindId: string, privyId: string, smartAccountAddr: string): Promise<void> {
     const provider = getProvider();
+
+    // First: unwrap any wSTRC sitting in the wallet
+    const wstrc = new ethers.Contract(config.wstrc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const wstrcBal: bigint = await wstrc.balanceOf(smartAccountAddr);
+    if (wstrcBal > STRC_DUST) {
+      console.log(`[UNWIND ${unwindId}] Unwrapping ${Number(wstrcBal) / 1e18} wSTRC from wallet`);
+      const unwrapHash = await smartAccountService.sendBatchUserOp(privyId, [
+        { to: config.wstrc, data: this.wstrcIface.encodeFunctionData('unwrap', [wstrcBal]) },
+      ]);
+      await smartAccountService.waitForReceipt(unwrapHash);
+    }
+
     const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
     const strcBal: bigint = await strcContract.balanceOf(smartAccountAddr);
     const strcUsd = Number(strcBal) / 1e18 * 100;
