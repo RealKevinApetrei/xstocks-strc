@@ -50,6 +50,9 @@ export const api = {
   getLoopStatus: (token: string, id: string) =>
     request<LoopStatusResponse>(`/api/execution/loop/${id}/status`, { token }),
 
+  cancelLoop: (token: string, id: string) =>
+    request<{ success: boolean }>(`/api/execution/loop/${id}/cancel`, { method: 'POST', token }),
+
   // Unwind
   startUnwind: (token: string, body: StartUnwindRequest) =>
     request<StartUnwindResponse>('/api/execution/unwind', { method: 'POST', body: JSON.stringify(body), token }),

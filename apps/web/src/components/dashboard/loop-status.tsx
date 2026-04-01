@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useLoopStatus } from '@/hooks/use-loop-status';
+import { usePrivy } from '@privy-io/react-auth';
 import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
+import { api, ApiError } from '@/lib/api';
 
 const stepLabels: Record<string, string> = {
   PENDING: 'Preparing...',
@@ -26,7 +28,24 @@ const statusColors: Record<string, string> = {
 
 export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () => void }) {
   const { data, loading } = useLoopStatus(loopId);
+  const { getAccessToken } = usePrivy();
   const toastFiredRef = useRef(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      await api.cancelLoop(token, loopId);
+    } catch (err) {
+      setCancelError(err instanceof ApiError ? err.message : 'Cancel request sent — check back shortly');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const isDone = data?.status === 'COMPLETED' || data?.status === 'COMPLETED_PARTIAL' || data?.status === 'FAILED';
 
@@ -76,14 +95,25 @@ export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () =>
       <div className="px-6 pb-6 space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium text-muted-foreground">Loop Progress</h2>
-          {data?.status && (
-            <span className={cn(
-              'text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border',
-              statusColors[data.status] ?? statusColors.PENDING,
-            )}>
-              {data.status.replace('_', ' ')}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {data?.status === 'IN_PROGRESS' && !isDone && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="text-[10px] font-mono text-muted-foreground hover:text-destructive border border-border hover:border-destructive/40 rounded px-2 py-0.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {cancelling ? 'Cancelling...' : 'Cancel'}
+              </button>
+            )}
+            {data?.status && (
+              <span className={cn(
+                'text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border',
+                statusColors[data.status] ?? statusColors.PENDING,
+              )}>
+                {data.status.replace('_', ' ')}
+              </span>
+            )}
+          </div>
         </div>
 
         {loading && !data && (
@@ -163,7 +193,14 @@ export function LoopStatus({ loopId, onClose }: { loopId: string; onClose: () =>
               )}
             </div>
 
-            {/* Error */}
+            {/* Cancel error */}
+            {cancelError && (
+              <div className="rounded-md border border-border bg-secondary p-3">
+                <p className="text-xs text-muted-foreground">{cancelError}</p>
+              </div>
+            )}
+
+            {/* Loop error */}
             {data.error && !data.error.startsWith('[ACTIVE]') && (
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
                 <p className="text-xs text-destructive">{data.error}</p>
