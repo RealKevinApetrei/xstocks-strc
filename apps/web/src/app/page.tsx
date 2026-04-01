@@ -105,15 +105,15 @@ export default function Home() {
 
       {/* ── LEFT SIDE ── */}
 
-      {/* Saylor B&W — far left, width-constrained so it stays on edge */}
+      {/* Saylor B&W — big, anchored left edge */}
       <img
         src="/saylor-bw.png"
         alt="Michael Saylor"
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           left: 0,
-          width: '22vw',
-          height: '90vh',
+          width: '32vw',
+          height: '95vh',
           objectFit: 'contain',
           objectPosition: 'bottom left',
           zIndex: 6,
@@ -124,15 +124,15 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Bitcoin hand — left side, tucked inside Saylor */}
+      {/* Bitcoin hand — over Saylor left */}
       <img
         src="/bitcoin-hand.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          left: '16%',
-          bottom: '18%',
+          left: '20%',
+          bottom: '20%',
           height: '28vh',
           zIndex: 10,
           ...blend,
@@ -144,17 +144,17 @@ export default function Home() {
 
       {/* ── RIGHT SIDE ── */}
 
-      {/* $100 bill — right side, tucked inside Saylor */}
+      {/* $100 bill — over Saylor right */}
       <img
         src="/hundred-dollar.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          right: '18%',
-          top: '30%',
-          width: '18vw',
-          maxWidth: '280px',
+          right: '20%',
+          top: '32%',
+          width: '16vw',
+          maxWidth: '260px',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
@@ -164,15 +164,15 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Saylor colour (orange tie) — far right, width-constrained so it stays on edge */}
+      {/* Saylor colour (orange tie) — big, anchored right edge */}
       <img
         src="/saylor-colour.png"
         alt="Michael Saylor"
         className="absolute bottom-0 select-none pointer-events-none"
         style={{
           right: 0,
-          width: '22vw',
-          height: '90vh',
+          width: '32vw',
+          height: '95vh',
           objectFit: 'contain',
           objectPosition: 'bottom right',
           zIndex: 10,
