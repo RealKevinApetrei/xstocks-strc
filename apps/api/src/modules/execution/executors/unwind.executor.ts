@@ -109,13 +109,27 @@ export class UnwindExecutor {
       // Target reached?
       if (this.isTargetReached(position, targetLeverage)) {
         if (targetLeverage === 0 && position.collateral > 0n && position.borrowed === 0n) {
-          await this.finalCleanup(privyId, smartAccountAddr, position);
+          console.log(`[UNWIND ${unwindId}] Debt cleared, running final cleanup to withdraw collateral...`);
+          try {
+            await this.finalCleanup(privyId, smartAccountAddr, position);
+            console.log(`[UNWIND ${unwindId}] Final cleanup complete`);
+          } catch (err) {
+            console.error(`[UNWIND ${unwindId}] Final cleanup failed:`, err instanceof Error ? err.message : err);
+            await query(
+              `UPDATE unwind_executions SET status = 'FAILED', current_step = $2, error = $3 WHERE id = $1`,
+              [unwindId, step, `Final cleanup failed: ${err instanceof Error ? err.message : 'Unknown'}`],
+            );
+            return;
+          }
         }
+
+        const finalPos = await borrowExecutor.getPosition(smartAccountAddr);
         await query(
           `UPDATE unwind_executions SET status = 'COMPLETED', remaining_debt_usdc = $2,
            remaining_collateral_wstrc = $3, current_step = $4 WHERE id = $1`,
-          [unwindId, position.borrowed.toString(), position.collateral.toString(), step],
+          [unwindId, finalPos.borrowed.toString(), finalPos.collateral.toString(), step],
         );
+        console.log(`[UNWIND ${unwindId}] Unwind completed. Remaining collateral=${finalPos.collateral}, debt=${finalPos.borrowed}`);
         return;
       }
 
