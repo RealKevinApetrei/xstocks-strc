@@ -856,15 +856,6 @@ export default function PitchPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex-1 h-px" style={{ backgroundColor: '#e5e7eb' }} />
-              <p className="text-sm font-medium text-center" style={{ color: '#0a0a0a' }}>
-                Tokenized STRC on Ink chain.
-                <br />
-                <span className="font-bold" style={{ color: '#e05c00' }}>Nothing like this exists on-chain. Until now.</span>
-              </p>
-              <div className="flex-1 h-px" style={{ backgroundColor: '#e5e7eb' }} />
-            </div>
           </div>
         </section>
 
