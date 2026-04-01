@@ -216,7 +216,7 @@ function DemoLoop({ active, onReset }: { active: boolean; onReset?: () => void }
         <div className="space-y-2">
           <label className="text-xs" style={{ color: '#6b6866' }}>Target Leverage</label>
           <div className="grid grid-cols-3 gap-2">
-            {[2, 3, 5].map((lev) => (
+            {[2, 3, 3.5].map((lev) => (
               <div key={lev} className="rounded-md border py-2.5 text-center font-mono text-sm font-semibold transition-all duration-300"
                 style={{
                   backgroundColor: selectedLev === lev ? '#0a0a0a' : 'white',
@@ -1140,7 +1140,7 @@ export default function PitchPage() {
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-5xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <h2 className="text-4xl md:text-5xl font-bold mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
-              Buy the Dip <span style={{ color: '#16a34a' }}>Vault</span>.
+              Orange Dot <span style={{ color: '#16a34a' }}>Vault</span>.
             </h2>
             <p className="text-base mb-6 leading-relaxed" style={{ color: '#6b6866' }}>
               Idle USDC earns yield and Ink points via Tydro. When STRC dips, it auto-buys generational entries.
@@ -1277,7 +1277,7 @@ export default function PitchPage() {
               <h3 className="text-2xl font-bold mb-6" style={{ color: '#0a0a0a' }}>Why users come to Spreads</h3>
               <div className="grid grid-cols-3 gap-6">
                 {[
-                  { accent: '#e05c00', title: 'Leverage', desc: 'Up to 5x on STRC. One click, gasless.' },
+                  { accent: '#e05c00', title: 'Leverage', desc: 'Up to 3.5x on STRC. One click, gasless.' },
                   { accent: '#c47a1a', title: 'Trading', desc: 'Auto buy-the-dip. Generational entries.' },
                   { accent: '#16a34a', title: 'Savings', desc: 'Yield 24/7. Rewards as gift cards.' },
                 ].map((c) => (
@@ -1303,35 +1303,13 @@ export default function PitchPage() {
             </p>
             <div className="grid md:grid-cols-3 gap-5 mb-10">
               {[
-                {
-                  num: '01',
-                  accent: '#e05c00',
-                  title: 'New Distribution Channel',
-                  desc: 'Spreads brings a new segment of DeFi-native yield farmers to STRCx — users who would never buy a tokenized stock directly, but will come for 46% APY on leverage.',
-                  tag: 'User Acquisition',
-                },
-                {
-                  num: '02',
-                  accent: '#7c3aed',
-                  title: 'New DeFi Tooling',
-                  desc: 'Morpho Blue market, Pyth oracle adapter, ERC-4626 Buy the Dip Vault, and CoW batch execution — open infrastructure any Ink protocol can build on top of.',
-                  tag: 'Open Infrastructure',
-                },
-                {
-                  num: '03',
-                  accent: '#16a34a',
-                  title: 'New Strategies',
-                  desc: 'Leverage is first. The foundation we\'ve built supports shorting, delta-neutral yield, options-style payoffs — strategies that only exist because STRC is on-chain.',
-                  tag: 'Leverage & Beyond',
-                },
+                { accent: '#e05c00', title: 'New Users', desc: 'DeFi yield farmers who\'d never buy a stock — but will come for 46% APY.' },
+                { accent: '#7c3aed', title: 'New Infra', desc: 'Morpho market, Pyth oracle, Orange Dot Vault, CoW execution — open for all Ink protocols.' },
+                { accent: '#16a34a', title: 'New Strategies', desc: 'Leverage first. Shorting, delta-neutral, options payoffs — all possible because STRC is on-chain.' },
               ].map((c) => (
-                <div key={c.num} className="rounded-lg border bg-white p-6 space-y-3" style={{ borderColor: '#e5e7eb' }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-mono tracking-widest uppercase px-2 py-1 rounded-full" style={{ color: c.accent, backgroundColor: c.accent + '12' }}>{c.tag}</span>
-                    <span className="text-2xl font-mono font-bold" style={{ color: c.accent + '30' }}>{c.num}</span>
-                  </div>
-                  <p className="text-sm font-bold" style={{ color: '#0a0a0a' }}>{c.title}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
+                <div key={c.title} className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="text-xl font-mono font-bold mb-3" style={{ color: c.accent }}>{c.title}</div>
+                  <p className="text-base leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
                 </div>
               ))}
             </div>
