@@ -1182,71 +1182,111 @@ export default function PitchPage() {
         {/* ═══ SLIDE 5: STRETCH YOUR SAVINGS ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-5xl w-full" style={{ opacity: isActive(5) ? 1 : 0, transform: isActive(5) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
+            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#c47a1a' }}>05 — Savings Product</span>
+            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-5 leading-tight" style={{ color: '#0a0a0a' }}>
               Stretch Your <span style={{ color: '#c47a1a' }}>Savings</span>.
             </h2>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="md:col-span-2 space-y-4">
-                <div className="flex gap-8 pb-2">
-                  {[
-                    { label: 'Savings Balance', val: '$1,247.83', color: '#0a0a0a' },
-                    { label: 'STRC Value', val: '$623.91', color: '#16a34a' },
-                    { label: 'T-Bill Value', val: '$623.92', color: '#c47a1a' },
-                  ].map((s) => (
-                    <div key={s.label}>
-                      <p className="text-[9px] font-mono tracking-widest uppercase mb-1" style={{ color: '#6b6866' }}>{s.label}</p>
-                      <span className="text-2xl font-mono font-bold" style={{ color: s.color }}>{s.val}</span>
-                    </div>
-                  ))}
+            <div className="space-y-3">
+              {/* Ready to Spend hero */}
+              <div className="rounded-lg border bg-white p-5 flex items-center justify-between gap-6" style={{ borderColor: '#e5e7eb', borderLeftWidth: 4, borderLeftColor: '#d97706' }}>
+                <div>
+                  <p className="text-[9px] font-mono tracking-widest uppercase mb-1.5" style={{ color: '#6b6866' }}>Ready to Spend</p>
+                  <p className="text-4xl font-mono font-bold" style={{ color: '#0a0a0a' }}>$12.40</p>
+                  <p className="text-[10px] mt-1" style={{ color: '#6b6866' }}>yield earned on your savings</p>
                 </div>
-                <div className="rounded-lg border bg-white p-5 space-y-3" style={{ borderColor: '#e5e7eb' }}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Deposit USDC</p>
-                    <span className="text-[10px] font-mono" style={{ color: '#6b6866' }}>Balance: <span style={{ color: '#0a0a0a' }}>500.00 USDC</span></span>
-                  </div>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm" style={{ color: '#6b6866' }}>$</span>
-                    <div className="w-full rounded-md border pl-7 pr-16 py-2.5 font-mono text-xl font-semibold" style={{ borderColor: '#d1d5db', color: '#0a0a0a', backgroundColor: '#fafafa' }}>100.00</div>
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono" style={{ color: '#6b6866' }}>USDC</span>
-                  </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Closest To</p>
                   <div className="flex gap-2">
-                    {[20, 50, 100, 250, 500].map((q) => (
-                      <div key={q} className="flex-1 rounded-md border py-1.5 text-center text-xs font-mono" style={{ borderColor: q === 100 ? '#0a0a0a' : '#e5e7eb', color: q === 100 ? '#0a0a0a' : '#9ca3af' }}>${q}</div>
+                    {['🛒', '☕', '🎬'].map((icon, i) => (
+                      <div key={i} className="w-9 h-9 rounded-lg bg-white border flex items-center justify-center text-base" style={{ borderColor: '#e5e7eb' }}>{icon}</div>
                     ))}
                   </div>
-                  <div className="rounded-md border p-3 space-y-2" style={{ borderColor: '#e5e7eb', backgroundColor: '#fafafa' }}>
-                    <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Allocation</p>
-                    <div className="flex justify-between text-xs">
-                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#16a34a' }} />STRC (50%)</span>
-                      <span className="font-mono font-medium">$50.00</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#c47a1a' }} />Invesco T-Bill (50%)</span>
-                      <span className="font-mono font-medium">$50.00</span>
-                    </div>
-                    <p className="text-[9px] pt-1.5 border-t" style={{ color: '#9ca3af', borderColor: '#e5e7eb' }}>Swapped via CoW Protocol on INK chain</p>
-                  </div>
-                  <div className="w-full rounded-md py-2.5 text-center text-xs font-medium uppercase tracking-wider text-white" style={{ backgroundColor: '#0a0a0a' }}>Deposit $100.00</div>
+                  <div className="rounded-md border px-4 py-1.5 text-xs font-medium uppercase tracking-widest" style={{ borderColor: '#e5e7eb', color: '#6b6866' }}>Redeem →</div>
                 </div>
               </div>
-              <div className="rounded-lg border bg-white p-5 space-y-4" style={{ borderColor: '#e5e7eb' }}>
-                <div>
-                  <p className="text-[9px] font-mono tracking-widest uppercase mb-1" style={{ color: '#6b6866' }}>Rewards Available</p>
-                  <p className="text-3xl font-mono font-bold">$12.40</p>
-                  <p className="text-[9px] mt-1" style={{ color: '#6b6866' }}>earned from yield on your savings</p>
+              {/* Main grid */}
+              <div className="grid md:grid-cols-[1fr_280px] gap-3">
+                <div className="space-y-3">
+                  {/* Deposit */}
+                  <div className="rounded-lg border bg-white p-4 space-y-3" style={{ borderColor: '#e5e7eb' }}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Deposit</p>
+                      <span className="text-[10px] font-mono" style={{ color: '#6b6866' }}>Balance: <span style={{ color: '#0a0a0a' }}>500.00 USDC</span></span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm" style={{ color: '#6b6866' }}>$</span>
+                      <div className="w-full rounded-md border pl-7 pr-16 py-2 font-mono text-xl font-semibold" style={{ borderColor: '#d1d5db', color: '#0a0a0a', backgroundColor: '#fafafa' }}>100.00</div>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono" style={{ color: '#6b6866' }}>USDC</span>
+                    </div>
+                    <div className="flex gap-2">
+                      {[50, 100, 250, 500].map((q) => (
+                        <div key={q} className="flex-1 rounded-md border py-1.5 text-center text-xs font-mono" style={{ borderColor: q === 100 ? '#0a0a0a' : '#e5e7eb', color: q === 100 ? '#0a0a0a' : '#9ca3af' }}>${q}</div>
+                      ))}
+                      <div className="rounded-md border px-3 py-1.5 text-xs font-mono" style={{ borderColor: '#e5e7eb', color: '#9ca3af' }}>MAX</div>
+                    </div>
+                    <div className="w-full rounded-md py-2 text-center text-xs font-medium uppercase tracking-wider text-white" style={{ backgroundColor: '#0a0a0a' }}>Deposit</div>
+                  </div>
+                  {/* Holdings */}
+                  <div className="rounded-lg border bg-white p-4 space-y-2" style={{ borderColor: '#e5e7eb' }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Your Holdings</p>
+                      <div className="rounded border px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider" style={{ borderColor: '#e5e7eb', color: '#6b6866' }}>Withdraw All</div>
+                    </div>
+                    {[
+                      { symbol: 'S', name: 'STRC', sub: 'Tokenized Stock · 50%', bal: '6.2391', unit: 'STRC' },
+                      { symbol: 'T', name: 'Invesco T-Bill', sub: 'Tokenized T-Bill · 50%', bal: '6.2392', unit: 'TBILL' },
+                    ].map((h, i) => (
+                      <div key={h.name} className={`flex items-center justify-between py-2 ${i === 0 ? 'border-b' : ''}`} style={{ borderColor: '#e5e7eb' }}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full border flex items-center justify-center text-[9px] font-bold" style={{ borderColor: '#e5e7eb', backgroundColor: '#f9fafb' }}>{h.symbol}</div>
+                          <div>
+                            <p className="text-xs font-medium" style={{ color: '#0a0a0a' }}>{h.name}</p>
+                            <p className="text-[9px]" style={{ color: '#6b6866' }}>{h.sub}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-mono font-semibold" style={{ color: '#0a0a0a' }}>{h.bal}</p>
+                          <p className="text-[9px] font-mono" style={{ color: '#6b6866' }}>{h.unit}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="h-1 rounded-full overflow-hidden flex" style={{ backgroundColor: '#f3f4f6' }}>
+                      <div className="w-1/2" style={{ backgroundColor: '#0a0a0a' }} />
+                      <div className="w-1/2" style={{ backgroundColor: '#16a34a99' }} />
+                    </div>
+                    <p className="text-[9px]" style={{ color: '#9ca3af' }}>Live balances · updates every 15s</p>
+                  </div>
                 </div>
-                <p className="text-xs" style={{ color: '#6b6866' }}>Redeem your yield for real gift cards</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Amazon', 'Starbucks', 'Netflix', 'Airbnb'].map((name) => (
-                    <div key={name} className="rounded-md border p-3 space-y-1" style={{ borderColor: '#e5e7eb' }}>
-                      <span className="text-lg">🎁</span>
-                      <p className="text-xs font-semibold">{name}</p>
-                      <p className="text-[9px]" style={{ color: '#9ca3af' }}>from $5</p>
+                {/* Gift Cards Panel */}
+                <div className="rounded-lg border bg-white overflow-hidden" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#e5e7eb' }}>
+                    <p className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>Gift Cards</p>
+                    <span className="text-[10px] font-mono font-medium" style={{ color: '#16a34a' }}>$12.40 available</span>
+                  </div>
+                  {[
+                    { icon: '🛒', name: 'Amazon', min: 5, away: 0 },
+                    { icon: '☕', name: 'Starbucks', min: 10, away: 0 },
+                    { icon: '🎬', name: 'Netflix', min: 15, away: 2.60 },
+                    { icon: '✈️', name: 'Airbnb', min: 25, away: 12.60 },
+                  ].map((p, i) => (
+                    <div key={p.name} className={`flex items-center gap-3 px-4 py-3 relative ${i === 0 ? 'bg-secondary/30' : ''}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      {i === 0 && <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-r" style={{ backgroundColor: '#0a0a0a' }} />}
+                      <div className="w-8 h-8 rounded-lg border flex items-center justify-center text-base shrink-0" style={{ borderColor: '#e5e7eb', backgroundColor: '#fafafa' }}>{p.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium" style={{ color: '#0a0a0a' }}>{p.name}</p>
+                        <p className="text-[9px] font-mono" style={{ color: '#6b6866' }}>from ${p.min}</p>
+                      </div>
+                      {p.away === 0
+                        ? <span className="text-[9px] font-medium shrink-0" style={{ color: '#16a34a' }}>✓ Now</span>
+                        : <span className="text-[9px] font-mono shrink-0" style={{ color: '#9ca3af' }}>${p.away.toFixed(2)} away</span>
+                      }
                     </div>
                   ))}
+                  <div className="p-3">
+                    <div className="w-full rounded-md py-2 text-center text-[10px] font-medium uppercase tracking-widest text-white" style={{ backgroundColor: '#0a0a0a' }}>Redeem Amazon</div>
+                    <p className="text-[9px] text-center mt-2" style={{ color: '#9ca3af' }}>Powered by Bitrefill</p>
+                  </div>
                 </div>
-                <div className="w-full rounded-md py-2 text-center text-xs font-medium uppercase tracking-wider text-white" style={{ backgroundColor: '#0a0a0a' }}>Select a Gift Card</div>
-                <p className="text-[9px] text-center" style={{ color: '#9ca3af' }}>Powered by Bitrefill</p>
               </div>
             </div>
           </div>
