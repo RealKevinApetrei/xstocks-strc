@@ -36,10 +36,10 @@ export function useStrcBalance() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!address || !STRC_ADDRESS) { setLoading(false); return; }
+    if (!address || (!STRC_ADDRESS && !WSTRC_ADDRESS)) { setLoading(false); return; }
     try {
       const [bal, wbal] = await Promise.all([
-        fetchBalance(STRC_ADDRESS, address),
+        STRC_ADDRESS ? fetchBalance(STRC_ADDRESS, address) : Promise.resolve(0n),
         WSTRC_ADDRESS ? fetchBalance(WSTRC_ADDRESS, address) : Promise.resolve(0n),
       ]);
       setBalance(bal);
