@@ -163,9 +163,23 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
   const { loopExecutionId } = req.body as StartUnwindRequest;
   const targetLeverage = (req.body as any).targetLeverage ?? 0;
 
-  // Clear stale IN_PROGRESS unwinds that may be stuck from server restarts
+  // Clear stale loops and unwinds that are stuck (not actively running in memory)
+  const { rows: stuckLoops } = await query(
+    `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+    [privyId],
+  );
+  for (const sl of stuckLoops) {
+    if (!loopExecutor.isActive(sl.id)) {
+      await query(
+        `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', error = 'Cleared stale loop before unwind' WHERE id = $1`,
+        [sl.id],
+      );
+      console.log(`[UNWIND] Cleared stale loop ${sl.id}`);
+    }
+  }
+
   await query(
-    `UPDATE unwind_executions SET status = 'FAILED', error = 'Server restarted — marked stale'
+    `UPDATE unwind_executions SET status = 'FAILED', error = 'Cleared stale unwind'
      WHERE privy_id = $1 AND status = 'IN_PROGRESS'`,
     [privyId],
   );
@@ -198,6 +212,39 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
     status: 'PENDING',
     createdAt: new Date().toISOString(),
   });
+});
+
+// POST /api/execution/loop/:id/cancel — Cancel an active loop
+executionRouter.post('/loop/:id/cancel', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const id = req.params.id as string;
+
+  // Verify ownership
+  const { rows: [loop] } = await query(
+    `SELECT id, status FROM loop_executions WHERE id = $1 AND privy_id = $2`,
+    [id, privyId],
+  );
+  if (!loop) {
+    res.status(404).json({ error: 'Loop not found' });
+    return;
+  }
+  if (loop.status !== 'IN_PROGRESS' && loop.status !== 'PENDING') {
+    res.status(400).json({ error: `Loop is already ${loop.status}` });
+    return;
+  }
+
+  // If actively running in memory, request graceful cancellation
+  if (loopExecutor.requestCancel(id)) {
+    res.json({ success: true, message: 'Cancellation requested — loop will stop after current step' });
+    return;
+  }
+
+  // Not in memory (e.g. PENDING or server restarted) — mark directly
+  await query(
+    `UPDATE loop_executions SET status = 'COMPLETED_PARTIAL', error = 'Cancelled by user' WHERE id = $1`,
+    [id],
+  );
+  res.json({ success: true, message: 'Loop cancelled' });
 });
 
 // GET /api/execution/loop/:id/status — Loop progress
@@ -299,18 +346,38 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
       [privyId],
     );
 
-    // Check for grid strategy
-    const { rows: [gridStrategy] } = await query(
-      `SELECT id, enabled FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
-      [privyId],
-    );
+    // Check for grid strategy (DCA columns may not exist if migration 003 hasn't run)
+    let gridStrategy: any = null;
+    try {
+      const { rows: [gs] } = await query(
+        `SELECT id, enabled, dca_active, trades_executed, num_trades FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
+        [privyId],
+      );
+      gridStrategy = gs;
+    } catch {
+      // Fallback: query without DCA columns (pre-migration 003)
+      const { rows: [gs] } = await query(
+        `SELECT id, enabled FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
+        [privyId],
+      );
+      gridStrategy = gs;
+    }
 
-    // Vault balance
+    // Vault balance (Aave aToken)
     let vaultBalance = null;
     try {
       const vb = await vaultService.getVaultBalance(address);
-      vaultBalance = { shares: vb.shares.toString(), assets: vb.assets.toString() };
+      vaultBalance = { shares: '0', assets: vb.assets.toString() };
     } catch { /* vault not set up yet */ }
+
+    // STRC balance in smart wallet (for claim button)
+    let strcBalance: string | undefined;
+    try {
+      const provider = getProvider();
+      const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
+      const bal: bigint = await strc.balanceOf(address);
+      if (bal > 0n) strcBalance = bal.toString();
+    } catch { /* ignore */ }
 
     // Read wSTRC exchange rate + convert collateral to STRC value
     let collateralStrc = '0';
@@ -359,11 +426,20 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
       } : null,
       activeLoop: activeLoop ? { id: activeLoop.id, status: activeLoop.status } : null,
       activeUnwind: activeUnwind ? { id: activeUnwind.id, status: activeUnwind.status } : null,
-      gridStrategy: gridStrategy ? { id: gridStrategy.id, enabled: gridStrategy.enabled } : null,
+      gridStrategy: gridStrategy ? {
+        id: gridStrategy.id,
+        enabled: gridStrategy.enabled,
+        dcaActive: gridStrategy.dca_active,
+        tradesExecuted: gridStrategy.trades_executed,
+        numTrades: gridStrategy.num_trades,
+      } : null,
       vaultBalance,
+      strcBalance,
     });
-  } catch {
-    res.json({ address, hasPosition: false, position: null, activeLoop: null, activeUnwind: null, gridStrategy: null, vaultBalance: null });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[POSITION] Error fetching position for ${address}:`, msg);
+    res.json({ address, hasPosition: false, position: null, activeLoop: null, activeUnwind: null, gridStrategy: null, vaultBalance: null, strcBalance: undefined, error: msg });
   }
 });
 
@@ -391,38 +467,42 @@ executionRouter.get('/market-rate', async (_req: Request, res: Response) => {
 
     // Call IRM for exact borrow rate per second
     if (config.morphoIrm) {
-      const irm = new ethers.Contract(config.morphoIrm, [
-        'function borrowRateView((address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) marketParams, (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee) market) external view returns (uint256)',
-      ], provider);
+      try {
+        const irm = new ethers.Contract(config.morphoIrm, [
+          'function borrowRateView((address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) marketParams, (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee) market) external view returns (uint256)',
+        ], provider);
 
-      const marketParams = await new ethers.Contract(config.morpho, [
-        'function idToMarketParams(bytes32 id) external view returns (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv)',
-      ], provider).idToMarketParams(config.morphoMarketId);
+        const marketParams = await new ethers.Contract(config.morpho, [
+          'function idToMarketParams(bytes32 id) external view returns (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv)',
+        ], provider).idToMarketParams(config.morphoMarketId);
 
-      const ratePerSecond = await irm.borrowRateView(
-        [marketParams[0], marketParams[1], marketParams[2], marketParams[3], marketParams[4]],
-        [mkt[0], mkt[1], mkt[2], mkt[3], mkt[4], mkt[5]],
-      );
+        const ratePerSecond = await irm.borrowRateView(
+          [marketParams[0], marketParams[1], marketParams[2], marketParams[3], marketParams[4]],
+          [mkt[0], mkt[1], mkt[2], mkt[3], mkt[4], mkt[5]],
+        );
 
-      // Convert rate per second to APY: (1 + ratePerSecond / 1e18) ^ (365.25 * 86400) - 1
-      const rateFloat = Number(ratePerSecond) / 1e18;
-      const borrowApy = (Math.pow(1 + rateFloat, 365.25 * 86400) - 1) * 100;
+        // Convert rate per second to APY: (1 + ratePerSecond / 1e18) ^ (365.25 * 86400) - 1
+        const rateFloat = Number(ratePerSecond) / 1e18;
+        const borrowApy = (Math.pow(1 + rateFloat, 365.25 * 86400) - 1) * 100;
 
-      const result = {
-        borrowApy: Math.round(borrowApy * 100) / 100,
-        utilization: Math.round(utilization * 100) / 100,
-        totalSupply: totalSupply.toString(),
-        totalBorrow: totalBorrow.toString(),
-      };
-      marketRateCache = { data: result, expiry: Date.now() + 60_000 };
-      res.json(result);
-      return;
+        const result = {
+          borrowApy: Math.round(borrowApy * 100) / 100,
+          utilization: Math.round(utilization * 100) / 100,
+          totalSupply: totalSupply.toString(),
+          totalBorrow: totalBorrow.toString(),
+        };
+        marketRateCache = { data: result, expiry: Date.now() + 60_000 };
+        res.json(result);
+        return;
+      } catch (irmErr) {
+        console.error('[MARKET-RATE] IRM call failed:', irmErr instanceof Error ? irmErr.message : irmErr);
+        // Fall through — return null APY so frontend shows "—" instead of "+0.00%"
+      }
     }
 
-    // Fallback: estimate from utilization (rough approximation)
-    const estimatedRate = utilization * 0.1;
+    // IRM unavailable or call failed — return null APY with utilization data
     const result = {
-      borrowApy: Math.round(estimatedRate * 100) / 100,
+      borrowApy: null as number | null,
       utilization: Math.round(utilization * 100) / 100,
       totalSupply: totalSupply.toString(),
       totalBorrow: totalBorrow.toString(),
@@ -451,7 +531,7 @@ executionRouter.get('/apy/simulated', (_req: Request, res: Response) => {
       '1x': baseApy,
       '2x': baseApy * 2 * 0.9,
       '3x': baseApy * 3 * 0.85,
-      '5x': baseApy * 5 * 0.75,
+      '3.5x': baseApy * 3.5 * 0.8,
     },
     history,
   });

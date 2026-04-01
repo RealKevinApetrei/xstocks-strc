@@ -15,6 +15,18 @@
  * the leverage is unreachable with the given LLTV and targetHF.
  */
 
+/**
+ * Per-leverage target health factor.
+ * Higher leverage requires lower HF to be achievable.
+ * - 2x, 3x: HF=1.2 (20% liquidation buffer)
+ * - 3.5x: HF=1.1 (10% buffer — max achievable ≈ 4.58x, well above 3.5x)
+ */
+export const LEVERAGE_TARGET_HF: Record<number, number> = {
+  2: 1.2,
+  3: 1.2,
+  3.5: 1.1,
+};
+
 export interface MinDepositResult {
   /** Minimum deposit in whole USD (rounded up) */
   minDepositUsd: number;
@@ -27,7 +39,7 @@ export interface MinDepositResult {
 /**
  * Compute the minimum deposit (USD) for a target leverage level.
  *
- * @param targetLeverage - 2, 3, 5, etc.
+ * @param targetLeverage - 2, 3, 3.5, etc.
  * @param lltv           - Liquidation LTV as decimal (default 0.86)
  * @param targetHF       - Health factor maintained during loops (default 1.2)
  * @param maxIterations  - Max loop iterations (default 10)

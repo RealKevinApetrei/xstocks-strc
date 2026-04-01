@@ -21,7 +21,7 @@ export class UnwindExecutor {
 
   /**
    * Start unwinding to a target leverage.
-   * targetLeverage: 0 = full unwind to USDC, 1/2/3/5 = target leverage
+   * targetLeverage: 0 = full unwind to USDC, 1/2/3/3.5 = target leverage
    */
   async startUnwind(params: {
     privyId: string;

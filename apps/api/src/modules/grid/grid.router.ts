@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { ethers } from 'ethers';
 import { privyAuth, type AuthenticatedRequest } from '../../middleware/privyAuth';
 import { gridExecutor } from './grid.executor';
 import { pythPriceService } from '../pyth/pyth-price.service';
@@ -7,17 +8,48 @@ import { smartAccountService } from '../execution/smart-account.service';
 import { vaultService } from '../vault/vault.service';
 import { query } from '../../db/pool';
 import { config } from '../../config';
+import { DEFAULT_TRIGGER_PRICE } from '@xstocks/shared';
 import type { CreateGridStrategyRequest, UpdateGridStrategyRequest, VaultDepositRequest, VaultWithdrawRequest } from '@xstocks/shared';
 
 export const gridRouter = Router();
 
+/** Map a DB row to the API response shape. */
+function formatStrategy(s: any) {
+  return {
+    id: s.id,
+    triggerPrice: Number(s.trigger_price),
+    numTrades: s.num_trades,
+    tradeIntervalHours: s.trade_interval_hours,
+    dcaActive: s.dca_active,
+    tradesExecuted: s.trades_executed,
+    usdcPerTrade: s.usdc_per_trade?.toString() ?? null,
+    lastTradeAt: s.last_trade_at?.toISOString() ?? null,
+    enabled: s.enabled,
+    createdAt: s.created_at.toISOString(),
+  };
+}
+
+// GET /api/grid/strategy — Get current user's strategy (one per user)
+gridRouter.get('/strategy', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const { rows: [strategy] } = await query(
+    `SELECT * FROM grid_strategies WHERE privy_id = $1`,
+    [privyId],
+  );
+  if (!strategy) {
+    res.status(404).json({ error: 'No strategy found' });
+    return;
+  }
+  res.json(formatStrategy(strategy));
+});
+
 // POST /api/grid/strategy — Create grid strategy
 gridRouter.post('/strategy', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
-  const { loopExecutionId, gridBuyPct } = req.body as CreateGridStrategyRequest;
+  const { triggerPrice, numTrades, tradeIntervalHours } = req.body as CreateGridStrategyRequest;
 
   try {
-    policyService.validateGridStrategy({ gridBuyPct });
+    policyService.validateGridStrategy({ triggerPrice, numTrades, tradeIntervalHours });
   } catch (err) {
     if (err instanceof PolicyViolation) {
       res.status(400).json({ error: err.message });
@@ -26,40 +58,23 @@ gridRouter.post('/strategy', privyAuth, async (req: Request, res: Response) => {
     throw err;
   }
 
-  // Check loop exists
-  const { rows: [loop] } = await query(
-    `SELECT id FROM loop_executions WHERE id = $1 AND privy_id = $2`,
-    [loopExecutionId, privyId],
-  );
-  if (!loop) {
-    res.status(404).json({ error: 'Loop execution not found' });
-    return;
-  }
-
-  // Check no existing strategy
+  // Check no existing strategy for this user
   const { rows: existing } = await query(
-    `SELECT id FROM grid_strategies WHERE privy_id = $1 AND loop_execution_id = $2`,
-    [privyId, loopExecutionId],
+    `SELECT id FROM grid_strategies WHERE privy_id = $1`,
+    [privyId],
   );
   if (existing.length > 0) {
-    res.status(409).json({ error: 'Grid strategy already exists for this loop' });
+    res.status(409).json({ error: 'Strategy already exists. Use PUT to update.' });
     return;
   }
 
   const { rows: [strategy] } = await query(
-    `INSERT INTO grid_strategies (privy_id, loop_execution_id, threshold, grid_buy_pct, vault_address, enabled)
-     VALUES ($1, $2, 1.5, $3, $4, true) RETURNING *`,
-    [privyId, loopExecutionId, gridBuyPct, config.usdcVault],
+    `INSERT INTO grid_strategies (privy_id, trigger_price, num_trades, trade_interval_hours, grid_buy_pct, vault_address, enabled)
+     VALUES ($1, $2, $3, $4, 100, $5, true) RETURNING *`,
+    [privyId, triggerPrice ?? DEFAULT_TRIGGER_PRICE, numTrades ?? 4, tradeIntervalHours ?? 12, config.aaveL2Pool],
   );
 
-  res.status(201).json({
-    id: strategy.id,
-    loopExecutionId: strategy.loop_execution_id,
-    threshold: Number(strategy.threshold),
-    gridBuyPct: Number(strategy.grid_buy_pct),
-    enabled: strategy.enabled,
-    createdAt: strategy.created_at.toISOString(),
-  });
+  res.status(201).json(formatStrategy(strategy));
 });
 
 // GET /api/grid/strategy/:id
@@ -73,36 +88,47 @@ gridRouter.get('/strategy/:id', privyAuth, async (req: Request, res: Response) =
     res.status(404).json({ error: 'Strategy not found' });
     return;
   }
-  res.json({
-    id: strategy.id,
-    loopExecutionId: strategy.loop_execution_id,
-    threshold: Number(strategy.threshold),
-    gridBuyPct: Number(strategy.grid_buy_pct),
-    enabled: strategy.enabled,
-    createdAt: strategy.created_at.toISOString(),
-  });
+  res.json(formatStrategy(strategy));
 });
 
 // PUT /api/grid/strategy/:id
 gridRouter.put('/strategy/:id', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
-  const { gridBuyPct, enabled } = req.body as UpdateGridStrategyRequest;
+  const { triggerPrice, numTrades, tradeIntervalHours, enabled } = req.body as UpdateGridStrategyRequest;
 
-  if (gridBuyPct !== undefined) {
-    policyService.validateGridStrategy({ gridBuyPct });
+  try {
+    policyService.validateGridStrategy({ triggerPrice, numTrades, tradeIntervalHours });
+  } catch (err) {
+    if (err instanceof PolicyViolation) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
   }
 
   const updates: string[] = [];
   const values: unknown[] = [];
   let paramIdx = 1;
 
-  if (gridBuyPct !== undefined) {
-    updates.push(`grid_buy_pct = $${paramIdx++}`);
-    values.push(gridBuyPct);
+  if (triggerPrice !== undefined) {
+    updates.push(`trigger_price = $${paramIdx++}`);
+    values.push(triggerPrice);
+  }
+  if (numTrades !== undefined) {
+    updates.push(`num_trades = $${paramIdx++}`);
+    values.push(numTrades);
+  }
+  if (tradeIntervalHours !== undefined) {
+    updates.push(`trade_interval_hours = $${paramIdx++}`);
+    values.push(tradeIntervalHours);
   }
   if (enabled !== undefined) {
     updates.push(`enabled = $${paramIdx++}`);
     values.push(enabled);
+    // If disabling, also deactivate DCA
+    if (!enabled) {
+      updates.push(`dca_active = false`);
+    }
   }
 
   if (updates.length === 0) {
@@ -121,14 +147,7 @@ gridRouter.put('/strategy/:id', privyAuth, async (req: Request, res: Response) =
     return;
   }
 
-  res.json({
-    id: strategy.id,
-    loopExecutionId: strategy.loop_execution_id,
-    threshold: Number(strategy.threshold),
-    gridBuyPct: Number(strategy.grid_buy_pct),
-    enabled: strategy.enabled,
-    createdAt: strategy.created_at.toISOString(),
-  });
+  res.json(formatStrategy(strategy));
 });
 
 // GET /api/grid/events/:strategyId
@@ -219,7 +238,9 @@ gridRouter.post('/vault/withdraw', privyAuth, async (req: Request, res: Response
   const { amount } = req.body as VaultWithdrawRequest;
 
   const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
-  const calls = vaultService.buildWithdrawCalls(BigInt(amount), smartAccountAddr, smartAccountAddr);
+  // Use MaxUint256 for "max" withdrawal, otherwise parse the amount
+  const withdrawAmount = amount === 'max' ? ethers.MaxUint256 : BigInt(amount);
+  const calls = vaultService.buildWithdrawCalls(withdrawAmount, smartAccountAddr);
   const userOpHash = await smartAccountService.sendBatchUserOp(privyId, calls);
   const receipt = await smartAccountService.waitForReceipt(userOpHash);
 
@@ -229,9 +250,8 @@ gridRouter.post('/vault/withdraw', privyAuth, async (req: Request, res: Response
 // GET /api/vault/balance/:address
 gridRouter.get('/vault/balance/:address', privyAuth, async (req: Request, res: Response) => {
   const balance = await vaultService.getVaultBalance(req.params.address as string);
-  // TODO: Calculate yield earned (assets - total deposited)
   res.json({
-    shares: balance.shares.toString(),
+    shares: '0',
     assets: balance.assets.toString(),
     yieldEarned: '0', // TODO: Track deposits to calculate yield
   });

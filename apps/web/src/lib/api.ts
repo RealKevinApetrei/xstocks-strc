@@ -64,9 +64,12 @@ export const api = {
   getPosition: (token: string, address: string) =>
     request<PositionResponse>(`/api/positions/${address}`, { token }),
 
-  // Grid
+  // Grid / Orange Dot Vault
   createGridStrategy: (token: string, body: CreateGridStrategyRequest) =>
     request<GridStrategy>('/api/grid/strategy', { method: 'POST', body: JSON.stringify(body), token }),
+
+  getMyGridStrategy: (token: string) =>
+    request<GridStrategy>('/api/grid/strategy', { token }),
 
   getGridStrategy: (token: string, id: string) =>
     request<GridStrategy>(`/api/grid/strategy/${id}`, { token }),

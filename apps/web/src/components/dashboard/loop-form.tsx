@@ -10,8 +10,8 @@ import { api, ApiError } from '@/lib/api';
 import { LoopStatus } from './loop-status';
 
 const STRC_BASE_APY = 11.5;
-const LEVERAGE_OPTIONS = [2, 3] as const;
-const MIN_DEPOSIT: Record<number, number> = { 2: 36, 3: 73 };
+const LEVERAGE_OPTIONS = [2, 3, 3.5] as const;
+const MIN_DEPOSIT: Record<number, number> = { 2: 36, 3: 73, 3.5: 40 };
 
 function netApy(leverage: number, borrowRate: number) {
   return (STRC_BASE_APY * leverage - borrowRate * (leverage - 1)).toFixed(1);

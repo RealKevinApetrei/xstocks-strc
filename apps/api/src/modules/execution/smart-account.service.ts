@@ -50,30 +50,28 @@ export class SmartAccountService {
   async sendBatchUserOp(privyId: string, calls: Call[]): Promise<string> {
     if (calls.length === 0) throw new Error('No calls to batch');
 
-    // Validate all calls have valid addresses and data
     for (const call of calls) {
       if (!call.to || call.to === ethers.ZeroAddress) throw new Error(`Invalid call target: ${call.to}`);
       if (!call.data || call.data.length < 10) throw new Error(`Invalid call data for ${call.to}`);
     }
 
-    // Use embedded wallet ID for RPC — Privy routes through smart wallet
-    // when smart wallets are enabled (gas sponsorship handled automatically)
     const wallet = await signerService.getWalletForUser(privyId);
-    const smartAccountAddr = await this.getSmartAccountAddress(privyId);
 
-    // Send each call individually — Privy smart wallets handle gas sponsorship
-    // per-call. Batch execution via executeBatch is not supported by all wallet types.
+    // Send calls sequentially — Privy manages nonces and UserOp bundling.
+    // No intermediate receipt waits: Privy's sendTransaction returns after
+    // the UserOp is accepted by the bundler, so the next call can proceed.
+    // A short delay between calls lets the previous tx propagate on-chain.
     let lastHash = '';
-    for (const call of calls) {
+    for (let i = 0; i < calls.length; i++) {
       lastHash = await signerService.sendTransaction(wallet.walletId, {
-        to: call.to,
-        data: call.data,
-        value: call.value?.toString(),
+        to: calls[i].to,
+        data: calls[i].data,
+        value: calls[i].value?.toString(),
         chainId: config.chainId,
       });
-      // Wait for each call to be confirmed before sending the next
-      if (calls.indexOf(call) < calls.length - 1) {
-        await this.waitForReceipt(lastHash);
+      // Brief delay between calls to let the previous tx land (Ink ~1s blocks)
+      if (i < calls.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
     return lastHash;
@@ -83,13 +81,36 @@ export class SmartAccountService {
     if (!txHash) throw new Error('No transaction hash provided');
 
     const provider = getProvider();
+    // Short timeout: Privy returns UserOp hashes which won't resolve via
+    // getTransactionReceipt. Try briefly in case it's a real tx hash,
+    // then proceed — the on-chain state checks in the loop executor
+    // catch any actual failures.
+    const timeoutMs = 15_000;
+    const start = Date.now();
 
-    // Privy bundler accepted the UserOp. Ink blocks are ~1-2s.
-    // UserOp hashes can't be looked up via getTransactionReceipt,
-    // so just wait 3s for block inclusion and assume success.
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... accepted, waiting 3s for block...`);
-    await new Promise(resolve => setTimeout(resolve, 3_000));
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed`);
+    console.log(`[TX] Waiting for receipt: ${txHash.slice(0, 10)}...`);
+
+    let delay = 1000;
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const receipt = await provider.getTransactionReceipt(txHash);
+        if (receipt) {
+          const success = receipt.status === 1;
+          console.log(`[TX] ${txHash.slice(0, 10)}... ${success ? 'confirmed' : 'reverted'} (block ${receipt.blockNumber})`);
+          if (!success) throw new Error(`Transaction reverted: ${txHash}`);
+          return { txHash, success };
+        }
+      } catch (err) {
+        // getTransactionReceipt may throw for UserOp hashes that aren't
+        // standard tx hashes — fall through to retry
+        if (err instanceof Error && err.message.includes('reverted')) throw err;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay + 1000, 3000);
+    }
+
+    // UserOp hash or slow RPC — proceed (loop executor verifies on-chain state)
+    console.log(`[TX] ${txHash.slice(0, 10)}... no receipt after ${timeoutMs / 1000}s — proceeding`);
     return { txHash, success: true };
   }
 }

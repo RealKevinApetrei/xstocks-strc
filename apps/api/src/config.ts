@@ -36,6 +36,11 @@ export const config = {
   usdcVault: optional('USDC_VAULT_ADDRESS', ''),
   tydroVault: optional('TYDRO_VAULT_ADDRESS', ''),
 
+  // Aave V3 / Tydro (Orange Dot Vault)
+  aaveL2Pool: optional('AAVE_L2_POOL_ADDRESS', '0x7F6036c2A9244E766F9CcD8dE78D8f79F80e5408'),
+  aaveAUsdcToken: optional('AAVE_AUSDC_TOKEN_ADDRESS', '0x70A38B0c90441e991346B7A0Cd98C8528dD1c234'),
+  defaultTriggerPrice: parseFloat(optional('DEFAULT_TRIGGER_PRICE', '95')),
+
   // Morpho market params
   morphoOracle: optional('MORPHO_ORACLE_ADDRESS', ''),
   morphoIrm: optional('MORPHO_IRM_ADDRESS', ''),

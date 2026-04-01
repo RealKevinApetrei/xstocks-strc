@@ -1,4 +1,4 @@
-import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, computeMinDepositUsd, usdToUsdc6 } from '@xstocks/shared';
+import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, computeMinDepositUsd, usdToUsdc6, LEVERAGE_TARGET_HF } from '@xstocks/shared';
 import { ethers } from 'ethers';
 import { config } from '../../config';
 import { getProvider } from '../../lib/provider';
@@ -30,11 +30,12 @@ export class PolicyService {
       throw new PolicyViolation(`Leverage cannot exceed ${MAX_LEVERAGE}x`);
     }
 
-    // Compute minimum deposit dynamically from actual LLTV and targetHF
+    // Compute minimum deposit dynamically from actual LLTV and per-leverage targetHF
     const lltvRaw = config.morphoLltv.trim();
     const lltvDecimal = lltvRaw.includes('.') ? parseFloat(lltvRaw) : Number(BigInt(lltvRaw)) / 1e18;
+    const targetHF = LEVERAGE_TARGET_HF[params.targetLeverage] ?? config.loopTargetHF;
     const { minDepositUsd, achievable } = computeMinDepositUsd(
-      params.targetLeverage, lltvDecimal, config.loopTargetHF, config.maxLoopIterations,
+      params.targetLeverage, lltvDecimal, targetHF, config.maxLoopIterations,
     );
 
     if (!achievable) {
@@ -114,11 +115,21 @@ export class PolicyService {
   }
 
   /**
-   * Validate grid strategy parameters.
+   * Validate grid strategy parameters (Orange Dot Vault DCA).
    */
-  validateGridStrategy(params: { gridBuyPct: number }): void {
-    if (params.gridBuyPct < 1 || params.gridBuyPct > 100) {
-      throw new PolicyViolation('Grid buy percentage must be between 1 and 100');
+  validateGridStrategy(params: {
+    triggerPrice?: number;
+    numTrades?: number;
+    tradeIntervalHours?: number;
+  }): void {
+    if (params.triggerPrice !== undefined && params.triggerPrice <= 0) {
+      throw new PolicyViolation('Trigger price must be greater than 0');
+    }
+    if (params.numTrades !== undefined && ![2, 4, 6, 10].includes(params.numTrades)) {
+      throw new PolicyViolation('Number of trades must be one of: 2, 4, 6, 10');
+    }
+    if (params.tradeIntervalHours !== undefined && ![6, 12, 24].includes(params.tradeIntervalHours)) {
+      throw new PolicyViolation('Trade interval must be one of: 6, 12, 24 hours');
     }
   }
 }
