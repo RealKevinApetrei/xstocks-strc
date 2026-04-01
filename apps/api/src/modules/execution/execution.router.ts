@@ -7,6 +7,8 @@ import { borrowExecutor } from './executors/borrow.executor';
 import { policyService, PolicyViolation } from './policy.service';
 import { smartAccountService } from './smart-account.service';
 import { vaultService } from '../vault/vault.service';
+import { approvalExecutor } from './executors/approval.executor';
+import { cowSwapService } from '../cowswap/cowswap.service';
 import { query } from '../../db/pool';
 import { config } from '../../config';
 import type { StartLoopRequest, StartUnwindRequest } from '@xstocks/shared';
@@ -46,6 +48,56 @@ executionRouter.post('/loop', privyAuth, async (req: Request, res: Response) => 
       return;
     }
     throw err;
+  }
+});
+
+// POST /api/execution/close-strc — Swap STRC balance to USDC via CoW presign
+executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+
+  try {
+    const smartAccountAddr = await smartAccountService.getSmartAccountAddress(privyId);
+    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const strcBalance: bigint = await strc.balanceOf(smartAccountAddr);
+
+    if (strcBalance <= 0n) {
+      res.status(400).json({ error: 'No STRC balance to close' });
+      return;
+    }
+
+    // 1. Approve STRC for CoW VaultRelayer
+    const approveCalls = approvalExecutor.buildApproveCalls({
+      token: config.strc, spender: config.cowVaultRelayer, amount: strcBalance,
+    });
+    const approveHash = await smartAccountService.sendBatchUserOp(privyId, approveCalls);
+    await smartAccountService.waitForReceipt(approveHash);
+
+    // 2. Get CoW quote STRC → USDC
+    const quote = await cowSwapService.getQuote({
+      sellToken: config.strc, buyToken: config.usdc, sellAmount: strcBalance, from: smartAccountAddr,
+    });
+
+    // 3. Create order with presign
+    const orderUid = await cowSwapService.createOrder(quote, '');
+
+    // 4. Pre-sign on-chain
+    const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
+    const preSignHash = await smartAccountService.sendBatchUserOp(privyId, [preSignCall]);
+    await smartAccountService.waitForReceipt(preSignHash);
+
+    // 5. Wait for fill
+    const fill = await cowSwapService.waitForFill(orderUid);
+
+    res.json({
+      success: true,
+      strcSold: strcBalance.toString(),
+      usdcReceived: fill.buyAmount.toString(),
+      orderUid,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: `Close STRC failed: ${msg}` });
   }
 });
 

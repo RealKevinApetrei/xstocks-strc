@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatBigInt, formatUsd } from '@/lib/utils';
 import { usePosition } from '@/hooks/use-position';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
+import { useStrcBalance } from '@/hooks/use-strc-balance';
+import { api, ApiError } from '@/lib/api';
 
 const STRC_STAKING_APY = 11.5;
 
@@ -65,10 +68,71 @@ function HealthFactorGauge({ hf }: { hf: number }) {
   );
 }
 
+function StrcPositionCard({ strcAmount, strcPrice, onClosed }: { strcAmount: number; strcPrice: number; onClosed: () => void }) {
+  const { getAccessToken } = usePrivy();
+  const [closing, setClosing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const valueUsd = strcAmount * strcPrice;
+
+  const handleClose = async () => {
+    setClosing(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      const result = await api.closeStrc(token);
+      const usdcReceived = (Number(result.usdcReceived) / 1e6).toFixed(2);
+      setSuccess(`Position closed — received $${usdcReceived} USDC`);
+      onClosed();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to close');
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-border bg-background p-3 space-y-2">
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">1x STRC Position</span>
+          <span className="font-mono font-medium">{strcAmount.toFixed(4)} STRC</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">Value</span>
+          <span className="font-mono">{formatUsd(valueUsd)}</span>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2">
+          <p className="text-[10px] text-destructive">{error}</p>
+        </div>
+      )}
+      {success && (
+        <div className="rounded-md border border-success/30 bg-success/5 p-2">
+          <p className="text-[10px] text-success">{success}</p>
+        </div>
+      )}
+
+      <button
+        onClick={handleClose}
+        disabled={closing}
+        className="w-full rounded-md bg-secondary py-2.5 text-xs font-medium uppercase tracking-wider text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-40"
+      >
+        {closing ? 'Closing position...' : 'Close Position → USDC'}
+      </button>
+    </div>
+  );
+}
+
 export function PositionCard() {
   const { data: positionData, loading } = usePosition();
   const { price: strcPrice, stale, source } = useStrcxPrice();
   const { borrowApy, loading: rateLoading } = useMarketRate();
+  const strcBalance = useStrcBalance();
 
   if (loading) {
     return (
@@ -83,9 +147,13 @@ export function PositionCard() {
 
   if (!positionData?.hasPosition || !positionData.position) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h2 className="text-sm font-medium text-muted-foreground mb-4">Position</h2>
-        <p className="text-sm text-muted-foreground">No active position. Start a loop to get leveraged exposure to STRCx.</p>
+      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <h2 className="text-sm font-medium text-muted-foreground">Position</h2>
+        {strcBalance.formatted > 0.001 ? (
+          <StrcPositionCard strcAmount={strcBalance.formatted} strcPrice={strcPrice} onClosed={strcBalance.refresh} />
+        ) : (
+          <p className="text-sm text-muted-foreground">No active position. Start a loop to get leveraged exposure to STRCx.</p>
+        )}
       </div>
     );
   }

@@ -97,6 +97,12 @@ export const api = {
   getStrcPriceHistory: (days: number = 90) =>
     request<{ history: Array<{ price: number; timestamp: number }>; count: number; source: string }>(`/api/grid/price/history?days=${days}`),
 
+  // Close STRC position — swap STRC to USDC
+  closeStrc: (token: string) =>
+    request<{ success: boolean; strcSold: string; usdcReceived: string; orderUid: string }>('/api/execution/close-strc', {
+      method: 'POST', token,
+    }),
+
   // Withdraw USDC from smart wallet
   withdraw: (token: string, amount: string, to: string) =>
     request<{ txHash: string; success: boolean }>('/api/execution/withdraw', {
