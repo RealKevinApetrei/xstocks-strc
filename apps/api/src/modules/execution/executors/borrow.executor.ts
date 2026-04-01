@@ -43,7 +43,9 @@ export class BorrowExecutor {
     if (!config.morphoOracle || !config.morphoIrm) {
       throw new Error('Morpho oracle or IRM address not configured');
     }
-    return [config.usdc, config.wstrc, config.morphoOracle, config.morphoIrm, this.lltv];
+    const tuple: [string, string, string, string, bigint] = [config.usdc, config.wstrc, config.morphoOracle, config.morphoIrm, this.lltv];
+    console.log(`[MORPHO] Market params: loanToken=${tuple[0]}, collateral=${tuple[1]}, oracle=${tuple[2]}, irm=${tuple[3]}, lltv=${tuple[4]}`);
+    return tuple;
   }
 
   // ── Calldata builders ────────────────────────────────
