@@ -1,43 +1,135 @@
-import { MAX_LEVERAGE, MIN_LEVERAGE, MAX_SLIPPAGE_BPS } from '@xstocks/shared';
+import { MAX_LEVERAGE, LEVERAGE_OPTIONS, UNWIND_TARGETS, computeMinDepositUsd, usdToUsdc6, LEVERAGE_TARGET_HF } from '@xstocks/shared';
+import { ethers } from 'ethers';
+import { config } from '../../config';
+import { getProvider, retryCall } from '../../lib/provider';
 import { query } from '../../db/pool';
+import { smartAccountService } from './smart-account.service';
+
+const ERC20_BALANCE_ABI = ['function balanceOf(address) view returns (uint256)'];
 
 export class PolicyService {
   /**
    * Validate loop parameters before starting.
-   * Throws on violation.
    */
   async validateLoop(params: {
     privyId: string;
-    strcAmount: bigint;
+    usdcAmount: bigint;
     targetLeverage: number;
-    maxSlippageBps: number;
   }): Promise<void> {
-    if (params.strcAmount <= 0n) {
-      throw new PolicyViolation('STRC amount must be greater than 0');
+    if (params.usdcAmount <= 0n) {
+      throw new PolicyViolation('USDC amount must be greater than 0');
     }
-    if (params.targetLeverage < MIN_LEVERAGE || params.targetLeverage > MAX_LEVERAGE) {
-      throw new PolicyViolation(`Leverage must be between ${MIN_LEVERAGE}x and ${MAX_LEVERAGE}x`);
+    if (params.usdcAmount > BigInt(config.maxSingleLoopUsdc)) {
+      const maxFormatted = (Number(config.maxSingleLoopUsdc) / 1e6).toFixed(0);
+      throw new PolicyViolation(`Amount exceeds maximum of $${maxFormatted}`);
     }
-    if (params.maxSlippageBps < 1 || params.maxSlippageBps > MAX_SLIPPAGE_BPS) {
-      throw new PolicyViolation(`Slippage must be between 1 and ${MAX_SLIPPAGE_BPS} bps`);
+    if (!(LEVERAGE_OPTIONS as readonly number[]).includes(params.targetLeverage)) {
+      throw new PolicyViolation(`Leverage must be one of: ${LEVERAGE_OPTIONS.join(', ')}x`);
+    }
+    if (params.targetLeverage > MAX_LEVERAGE) {
+      throw new PolicyViolation(`Leverage cannot exceed ${MAX_LEVERAGE}x`);
     }
 
-    // Check no concurrent active loop
+    // Compute minimum deposit dynamically from actual LLTV and per-leverage targetHF
+    const lltvRaw = config.morphoLltv.trim();
+    const lltvDecimal = lltvRaw.includes('.') ? parseFloat(lltvRaw) : Number(BigInt(lltvRaw)) / 1e18;
+    const targetHF = LEVERAGE_TARGET_HF[params.targetLeverage] ?? config.loopTargetHF;
+    const { minDepositUsd, achievable } = computeMinDepositUsd(
+      params.targetLeverage, lltvDecimal, targetHF, config.maxLoopIterations,
+    );
+
+    if (!achievable) {
+      const maxLev = (1 / (1 - lltvDecimal / config.loopTargetHF)).toFixed(1);
+      throw new PolicyViolation(
+        `${params.targetLeverage}x leverage is unreachable with current parameters (max ~${maxLev}x). ` +
+        `LLTV=${(lltvDecimal * 100).toFixed(0)}%, targetHF=${config.loopTargetHF}`,
+      );
+    }
+
+    const minDepositUsdc = usdToUsdc6(minDepositUsd);
+    if (params.usdcAmount < minDepositUsdc) {
+      throw new PolicyViolation(
+        `Minimum deposit for ${params.targetLeverage}x leverage is $${minDepositUsd} ` +
+        `(ensures every borrow iteration ≥ $10 for CoW Protocol)`,
+      );
+    }
+
+    // Check USDC balance in smart account
+    const smartAccountAddr = await smartAccountService.getSmartAccountAddress(params.privyId);
+    const provider = getProvider();
+    const usdc = new ethers.Contract(config.usdc, ERC20_BALANCE_ABI, provider);
+    const balance: bigint = await retryCall(() => usdc.balanceOf(smartAccountAddr), 3, 'USDC balanceOf');
+
+    if (balance < params.usdcAmount) {
+      const balFormatted = (Number(balance) / 1e6).toFixed(2);
+      const reqFormatted = (Number(params.usdcAmount) / 1e6).toFixed(2);
+      throw new PolicyViolation(`Insufficient USDC balance. You have $${balFormatted} but need $${reqFormatted}. Deposit USDC to your wallet first.`);
+    }
+
+    // Check no concurrent active execution (FOR UPDATE prevents race condition)
     const { rows } = await query(
-      `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS')`,
+      `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
       [params.privyId],
     );
     if (rows.length > 0) {
       throw new PolicyViolation('An active loop already exists. Wait for it to complete or cancel it.');
     }
+
+    // Check no active unwind
+    const { rows: unwinds } = await query(
+      `SELECT id FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
+      [params.privyId],
+    );
+    if (unwinds.length > 0) {
+      throw new PolicyViolation('An unwind is in progress. Wait for it to complete.');
+    }
   }
 
   /**
-   * Validate grid strategy parameters.
+   * Validate unwind parameters.
    */
-  validateGridStrategy(params: { gridBuyPct: number }): void {
-    if (params.gridBuyPct < 1 || params.gridBuyPct > 100) {
-      throw new PolicyViolation('Grid buy percentage must be between 1 and 100');
+  async validateUnwind(params: {
+    privyId: string;
+    targetLeverage: number;
+  }): Promise<void> {
+    if (!(UNWIND_TARGETS as readonly number[]).includes(params.targetLeverage)) {
+      throw new PolicyViolation(`Unwind target must be one of: ${UNWIND_TARGETS.join(', ')}`);
+    }
+
+    // Check no concurrent active execution (FOR UPDATE prevents race condition)
+    const { rows: loops } = await query(
+      `SELECT id FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
+      [params.privyId],
+    );
+    if (loops.length > 0) {
+      throw new PolicyViolation('A loop is in progress. Wait for it to complete.');
+    }
+
+    const { rows: unwinds } = await query(
+      `SELECT id FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') FOR UPDATE`,
+      [params.privyId],
+    );
+    if (unwinds.length > 0) {
+      throw new PolicyViolation('An unwind is already in progress.');
+    }
+  }
+
+  /**
+   * Validate grid strategy parameters (Orange Dot Vault DCA).
+   */
+  validateGridStrategy(params: {
+    triggerPrice?: number;
+    numTrades?: number;
+    tradeIntervalHours?: number;
+  }): void {
+    if (params.triggerPrice !== undefined && params.triggerPrice <= 0) {
+      throw new PolicyViolation('Trigger price must be greater than 0');
+    }
+    if (params.numTrades !== undefined && ![2, 4, 6, 10].includes(params.numTrades)) {
+      throw new PolicyViolation('Number of trades must be one of: 2, 4, 6, 10');
+    }
+    if (params.tradeIntervalHours !== undefined && ![6, 12, 24].includes(params.tradeIntervalHours)) {
+      throw new PolicyViolation('Trade interval must be one of: 6, 12, 24 hours');
     }
   }
 }

@@ -18,6 +18,9 @@ out/
 .DS_Store
 Thumbs.db
 
+# Keys
+*.pem
+
 # IDE
 .vscode/
 .idea/
@@ -30,3 +33,5 @@ packages/contracts/lib/
 # Misc
 *.log
 coverage/
+.claude/worktrees/
+*.tsbuildinfo

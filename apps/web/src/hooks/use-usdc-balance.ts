@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSmartWallet } from './use-smart-wallet';
 
-const INK_RPC   = process.env.NEXT_PUBLIC_INK_RPC || 'https://rpc-gel.inkonchain.com';
-const USDC      = '0x2D270e6886d130D724215A266106e6832161EAEd';
+const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '';
+const INK_RPC = process.env.NEXT_PUBLIC_INK_RPC || 'https://rpc-gel.inkonchain.com';
+
 const BALANCE_OF_SIG = '0x70a08231';
 
-async function fetchUsdcBalance(walletAddress: string): Promise<number> {
-  const paddedAddr = walletAddress.toLowerCase().replace('0x', '').padStart(64, '0');
+async function fetchBalance(address: string): Promise<number> {
+  const paddedAddr = address.toLowerCase().replace('0x', '').padStart(64, '0');
   const data = BALANCE_OF_SIG + paddedAddr;
 
   const res = await fetch(INK_RPC, {
@@ -18,25 +19,30 @@ async function fetchUsdcBalance(walletAddress: string): Promise<number> {
       jsonrpc: '2.0',
       id: 1,
       method: 'eth_call',
-      params: [{ to: USDC, data }, 'latest'],
+      params: [{ to: USDC_ADDRESS, data }, 'latest'],
     }),
   });
 
   const json = await res.json();
   if (json.error) return 0;
   const raw = BigInt(json.result || '0x0');
-  return Number(raw) / 1e6; // USDC has 6 decimals
+  return Number(raw) / 1e6;
 }
 
+/**
+ * Returns USDC balance of the smart wallet (platform balance).
+ * Call refresh() after transactions — it fetches immediately + again after 5s
+ * to catch UserOp confirmation delays.
+ */
 export function useUsdcBalance() {
   const { address } = useSmartWallet();
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchNow = useCallback(async () => {
-    if (!address) { setLoading(false); return; }
+    if (!address || !USDC_ADDRESS) { setLoading(false); return; }
     try {
-      const bal = await fetchUsdcBalance(address);
+      const bal = await fetchBalance(address);
       setBalance(bal);
     } catch {
       // keep previous
@@ -45,10 +51,12 @@ export function useUsdcBalance() {
     }
   }, [address]);
 
+  // Refresh with delayed re-fetch to catch UserOp mining
   const refresh = useCallback(() => {
     fetchNow();
     setTimeout(fetchNow, 3000);
-    setTimeout(fetchNow, 8000);
+    setTimeout(fetchNow, 5000);
+    setTimeout(fetchNow, 10000);
   }, [fetchNow]);
 
   useEffect(() => {

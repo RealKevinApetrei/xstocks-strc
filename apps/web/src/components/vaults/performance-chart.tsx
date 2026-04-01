@@ -1,87 +1,164 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn, formatUsd } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { useMarketRate } from '@/hooks/use-market-rate';
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
-// Simulated backtested data — will integrate live data soon
-function generateSimulatedData(days: number) {
-  const data: Array<{
-    date: string;
-    strcLoopYield: number;   // Cumulative yield from STRC loop strategy
-    aaveUsdcYield: number;   // Cumulative yield from Aave USDC lending (benchmark)
-  }> = [];
+const STRC_BASE_APY = 11.5;
+const LEVERAGE = 3;
 
-  const now = Date.now();
-  let strcCumulative = 100; // Starting with $100
+function buildPerformanceData(
+  days: number,
+  strcPrices: Array<{ price: number; timestamp: number }>,
+  aaveHistory: Array<{ timestamp: string; supplyApy: number }>,
+  borrowRate: number,
+) {
+  const data: Array<{ date: string; strcLoopYield: number; aaveUsdcYield: number }> = [];
+  if (strcPrices.length === 0) return data;
+
+  const netDailyRate = (STRC_BASE_APY * LEVERAGE - borrowRate * (LEVERAGE - 1)) / 365 / 100;
+  const basePrice = strcPrices[0].price;
   let aaveCumulative = 100;
 
-  const strcDailyRate = 28 / 365 / 100; // ~28% APY for 3x leveraged STRC
-  const aaveDailyRate = 3.5 / 365 / 100; // ~3.5% APY Aave USDC
+  for (let i = 0; i < strcPrices.length; i++) {
+    const p = strcPrices[i];
+    const dateStr = new Date(p.timestamp * 1000).toISOString().split('T')[0];
 
-  for (let i = days; i >= 0; i--) {
-    const date = new Date(now - i * 86400000);
-    // Add some volatility noise
-    const strcNoise = 1 + (Math.random() - 0.48) * 0.008;
-    const aaveNoise = 1 + (Math.random() - 0.5) * 0.001;
+    const priceReturn = (p.price - basePrice) / basePrice;
+    const leveragedPriceReturn = priceReturn * LEVERAGE;
+    const yieldAccrued = netDailyRate * i;
+    const strcLoopYield = 100 * (1 + leveragedPriceReturn + yieldAccrued);
 
-    strcCumulative *= (1 + strcDailyRate) * strcNoise;
-    aaveCumulative *= (1 + aaveDailyRate) * aaveNoise;
+    const aaveRate = aaveHistory[i]
+      ? aaveHistory[i].supplyApy / 365 / 100
+      : 2.5 / 365 / 100;
+    aaveCumulative *= (1 + aaveRate);
 
-    data.push({
-      date: date.toISOString().split('T')[0],
-      strcLoopYield: strcCumulative,
-      aaveUsdcYield: aaveCumulative,
-    });
+    data.push({ date: dateStr, strcLoopYield, aaveUsdcYield: aaveCumulative });
   }
 
   return data;
 }
 
 const RANGE_DAYS: Record<TimeRange, number> = {
-  '1M': 30,
-  '3M': 90,
-  '6M': 180,
-  '1Y': 365,
-  'ALL': 365,
+  '1M': 30, '3M': 90, '6M': 180, '1Y': 365, 'ALL': 365,
 };
 
-export function PerformanceChart() {
+function formatDateLabel(dateStr: string, range: TimeRange): string {
+  const d = new Date(dateStr);
+  if (range === '1M') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+}
+
+function ChartSkeleton({ embedded }: { embedded: boolean }) {
+  return (
+    <div className={cn(embedded ? 'p-6' : 'rounded-lg border border-border bg-card p-6')}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="h-4 w-48 bg-secondary animate-pulse rounded" />
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-6 w-8 bg-secondary animate-pulse rounded" />
+          ))}
+        </div>
+      </div>
+      <div className="h-[240px] flex flex-col justify-end gap-1 px-12">
+        {[60, 45, 70, 35, 55, 40, 65].map((h, i) => (
+          <div key={i} className="w-full bg-secondary animate-pulse rounded" style={{ height: `${h}%`, opacity: 0.3 + i * 0.1 }} />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-4 pt-4 mt-4 border-t border-border">
+        {[1, 2, 3].map((i) => (
+          <div key={i}>
+            <div className="h-3 w-16 bg-secondary animate-pulse rounded mb-1" />
+            <div className="h-5 w-12 bg-secondary animate-pulse rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function PerformanceChart({ embedded = false }: { embedded?: boolean }) {
   const [range, setRange] = useState<TimeRange>('3M');
-  const data = useMemo(() => generateSimulatedData(RANGE_DAYS[range]), [range]);
+  const [aaveHistory, setAaveHistory] = useState<Array<{ timestamp: string; supplyApy: number }>>([]);
+  const [aaveCurrentApy, setAaveCurrentApy] = useState<number>(2.5);
+  const [strcPrices, setStrcPrices] = useState<Array<{ price: number; timestamp: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const { price: currentPrice } = useStrcxPrice();
+  const { borrowApy, loading: rateLoading } = useMarketRate();
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      api.getAaveYield(RANGE_DAYS[range]).catch(() => ({ currentSupplyApy: 2.5, history: [] as Array<{ timestamp: string; supplyApy: number }> })),
+      api.getStrcPriceHistory(RANGE_DAYS[range]).catch(() => ({ history: [] as Array<{ price: number; timestamp: number }> })),
+    ]).then(([aaveData, strcData]) => {
+      setAaveHistory(aaveData.history);
+      setAaveCurrentApy(aaveData.currentSupplyApy);
+      setStrcPrices(strcData.history);
+      setLoading(false);
+    });
+  }, [range]);
+
+  const effectiveRate = borrowApy ?? 0;
+
+  const data = useMemo(
+    () => buildPerformanceData(RANGE_DAYS[range], strcPrices, aaveHistory, effectiveRate),
+    [range, strcPrices, aaveHistory, effectiveRate],
+  );
+
+  if (loading || rateLoading || data.length === 0) {
+    return <ChartSkeleton embedded={embedded} />;
+  }
 
   const lastPoint = data[data.length - 1];
   const strcReturn = ((lastPoint.strcLoopYield - 100) / 100) * 100;
   const aaveReturn = ((lastPoint.aaveUsdcYield - 100) / 100) * 100;
   const outperformance = strcReturn - aaveReturn;
 
-  // Simple SVG chart
+  const strcPcts = data.map(d => ((d.strcLoopYield - 100) / 100) * 100);
+  const aavePcts = data.map(d => ((d.aaveUsdcYield - 100) / 100) * 100);
+
   const width = 800;
-  const height = 200;
-  const padding = { top: 10, right: 10, bottom: 20, left: 50 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
+  const height = 260;
+  const pad = { top: 20, right: 20, bottom: 40, left: 52 };
+  const chartW = width - pad.left - pad.right;
+  const chartH = height - pad.top - pad.bottom;
 
-  const allValues = data.flatMap(d => [d.strcLoopYield, d.aaveUsdcYield]);
-  const minY = Math.min(...allValues) * 0.99;
-  const maxY = Math.max(...allValues) * 1.01;
+  const allPcts = [...strcPcts, ...aavePcts];
+  const domainMin = Math.min(...allPcts) - 1;
+  const domainMax = Math.max(...allPcts) + 1;
 
-  const toX = (i: number) => padding.left + (i / (data.length - 1)) * chartW;
-  const toY = (v: number) => padding.top + chartH - ((v - minY) / (maxY - minY)) * chartH;
+  const toX = (i: number) => pad.left + (i / (data.length - 1)) * chartW;
+  const toY = (v: number) => pad.top + chartH - ((v - domainMin) / (domainMax - domainMin)) * chartH;
 
-  const strcPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.strcLoopYield)}`).join(' ');
-  const aavePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.aaveUsdcYield)}`).join(' ');
+  const strcPath = strcPcts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
+  const aavePath = aavePcts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
 
-  // Area fill for STRC
-  const strcArea = strcPath + ` L ${toX(data.length - 1)} ${toY(minY)} L ${toX(0)} ${toY(minY)} Z`;
+  const rangeStep = Math.ceil((domainMax - domainMin) / 4);
+  const yStart = Math.floor(domainMin / rangeStep) * rangeStep;
+  const yTicks = Array.from({ length: 7 }, (_, i) => yStart + i * rangeStep).filter(v => v >= domainMin && v <= domainMax);
+  const xIndices = Array.from({ length: 5 }, (_, i) => Math.round((i / 4) * (data.length - 1)));
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 space-y-5">
+    <div className={cn(embedded ? 'p-6 space-y-4' : 'rounded-lg border border-border bg-card p-6 space-y-4')}>
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground">Backtested Performance</h2>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Simulated — STRC 3x Loop vs Aave USDC Lending</p>
+        <div className="flex items-center gap-4 text-xs font-mono">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block w-4 h-px bg-foreground" />
+            STRC {LEVERAGE}× Loop
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block w-4 h-px bg-muted-foreground/40" style={{ backgroundImage: 'repeating-linear-gradient(90deg,#9ca3af,#9ca3af 3px,transparent 3px,transparent 6px)' }} />
+            Aave USDC ({aaveCurrentApy.toFixed(1)}%)
+          </div>
+          {currentPrice > 0 && (
+            <span className="text-foreground font-medium">STRC {formatUsd(currentPrice)}</span>
+          )}
         </div>
         <div className="flex gap-1">
           {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((r) => (
@@ -89,10 +166,10 @@ export function PerformanceChart() {
               key={r}
               onClick={() => setRange(r)}
               className={cn(
-                'px-2.5 py-1 rounded text-[10px] font-mono font-medium transition-colors',
+                'px-2.5 py-1 rounded-md text-[10px] font-mono font-medium transition-colors border',
                 range === r
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:text-foreground',
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/30',
               )}
             >
               {r}
@@ -101,82 +178,48 @@ export function PerformanceChart() {
         </div>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">STRC 3x Loop</div>
-          <div className="text-lg font-mono font-semibold text-primary">+{strcReturn.toFixed(1)}%</div>
-          <div className="text-[10px] text-muted-foreground font-mono">{formatUsd(lastPoint.strcLoopYield)} from $100</div>
-        </div>
-        <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">Aave USDC (benchmark)</div>
-          <div className="text-lg font-mono font-semibold text-muted-foreground">+{aaveReturn.toFixed(1)}%</div>
-          <div className="text-[10px] text-muted-foreground font-mono">{formatUsd(lastPoint.aaveUsdcYield)} from $100</div>
-        </div>
-        <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">Outperformance</div>
-          <div className={cn('text-lg font-mono font-semibold', outperformance > 0 ? 'text-success' : 'text-destructive')}>
-            {outperformance > 0 ? '+' : ''}{outperformance.toFixed(1)}%
-          </div>
-          <div className="text-[10px] text-muted-foreground font-mono">vs Aave</div>
-        </div>
-      </div>
-
-      {/* SVG Chart */}
-      <div className="w-full overflow-hidden rounded-md border border-border bg-background">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
-          <defs>
-            <linearGradient id="strcGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="rgb(59, 130, 246)" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          {/* Grid lines */}
-          {[0.25, 0.5, 0.75].map((pct) => (
-            <line
-              key={pct}
-              x1={padding.left}
-              y1={padding.top + chartH * pct}
-              x2={width - padding.right}
-              y2={padding.top + chartH * pct}
-              stroke="rgba(255,255,255,0.05)"
-              strokeDasharray="4,4"
-            />
+      <div className="w-full overflow-hidden">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" style={{ display: 'block' }}>
+          {yTicks.map((v) => (
+            <g key={v}>
+              <line x1={pad.left} y1={toY(v)} x2={width - pad.right} y2={toY(v)} stroke="rgba(0,0,0,0.07)" strokeWidth="1" />
+              <text x={pad.left - 8} y={toY(v) + 4} textAnchor="end" fill="#9ca3af" fontSize="10" fontFamily="'IBM Plex Mono',monospace">
+                {v >= 0 ? '+' : ''}{v}%
+              </text>
+            </g>
           ))}
-
-          {/* STRC area fill */}
-          <path d={strcArea} fill="url(#strcGradient)" />
-
-          {/* Aave line (benchmark) */}
-          <path d={aavePath} fill="none" stroke="rgba(161,161,170,0.4)" strokeWidth="1.5" strokeDasharray="4,4" />
-
-          {/* STRC line */}
-          <path d={strcPath} fill="none" stroke="rgb(59, 130, 246)" strokeWidth="2" />
-
-          {/* Y-axis labels */}
-          {[minY, (minY + maxY) / 2, maxY].map((val, i) => (
-            <text
-              key={i}
-              x={padding.left - 5}
-              y={toY(val) + 3}
-              textAnchor="end"
-              className="text-[9px] fill-muted-foreground font-mono"
-            >
-              ${val.toFixed(0)}
+          {xIndices.map((idx) => (
+            <text key={idx} x={toX(idx)} y={pad.top + chartH + 24} textAnchor="middle" fill="#9ca3af" fontSize="10" fontFamily="'IBM Plex Mono',monospace">
+              {formatDateLabel(data[idx].date, range)}
             </text>
           ))}
-
-          {/* Legend */}
-          <line x1={padding.left + 10} y1={height - 5} x2={padding.left + 30} y2={height - 5} stroke="rgb(59, 130, 246)" strokeWidth="2" />
-          <text x={padding.left + 35} y={height - 2} className="text-[9px] fill-muted-foreground font-mono">STRC 3x Loop</text>
-          <line x1={padding.left + 150} y1={height - 5} x2={padding.left + 170} y2={height - 5} stroke="rgba(161,161,170,0.4)" strokeWidth="1.5" strokeDasharray="4,4" />
-          <text x={padding.left + 175} y={height - 2} className="text-[9px] fill-muted-foreground font-mono">Aave USDC</text>
+          <path d={aavePath} fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2" strokeDasharray="4,3" />
+          <path d={strcPath} fill="none" stroke="#0a0a0a" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx={toX(data.length - 1)} cy={toY(strcPcts[strcPcts.length - 1])} r="3" fill="#0a0a0a" />
         </svg>
       </div>
 
+      <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border">
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-0.5">STRC {LEVERAGE}× Loop</div>
+          <div className={cn('text-sm font-mono font-semibold', strcReturn >= 0 ? 'text-success' : 'text-destructive')}>
+            {strcReturn >= 0 ? '+' : ''}{strcReturn.toFixed(1)}%
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-0.5">Aave USDC</div>
+          <div className="text-sm font-mono font-semibold text-muted-foreground">+{aaveReturn.toFixed(1)}%</div>
+        </div>
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-0.5">Outperformance</div>
+          <div className={cn('text-sm font-mono font-semibold', outperformance > 0 ? 'text-success' : 'text-destructive')}>
+            {outperformance > 0 ? '+' : ''}{outperformance.toFixed(1)}%
+          </div>
+        </div>
+      </div>
+
       <p className="text-[9px] text-muted-foreground">
-        Simulated historical performance. Past performance does not guarantee future results. Based on STRC rebase yield at 3x leverage minus Morpho borrow costs, compared to Aave USDC lending rates. Live data integration coming soon.
+        Pyth Network · DeFi Llama · {LEVERAGE}× STRC loop at {STRC_BASE_APY}% yield minus {effectiveRate.toFixed(1)}% Morpho borrow. Past performance does not guarantee future results.
       </p>
     </div>
   );

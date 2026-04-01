@@ -10,16 +10,21 @@
   },
   "dependencies": {
     "@privy-io/react-auth": "^2.5.0",
+    "@relayprotocol/relay-kit-ui": "^8.0.3",
+    "@relayprotocol/relay-sdk": "^5.2.1",
+    "@tanstack/react-query": "^5.96.0",
     "@xstocks/shared": "*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "next": "^15.3.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "viem": "^2.47.6"
+    "viem": "^2.47.6",
+    "wagmi": "^2.19.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

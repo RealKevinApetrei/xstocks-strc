@@ -1,7 +1,7 @@
 import type {
   StartLoopRequest, StartLoopResponse,
   StartUnwindRequest, StartUnwindResponse,
-  LoopStatusResponse,
+  LoopStatusResponse, UnwindStatusResponse,
   PositionResponse,
   GridStrategy, CreateGridStrategyRequest, UpdateGridStrategyRequest,
   GridEventsResponse,
@@ -50,17 +50,26 @@ export const api = {
   getLoopStatus: (token: string, id: string) =>
     request<LoopStatusResponse>(`/api/execution/loop/${id}/status`, { token }),
 
+  cancelLoop: (token: string, id: string) =>
+    request<{ success: boolean }>(`/api/execution/loop/${id}/cancel`, { method: 'POST', token }),
+
   // Unwind
   startUnwind: (token: string, body: StartUnwindRequest) =>
     request<StartUnwindResponse>('/api/execution/unwind', { method: 'POST', body: JSON.stringify(body), token }),
+
+  getUnwindStatus: (token: string, id: string) =>
+    request<UnwindStatusResponse>(`/api/execution/unwind/${id}/status`, { token }),
 
   // Position
   getPosition: (token: string, address: string) =>
     request<PositionResponse>(`/api/positions/${address}`, { token }),
 
-  // Grid
+  // Grid / Orange Dot Vault
   createGridStrategy: (token: string, body: CreateGridStrategyRequest) =>
     request<GridStrategy>('/api/grid/strategy', { method: 'POST', body: JSON.stringify(body), token }),
+
+  getMyGridStrategy: (token: string) =>
+    request<GridStrategy>('/api/grid/strategy', { token }),
 
   getGridStrategy: (token: string, id: string) =>
     request<GridStrategy>(`/api/grid/strategy/${id}`, { token }),
@@ -81,16 +90,57 @@ export const api = {
   getVaultBalance: (token: string, address: string) =>
     request<VaultBalanceResponse>(`/api/grid/vault/balance/${address}`, { token }),
 
+  // Lend USDC Vault (Morpho supply side)
+  depositToLend: (token: string, amount: string) =>
+    request<{ txHash: string }>('/api/grid/lend/deposit', { method: 'POST', body: JSON.stringify({ amount }), token }),
+
+  withdrawFromLend: (token: string, amount: string) =>
+    request<{ txHash: string }>('/api/grid/lend/withdraw', { method: 'POST', body: JSON.stringify({ amount }), token }),
+
+  getLendBalance: (token: string, address: string) =>
+    request<{ supplyShares: string; assets: string }>(`/api/grid/lend/balance/${address}`, { token }),
+
+  getLendApy: () =>
+    request<{ supplyApy: number | null; borrowApy: number | null; utilization: number; totalSupply: string; totalBorrow: string }>('/api/grid/lend/apy'),
+
   // APY
   getSimulatedApy: () =>
     request<SimulatedApyResponse>('/api/apy/simulated'),
 
-  // Morpho USDC Vault
-  morphoSupply: (token: string, amount: string) =>
-    request<VaultTxResponse>('/api/morpho/supply', { method: 'POST', body: JSON.stringify({ amount }), token }),
+  // Price (Pyth Hermes — STRCx/USD)
+  getStrcxPrice: () =>
+    request<{ price: number; timestamp: number; stale: boolean; source: string }>('/api/grid/price'),
 
-  morphoWithdraw: (token: string, amount: string) =>
-    request<VaultTxResponse>('/api/morpho/withdraw', { method: 'POST', body: JSON.stringify({ amount }), token }),
+  // Aave USDC yield (real data from DeFi Llama)
+  getAaveYield: (days: number = 90) =>
+    request<{ currentSupplyApy: number; history: Array<{ timestamp: string; supplyApy: number }> }>(`/api/apy/aave?days=${days}`),
+
+  // Historical STRC prices (Pyth Benchmarks)
+  getStrcPriceHistory: (days: number = 90) =>
+    request<{ history: Array<{ price: number; timestamp: number }>; count: number; source: string }>(`/api/grid/price/history?days=${days}`),
+
+  // Close STRC position — swap STRC to USDC
+  closeStrc: (token: string) =>
+    request<{ success: boolean; strcSold: string; usdcReceived: string; orderUid: string }>('/api/execution/close-strc', {
+      method: 'POST', token,
+    }),
+
+  // Withdraw USDC from smart wallet
+  withdraw: (token: string, amount: string, to: string) =>
+    request<{ txHash: string; success: boolean }>('/api/execution/withdraw', {
+      method: 'POST', body: JSON.stringify({ amount, to }), token,
+    }),
+
+  // Loop history (paginated)
+  getLoopHistory: (token: string, limit: number = 20, offset: number = 0) =>
+    request<{
+      loops: Array<{
+        id: string; strcAmount: string; targetLeverage: number; effectiveLeverage: number | null;
+        healthFactor: number | null; iterations: number; status: string; error: string | null;
+        createdAt: string; updatedAt: string;
+      }>;
+      total: number; limit: number; offset: number;
+    }>(`/api/execution/loops?limit=${limit}&offset=${offset}`, { token }),
 
   // Savings Club
   getSavingsPortfolio: (token: string) =>

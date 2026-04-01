@@ -1,0 +1,39 @@
+'use client';
+
+const INK_EXPLORER = 'https://explorer.inkonchain.com';
+
+const CONTRACTS = [
+  { label: 'STRC Token', address: process.env.NEXT_PUBLIC_STRC_ADDRESS },
+  { label: 'wSTRC (Wrapped)', address: process.env.NEXT_PUBLIC_WSTRC_ADDRESS },
+  { label: 'USDC', address: process.env.NEXT_PUBLIC_USDC_ADDRESS },
+  { label: 'Morpho Blue', address: process.env.NEXT_PUBLIC_MORPHO_ADDRESS },
+  { label: 'Morpho Oracle', address: process.env.NEXT_PUBLIC_MORPHO_ORACLE_ADDRESS },
+].filter((c) => c.address) as Array<{ label: string; address: string }>;
+
+export function ContractsPanel({ embedded = false }: { embedded?: boolean }) {
+  return (
+    <div className={embedded ? 'space-y-4' : 'rounded-lg border border-border bg-card p-6 space-y-4'}>
+      {!embedded && (
+        <h2 className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
+          Info
+        </h2>
+      )}
+
+      <div className="space-y-2 border-t border-border/50 pt-3">
+        {CONTRACTS.map(({ label, address }) => (
+          <div key={address} className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <a
+              href={`${INK_EXPLORER}/address/${address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-mono text-foreground hover:underline underline-offset-2"
+            >
+              {address.slice(0, 6)}...{address.slice(-4)}
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

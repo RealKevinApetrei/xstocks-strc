@@ -5,12 +5,13 @@ import { cn } from '@/lib/utils';
 
 export function GridConfig() {
   const [gridBuyPct, setGridBuyPct] = useState(25);
+  const [hfThreshold, setHfThreshold] = useState(1.5);
   const [enabled, setEnabled] = useState(true);
   const [hasStrategy, setHasStrategy] = useState(false);
 
   const handleSave = async () => {
     // TODO: Wire to api.createGridStrategy or api.updateGridStrategy
-    console.log('Grid strategy:', { gridBuyPct, enabled });
+    console.log('Grid strategy:', { gridBuyPct, hfThreshold, enabled });
     setHasStrategy(true);
   };
 
@@ -19,7 +20,7 @@ export function GridConfig() {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-muted-foreground">Buy-the-Dip Strategy</h2>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">Chainlink CRE</span>
+          <span className="text-[10px] text-muted-foreground">Auto</span>
           <button
             onClick={() => setEnabled(!enabled)}
             className={cn(
@@ -37,17 +38,41 @@ export function GridConfig() {
         </div>
       </div>
 
-      {/* Threshold display (fixed) */}
+      {/* HF threshold */}
       <div className="rounded-md border border-border bg-background p-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Trigger Price</span>
+          <span className="text-xs text-muted-foreground">Trigger when Health Factor</span>
           <span className="text-sm font-mono font-semibold">
-            &lt; $103.00
+            &lt; {hfThreshold.toFixed(1)}
           </span>
         </div>
         <p className="text-[10px] text-muted-foreground mt-1">
-          When STRC drops below $103, automatically buy the dip with vault USDC and loop it.
+          When your position health factor drops below this level, automatically deploy vault USDC to buy STRC and strengthen your position.
         </p>
+      </div>
+
+      {/* HF threshold selector */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-muted-foreground">HF trigger level</label>
+          <span className="text-sm font-mono font-semibold text-primary">{hfThreshold.toFixed(1)}</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[1.3, 1.5, 1.8, 2.0].map((hf) => (
+            <button
+              key={hf}
+              onClick={() => setHfThreshold(hf)}
+              className={cn(
+                'rounded-md border py-2 text-center font-mono text-xs font-semibold transition-all',
+                hfThreshold === hf
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground',
+              )}
+            >
+              {hf.toFixed(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Grid buy percentage */}
@@ -89,12 +114,11 @@ export function GridConfig() {
         {hasStrategy ? 'Update Strategy' : 'Enable Strategy'}
       </button>
 
-      {/* Status */}
       {hasStrategy && (
         <div className="flex items-center gap-2 text-xs">
           <span className={cn('h-2 w-2 rounded-full', enabled ? 'bg-success animate-pulse' : 'bg-muted-foreground')} />
           <span className="text-muted-foreground">
-            {enabled ? 'Monitoring STRC price via Chainlink' : 'Strategy paused'}
+            {enabled ? 'Monitoring position health factor' : 'Strategy paused'}
           </span>
         </div>
       )}

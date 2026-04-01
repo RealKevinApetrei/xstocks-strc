@@ -1,7 +1,7 @@
 'use client';
 
-import { BuyTheDipVault } from '@/components/vaults/buy-the-dip-vault';
-import { PerformanceChart } from '@/components/vaults/performance-chart';
+import { OrangeDotVault } from '@/components/vaults/orange-dot-vault';
+import { LendUsdcVault } from '@/components/vaults/lend-usdc-vault';
 
 export default function StrategyVaults() {
   return (
@@ -13,11 +13,8 @@ export default function StrategyVaults() {
         </p>
       </div>
 
-      {/* Buy the Dip Vault */}
-      <BuyTheDipVault />
-
-      {/* Historical Performance */}
-      <PerformanceChart />
+      <OrangeDotVault />
+      <LendUsdcVault />
     </div>
   );
 }

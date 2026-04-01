@@ -95,7 +95,7 @@ contract Batcher {
             collateralToken: _wstrc,
             oracle:          _oracle,
             irm:             _irm,    // 0x9515407b1512F53388ffE699524100e7270Ee57B
-            lltv:            _lltv    // 800000000000000000 (80% in 1e18)
+            lltv:            _lltv    // 860000000000000000 (86% in 1e18)
         });
 
         // Pre-approve Morpho to pull wSTRC for collateral

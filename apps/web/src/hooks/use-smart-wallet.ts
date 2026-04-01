@@ -1,24 +1,47 @@
 'use client';
 
-import { useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
 import { useMemo } from 'react';
 
 /**
- * Returns the user's active wallet address (smart wallet if available, else embedded EOA).
- * Also exposes `ready` to know when Privy has loaded.
+ * Resolves the user's Privy smart wallet address.
+ * Smart wallets are created automatically on login when enabled in Privy Dashboard.
+ * Falls back to embedded wallet if smart wallet not yet provisioned.
  */
 export function useSmartWallet() {
-  const { wallets, ready } = useWallets();
+  const { user, ready, authenticated } = usePrivy();
 
-  const address = useMemo(() => {
-    if (!ready || wallets.length === 0) return null;
-    // Prefer smart_wallet type (Kernel EIP-4337)
-    const smart = wallets.find((w) => w.walletClientType === 'privy' && (w as any).type === 'smart_wallet');
-    if (smart) return smart.address;
-    // Fall back to embedded EOA
-    const embedded = wallets.find((w) => w.walletClientType === 'privy');
-    return embedded?.address ?? null;
-  }, [wallets, ready]);
+  const result = useMemo(() => {
+    if (!user) return null;
 
-  return { address, ready };
+    // Priority 1: Smart wallet (Kernel)
+    const sw = user.linkedAccounts.find(
+      (a) => a.type === 'smart_wallet',
+    );
+    if (sw && 'address' in sw) {
+      return { address: sw.address as string, type: 'smart_wallet' as const };
+    }
+
+    // Priority 2: Embedded wallet (EOA) — fallback if smart wallet not yet created
+    const embedded = user.linkedAccounts.find(
+      (a) => a.type === 'wallet' && 'walletClientType' in a && a.walletClientType === 'privy',
+    );
+    if (embedded && 'address' in embedded) {
+      return { address: embedded.address as string, type: 'embedded' as const };
+    }
+
+    // Priority 3: user.wallet
+    if (user.wallet?.address) {
+      return { address: user.wallet.address, type: 'wallet' as const };
+    }
+
+    return null;
+  }, [user]);
+
+  return {
+    address: result?.address ?? null,
+    type: result?.type ?? null,
+    ready: ready && authenticated,
+    isSmartWallet: result?.type === 'smart_wallet',
+  };
 }

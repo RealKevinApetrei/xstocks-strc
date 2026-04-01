@@ -57,16 +57,19 @@ export class SmartAccountService {
 
     const wallet = await signerService.getWalletForUser(privyId);
 
+    // Privy wraps each eth_sendTransaction in execute() — no native batch support.
+    // executeBatch via self-call fails (Kernel rejects nested execute→executeBatch).
+    // Send calls sequentially with a short delay for on-chain propagation.
     let lastHash = '';
-    for (const call of calls) {
+    for (let i = 0; i < calls.length; i++) {
       lastHash = await signerService.sendTransaction(wallet.walletId, {
-        to: call.to,
-        data: call.data,
-        value: call.value?.toString(),
+        to: calls[i].to,
+        data: calls[i].data,
+        value: calls[i].value?.toString(),
         chainId: config.chainId,
       });
-      if (calls.indexOf(call) < calls.length - 1) {
-        await this.waitForReceipt(lastHash);
+      if (i < calls.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
     return lastHash;
@@ -76,10 +79,36 @@ export class SmartAccountService {
     if (!txHash) throw new Error('No transaction hash provided');
 
     const provider = getProvider();
+    // Short timeout: Privy returns UserOp hashes which won't resolve via
+    // getTransactionReceipt. Try briefly in case it's a real tx hash,
+    // then proceed — the on-chain state checks in the loop executor
+    // catch any actual failures.
+    const timeoutMs = 15_000;
+    const start = Date.now();
 
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... accepted, waiting 3s for block...`);
-    await new Promise(resolve => setTimeout(resolve, 3_000));
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed`);
+    console.log(`[TX] Waiting for receipt: ${txHash.slice(0, 10)}...`);
+
+    let delay = 1000;
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const receipt = await provider.getTransactionReceipt(txHash);
+        if (receipt) {
+          const success = receipt.status === 1;
+          console.log(`[TX] ${txHash.slice(0, 10)}... ${success ? 'confirmed' : 'reverted'} (block ${receipt.blockNumber})`);
+          if (!success) throw new Error(`Transaction reverted: ${txHash}`);
+          return { txHash, success };
+        }
+      } catch (err) {
+        // getTransactionReceipt may throw for UserOp hashes that aren't
+        // standard tx hashes — fall through to retry
+        if (err instanceof Error && err.message.includes('reverted')) throw err;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay + 1000, 3000);
+    }
+
+    // UserOp hash or slow RPC — proceed (loop executor verifies on-chain state)
+    console.log(`[TX] ${txHash.slice(0, 10)}... no receipt after ${timeoutMs / 1000}s — proceeding`);
     return { txHash, success: true };
   }
 }

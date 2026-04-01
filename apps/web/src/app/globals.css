@@ -1,32 +1,450 @@
+/* @import rules must come first */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #09090b;
-  --color-foreground: #fafafa;
-  --color-card: #0a0a0c;
-  --color-card-foreground: #fafafa;
-  --color-primary: #3b82f6;
-  --color-primary-foreground: #fafafa;
-  --color-secondary: #18181b;
-  --color-secondary-foreground: #fafafa;
-  --color-muted: #27272a;
-  --color-muted-foreground: #a1a1aa;
-  --color-border: #27272a;
-  --color-ring: #3b82f6;
-  --color-destructive: #ef4444;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
+  /* ── Backgrounds ──────────────────────────────────── */
+  --color-background:            #f5f4f0;
+  --color-card:                  #ffffff;
+  --color-secondary:             #f0eeea;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  /* ── Text ─────────────────────────────────────────── */
+  --color-foreground:            #0a0a0a;
+  --color-card-foreground:       #0a0a0a;
+  --color-secondary-foreground:  #0a0a0a;
+  --color-muted:                 #f5f4f0;
+  --color-muted-foreground:      #6b6866;
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  /* ── Border / ring ────────────────────────────────── */
+  --color-border:                #e5e7eb;
+  --color-ring:                  #2d2d2d;
+
+  /* ── Interactive — dark charcoal for all buttons/CTAs */
+  --color-primary:               #2d2d2d;
+  --color-primary-foreground:    #ffffff;
+
+  /* ── Semantic ─────────────────────────────────────── */
+  --color-destructive:           #d93030;
+  --color-success:               #16a34a;
+  --color-warning:               #c47a1a;
+
+  /* ── Typography ───────────────────────────────────── */
+  --font-sans: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+
+  /* ── Radius ───────────────────────────────────────── */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.625rem;
 }
 
 body {
-  background: var(--color-background);
+  background-color: var(--color-background);
+  /* Graph paper grid — matches Spreads reference */
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 52px 52px;
   color: var(--color-foreground);
   font-family: var(--font-sans);
+}
+
+@keyframes float-a {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-12px) rotate(0.5deg); }
+  66%       { transform: translateY(-6px) rotate(-0.5deg); }
+}
+@keyframes float-b {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  40%       { transform: translateY(-18px) rotate(-1deg); }
+  70%       { transform: translateY(-8px) rotate(0.8deg); }
+}
+@keyframes float-c {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.float-a { animation: float-a 7s ease-in-out infinite; }
+.float-b { animation: float-b 9s ease-in-out infinite; }
+.float-c { animation: float-c 5.5s ease-in-out infinite; }
+
+@keyframes spreads-pulse-top {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+@keyframes spreads-pulse-bottom {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 1; }
+}
+.spreads-spinner-top    { animation: spreads-pulse-top    1.1s ease-in-out infinite; }
+.spreads-spinner-bottom { animation: spreads-pulse-bottom 1.1s ease-in-out infinite; }
+
+@keyframes step-fade {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+@keyframes dot-1 { 0%, 100% { opacity: 0; } 20%, 80% { opacity: 1; } }
+@keyframes dot-2 { 0%, 100% { opacity: 0; } 40%, 80% { opacity: 1; } }
+@keyframes dot-3 { 0%, 100% { opacity: 0; } 60%, 80% { opacity: 1; } }
+.step-label { animation: step-fade 1.8s ease-in-out infinite; }
+.dot-1 { animation: dot-1 1.4s ease-in-out infinite; }
+.dot-2 { animation: dot-2 1.4s ease-in-out infinite; }
+.dot-3 { animation: dot-3 1.4s ease-in-out infinite; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(16px) translateX(-50%); }
+  to   { opacity: 1; transform: translateY(0)    translateX(-50%); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0)    translateX(-50%); }
+  to   { opacity: 0; transform: translateY(8px)  translateX(-50%); }
+}
+.toast-in  { animation: toast-in  0.3s cubic-bezier(0.16,1,0.3,1) forwards; }
+.toast-out { animation: toast-out 0.25s ease-in forwards; }
+
+/* ── Relay widget overrides — match xStocks branding ── */
+.relay-widget-container {
+  /* Widget shell */
+  --relay-colors-widget-background: #ffffff !important;
+  --relay-colors-widget-card-background: #f5f4f0 !important;
+  --relay-colors-widget-selector-background: #f0eeea !important;
+  --relay-colors-widget-selector-hover-background: #e5e7eb !important;
+  --relay-borders-widget-border: 1px solid #e5e7eb !important;
+  --relay-borders-widget-card-border: 1px solid #e5e7eb !important;
+  --relay-shadows-widget-box-shadow: none !important;
+  --relay-radii-widget-border-radius: 0.625rem !important;
+  --relay-radii-widget-card-border-radius: 0.5rem !important;
+
+  /* Primary / CTA buttons → dark charcoal */
+  --relay-colors-primary-button-background: #2d2d2d !important;
+  --relay-colors-primary-button-color: #ffffff !important;
+  --relay-colors-primary-button-hover-background: #404040 !important;
+  --relay-colors-primary-button-hover-color: #ffffff !important;
+  --relay-colors-primary-color: #2d2d2d !important;
+  --relay-radii-button-border-radius: 0.375rem !important;
+
+  /* Secondary buttons */
+  --relay-colors-secondary-button-background: #f0eeea !important;
+  --relay-colors-secondary-button-color: #0a0a0a !important;
+  --relay-colors-secondary-button-hover-background: #e5e7eb !important;
+  --relay-colors-secondary-button-hover-color: #0a0a0a !important;
+
+  /* Disabled buttons */
+  --relay-colors-button-disabled-background: #e5e7eb !important;
+  --relay-colors-button-disabled-color: #6b6866 !important;
+
+  /* Text */
+  --relay-colors-text-subtle: #6b6866 !important;
+  --relay-colors-text-subtle-secondary: #9ca3af !important;
+  --relay-colors-subtle-background-color: #f5f4f0 !important;
+  --relay-colors-subtle-border-color: #e5e7eb !important;
+
+  /* Swap button border */
+  --relay-colors-widget-swap-currency-button-border-color: #e5e7eb !important;
+
+  /* Gray scale overrides (light theme) */
+  --relay-colors-gray-1: #ffffff !important;
+  --relay-colors-gray-2: #f5f4f0 !important;
+  --relay-colors-gray-3: #f0eeea !important;
+  --relay-colors-gray-4: #e5e7eb !important;
+  --relay-colors-gray-5: #d1d5db !important;
+  --relay-colors-gray-6: #9ca3af !important;
+  --relay-colors-gray-7: #6b6866 !important;
+  --relay-colors-gray-8: #4b5563 !important;
+  --relay-colors-gray-9: #374151 !important;
+  --relay-colors-gray-10: #1f2937 !important;
+  --relay-colors-gray-11: #111827 !important;
+  --relay-colors-gray-12: #0a0a0a !important;
+
+  /* Override dark grays used by cards */
+  --relay-colors-gray-dark-1: #ffffff !important;
+  --relay-colors-gray-dark-2: #f5f4f0 !important;
+  --relay-colors-gray-dark-3: #f0eeea !important;
+  --relay-colors-gray-dark-4: #e5e7eb !important;
+  --relay-colors-gray-dark-5: #d1d5db !important;
+  --relay-colors-gray-dark-6: #9ca3af !important;
+  --relay-colors-gray-dark-7: #6b6866 !important;
+  --relay-colors-gray-dark-8: #4b5563 !important;
+  --relay-colors-gray-dark-9: #374151 !important;
+  --relay-colors-gray-dark-10: #1f2937 !important;
+  --relay-colors-gray-dark-11: #111827 !important;
+  --relay-colors-gray-dark-12: #0a0a0a !important;
+
+  /* Primary accent → charcoal instead of purple */
+  --relay-colors-primary1: #f5f4f0 !important;
+  --relay-colors-primary2: #f0eeea !important;
+  --relay-colors-primary3: #e5e7eb !important;
+  --relay-colors-primary4: #d1d5db !important;
+  --relay-colors-primary5: #9ca3af !important;
+  --relay-colors-primary6: #6b6866 !important;
+  --relay-colors-primary7: #4b5563 !important;
+  --relay-colors-primary8: #374151 !important;
+  --relay-colors-primary9: #2d2d2d !important;
+  --relay-colors-primary10: #1f2937 !important;
+  --relay-colors-primary11: #111827 !important;
+  --relay-colors-primary12: #0a0a0a !important;
+
+  /* Light gray overrides (used by some components) */
+  --relay-colors-gray-light-1: #ffffff !important;
+  --relay-colors-gray-light-2: #f5f4f0 !important;
+  --relay-colors-gray-light-3: #f0eeea !important;
+  --relay-colors-gray-light-4: #e5e7eb !important;
+  --relay-colors-gray-light-5: #d1d5db !important;
+  --relay-colors-gray-light-6: #9ca3af !important;
+  --relay-colors-gray-light-7: #6b6866 !important;
+  --relay-colors-gray-light-8: #4b5563 !important;
+  --relay-colors-gray-light-9: #374151 !important;
+  --relay-colors-gray-light-10: #1f2937 !important;
+  --relay-colors-gray-light-11: #111827 !important;
+  --relay-colors-gray-light-12: #0a0a0a !important;
+
+  /* Error states → match our destructive color */
+  --relay-colors-text-error: #d93030 !important;
+  --relay-colors-red2: #fef2f2 !important;
+  --relay-colors-red3: #fee2e2 !important;
+  --relay-colors-red4: #fecaca !important;
+  --relay-colors-red5: #fca5a5 !important;
+  --relay-colors-red6: #f87171 !important;
+  --relay-colors-red9: #d93030 !important;
+  --relay-colors-red10: #b91c1c !important;
+  --relay-colors-red11: #d93030 !important;
+  --relay-colors-red12: #7f1d1d !important;
+
+  /* Swap arrows button */
+  --relay-radius-swap-btn: 9999px !important;
+  --relay-borders-widget-swap-currency-button-border-width: 1px !important;
+  --relay-radii-widget-swap-currency-button-border-radius: 9999px !important;
+
+  /* Override violet/purple → neutral gray (address badges, accents) */
+  --relay-colors-violet-1: #f5f4f0 !important;
+  --relay-colors-violet-2: #f0eeea !important;
+  --relay-colors-violet-3: #e5e7eb !important;
+  --relay-colors-violet-4: #d1d5db !important;
+  --relay-colors-violet-5: #9ca3af !important;
+  --relay-colors-violet-6: #6b6866 !important;
+  --relay-colors-violet-7: #4b5563 !important;
+  --relay-colors-violet-8: #374151 !important;
+  --relay-colors-violet-9: #2d2d2d !important;
+  --relay-colors-violet-10: #1f2937 !important;
+  --relay-colors-violet-11: #0a0a0a !important;
+  --relay-colors-violet-12: #0a0a0a !important;
+  --relay-colors-violet-dark-1: #f5f4f0 !important;
+  --relay-colors-violet-dark-2: #f0eeea !important;
+  --relay-colors-violet-dark-3: #e5e7eb !important;
+  --relay-colors-violet-dark-4: #d1d5db !important;
+  --relay-colors-violet-dark-5: #9ca3af !important;
+  --relay-colors-violet-dark-6: #6b6866 !important;
+  --relay-colors-violet-dark-7: #4b5563 !important;
+  --relay-colors-violet-dark-8: #374151 !important;
+  --relay-colors-violet-dark-9: #2d2d2d !important;
+  --relay-colors-violet-dark-10: #1f2937 !important;
+  --relay-colors-violet-dark-11: #0a0a0a !important;
+  --relay-colors-violet-dark-12: #0a0a0a !important;
+
+  /* Override blue → neutral (token selector accents) */
+  --relay-colors-blue-1: #f5f4f0 !important;
+  --relay-colors-blue-2: #f0eeea !important;
+  --relay-colors-blue-3: #e5e7eb !important;
+  --relay-colors-blue-4: #d1d5db !important;
+  --relay-colors-blue-5: #9ca3af !important;
+  --relay-colors-blue-6: #6b6866 !important;
+  --relay-colors-blue-9: #2d2d2d !important;
+  --relay-colors-blue-11: #0a0a0a !important;
+  --relay-colors-blue-12: #0a0a0a !important;
+  --relay-colors-blue-dark-1: #f5f4f0 !important;
+  --relay-colors-blue-dark-2: #f0eeea !important;
+  --relay-colors-blue-dark-3: #e5e7eb !important;
+  --relay-colors-blue-dark-9: #2d2d2d !important;
+  --relay-colors-blue-dark-11: #0a0a0a !important;
+  --relay-colors-blue-dark-12: #0a0a0a !important;
+
+  /* Blue light overrides */
+  --relay-colors-blue-light-1: #f5f4f0 !important;
+  --relay-colors-blue-light-2: #f0eeea !important;
+  --relay-colors-blue-light-3: #e5e7eb !important;
+  --relay-colors-blue-light-4: #d1d5db !important;
+  --relay-colors-blue-light-5: #9ca3af !important;
+}
+
+/* Force IBM Plex Mono on every element inside the Relay widget */
+.relay-widget-container,
+.relay-widget-container * {
+  font-family: 'IBM Plex Mono', monospace !important;
+  text-transform: none !important;
+}
+
+/* Inputs — match xStocks input styling */
+.relay-widget-container input,
+.relay-widget-container input[type="text"],
+.relay-widget-container input[type="number"] {
+  background-color: #f5f4f0 !important;
+  border-color: #e5e7eb !important;
+  color: #0a0a0a !important;
+  border-radius: 0.375rem !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+}
+
+.relay-widget-container input:focus,
+.relay-widget-container input:focus-visible {
+  border-color: #2d2d2d !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px #2d2d2d !important;
+}
+
+.relay-widget-container input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Links — charcoal, not blue/purple */
+.relay-widget-container a {
+  color: #2d2d2d !important;
+  text-decoration: underline !important;
+  text-decoration-color: #d1d5db !important;
+}
+
+.relay-widget-container a:hover {
+  color: #0a0a0a !important;
+  text-decoration-color: #0a0a0a !important;
+}
+
+/* Error banner — light red background with our destructive red */
+.relay-widget-container [class*="error"],
+.relay-widget-container [class*="Error"] {
+  background-color: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #d93030 !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Success / completed states — our success green */
+.relay-widget-container [class*="success"],
+.relay-widget-container [class*="Success"],
+.relay-widget-container [class*="complete"],
+.relay-widget-container [class*="Complete"] {
+  color: #16a34a !important;
+}
+
+/* Override green color scale for success indicators */
+.relay-widget-container {
+  --relay-colors-green-9: #16a34a !important;
+  --relay-colors-green-11: #16a34a !important;
+}
+
+/* Spinners / loading indicators — charcoal instead of default */
+.relay-widget-container [class*="spinner"],
+.relay-widget-container [class*="Spinner"],
+.relay-widget-container [class*="loading"],
+.relay-widget-container [class*="Loading"] {
+  color: #2d2d2d !important;
+  border-color: #e5e7eb !important;
+  border-top-color: #2d2d2d !important;
+}
+
+/* SVG loading animations — force our charcoal */
+.relay-widget-container svg[class*="animate"] circle,
+.relay-widget-container svg[class*="animate"] path {
+  stroke: #2d2d2d !important;
+}
+
+/* Address badge — neutral warm gray, not purple/lavender */
+.relay-widget-container [class*="truncated"],
+.relay-widget-container [class*="address"] {
+  background-color: #f0eeea !important;
+  color: #0a0a0a !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Token selector chips / badges */
+.relay-widget-container [class*="badge"],
+.relay-widget-container [class*="Badge"],
+.relay-widget-container [class*="chip"],
+.relay-widget-container [class*="Chip"] {
+  background-color: #f0eeea !important;
+  color: #0a0a0a !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 9999px !important;
+}
+
+/* Dropdown / select menus */
+.relay-widget-container [class*="dropdown"],
+.relay-widget-container [class*="Dropdown"],
+.relay-widget-container [class*="menu"],
+.relay-widget-container [class*="Menu"],
+.relay-widget-container [class*="popover"],
+.relay-widget-container [class*="Popover"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.625rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Modal / overlay backgrounds */
+.relay-widget-container [class*="modal"],
+.relay-widget-container [class*="Modal"],
+.relay-widget-container [class*="overlay"],
+.relay-widget-container [class*="Overlay"] {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Modal content panels */
+.relay-widget-container [class*="modalContent"],
+.relay-widget-container [class*="ModalContent"],
+.relay-widget-container [class*="dialog"],
+.relay-widget-container [class*="Dialog"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.625rem !important;
+}
+
+/* Tooltip styling */
+.relay-widget-container [class*="tooltip"],
+.relay-widget-container [class*="Tooltip"] {
+  background-color: #0a0a0a !important;
+  color: #ffffff !important;
+  border-radius: 0.375rem !important;
+  font-size: 10px !important;
+}
+
+/* Chain selector items — hover matches our secondary */
+.relay-widget-container [class*="chain"] [class*="item"]:hover,
+.relay-widget-container [class*="token"] [class*="item"]:hover,
+.relay-widget-container [role="option"]:hover {
+  background-color: #f0eeea !important;
+}
+
+/* Scrollbar theming for token/chain lists */
+.relay-widget-container ::-webkit-scrollbar {
+  width: 4px;
+}
+
+.relay-widget-container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.relay-widget-container ::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
+/* Progress bars / step indicators */
+.relay-widget-container [class*="progress"],
+.relay-widget-container [class*="Progress"],
+.relay-widget-container [class*="step"],
+.relay-widget-container [class*="Step"] {
+  --relay-colors-primary9: #2d2d2d !important;
+}
+
+/* Ensure no purple leaks through on any accent element */
+.relay-widget-container [style*="purple"],
+.relay-widget-container [style*="violet"],
+.relay-widget-container [style*="#7c3aed"],
+.relay-widget-container [style*="#8b5cf6"],
+.relay-widget-container [style*="#a78bfa"] {
+  color: #2d2d2d !important;
 }
