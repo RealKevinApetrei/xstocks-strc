@@ -113,6 +113,52 @@ export class UnwindExecutor {
     await pythPriceService.ensureFreshPrice();
 
     for (let step = 1; step <= config.maxUnwindSteps; step++) {
+      // Pre-step: sell any STRC sitting in wallet to get USDC for debt repayment
+      if (targetLeverage === 0) {
+        const provider = getProvider();
+        const strcContract = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
+        const walletStrc: bigint = await strcContract.balanceOf(smartAccountAddr);
+        const walletStrcUsd = Number(walletStrc) / 1e18 * 100;
+
+        if (walletStrc > STRC_DUST && walletStrcUsd >= 10) {
+          console.log(`[UNWIND ${unwindId}] Pre-step: selling ${Number(walletStrc) / 1e18} STRC (~$${walletStrcUsd.toFixed(2)}) from wallet`);
+          try {
+            const aCalls = approvalExecutor.buildApproveCalls({ token: config.strc, spender: config.cowVaultRelayer, amount: walletStrc });
+            await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, aCalls));
+
+            const quote = await cowSwapService.getQuote({ sellToken: config.strc, buyToken: config.usdc, sellAmount: walletStrc, from: smartAccountAddr });
+            const orderUid = await cowSwapService.createOrder(quote, '');
+            const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
+            await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, [preSignCall]));
+
+            for (let i = 0; i < 20; i++) {
+              const status = await cowSwapService.pollOrderStatus(orderUid);
+              if (status !== 'presignaturePending') break;
+              await new Promise(r => setTimeout(r, 3000));
+            }
+            await cowSwapService.waitForFill(orderUid);
+            console.log(`[UNWIND ${unwindId}] Pre-step: STRC → USDC swap complete`);
+
+            // Now repay debt with the USDC we just got
+            const pos = await borrowExecutor.getPosition(smartAccountAddr);
+            if (pos.borrowed > 0n) {
+              const usdc = new ethers.Contract(config.usdc, ['function balanceOf(address) view returns (uint256)'], provider);
+              const usdcBal: bigint = await usdc.balanceOf(smartAccountAddr);
+              if (usdcBal > 0n) {
+                const repayAmt = usdcBal < pos.borrowed ? usdcBal : pos.borrowed;
+                console.log(`[UNWIND ${unwindId}] Pre-step: repaying ${Number(repayAmt) / 1e6} USDC debt`);
+                const approveCalls = approvalExecutor.buildApproveCalls({ token: config.usdc, spender: config.morpho, amount: repayAmt });
+                await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, approveCalls));
+                const repayCalls = borrowExecutor.buildRepayCalls(repayAmt, smartAccountAddr);
+                await smartAccountService.waitForReceipt(await smartAccountService.sendBatchUserOp(privyId, repayCalls));
+              }
+            }
+          } catch (err) {
+            console.warn(`[UNWIND ${unwindId}] Pre-step STRC sell failed:`, err instanceof Error ? err.message : err);
+          }
+        }
+      }
+
       const position = await borrowExecutor.getPosition(smartAccountAddr);
       console.log(`[UNWIND ${unwindId}] Step ${step}: collateral=${position.collateral}, borrowed=${position.borrowed}, HF=${position.healthFactor.toFixed(2)}`);
 
