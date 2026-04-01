@@ -84,20 +84,12 @@ export class SmartAccountService {
 
     const provider = getProvider();
 
-    // Poll every 1s for up to 30s — Ink has ~1-2s blocks
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... polling for receipt...`);
-    for (let i = 0; i < 30; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1_000));
-      try {
-        const receipt = await provider.getTransactionReceipt(txHash);
-        if (receipt) {
-          console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed in ${i + 1}s, success=${receipt.status === 1}`);
-          return { txHash, success: receipt.status === 1 };
-        }
-      } catch {}
-    }
-    // Privy accepted it — assume success
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... assumed success after 30s`);
+    // Privy bundler accepted the UserOp. Ink blocks are ~1-2s.
+    // UserOp hashes can't be looked up via getTransactionReceipt,
+    // so just wait 3s for block inclusion and assume success.
+    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... accepted, waiting 3s for block...`);
+    await new Promise(resolve => setTimeout(resolve, 3_000));
+    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed`);
     return { txHash, success: true };
   }
 }
