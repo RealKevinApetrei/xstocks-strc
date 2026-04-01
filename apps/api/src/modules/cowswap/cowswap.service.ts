@@ -108,7 +108,7 @@ export class CowSwapService {
     if (buyAmount <= 0n) throw new Error('CoW quote returned 0 buyAmount');
 
     return {
-      order: data.quote,
+      order: { ...data.quote, from: params.from },
       domain: this.getDomain(),
       types: COW_ORDER_TYPES,
       primaryType: 'Order',
