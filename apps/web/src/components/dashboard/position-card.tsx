@@ -223,6 +223,14 @@ export function PositionCard() {
           )}
         </div>
         <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Borrow Rate</span>
+          {rateLoading || borrowApy === null ? (
+            <span className="inline-block h-5 w-10 bg-secondary animate-pulse rounded" />
+          ) : (
+            <span className="text-sm font-mono font-semibold text-destructive/70">-{borrowApy.toFixed(1)}%</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Liq. Price</span>
           <span className="text-sm font-mono font-semibold">{formatUsd(p.liquidationPrice)}</span>
         </div>

@@ -91,7 +91,10 @@ export class PythPriceService {
         batch.map(async (ts) => {
           const url = `${BENCHMARKS_URL}/v1/updates/price/${ts}?ids=${feedId}&parsed=true`;
           const res = await fetch(url);
-          if (!res.ok) return null;
+          if (!res.ok) {
+            if (i === 0) console.warn(`Pyth Benchmarks failed: ${res.status} for ${url.slice(0, 100)}`);
+            return null;
+          }
           const data = (await res.json()) as {
             parsed: Array<{ price: { price: string; expo: number; publish_time: number } }>;
           };
