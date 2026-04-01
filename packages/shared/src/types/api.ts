@@ -146,7 +146,9 @@ export interface PositionResponse {
   activeUnwind: { id: string; status: string } | null;
   gridStrategy: { id: string; enabled: boolean; dcaActive?: boolean; tradesExecuted?: number; numTrades?: number } | null;
   vaultBalance: { shares: string; assets: string } | null;
+  lendBalance: { supplyShares: string; assets: string } | null;
   strcBalance?: string;
+  wstrcBalance?: string;
 }
 
 export interface GridStrategy {

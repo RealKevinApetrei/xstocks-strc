@@ -7,6 +7,7 @@ import { borrowExecutor } from './executors/borrow.executor';
 import { policyService, PolicyViolation } from './policy.service';
 import { smartAccountService } from './smart-account.service';
 import { vaultService } from '../vault/vault.service';
+import { lendService } from '../vault/lend.service';
 import { approvalExecutor } from './executors/approval.executor';
 import { cowSwapService } from '../cowswap/cowswap.service';
 import { query } from '../../db/pool';
@@ -396,12 +397,21 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
     } catch { /* ignore */ }
   }
 
-  // 4. Vault balance
+  // 4. Vault balance (Orange Dot Vault / Tydro)
   let vaultBalance = null;
   try {
     const vb = await vaultService.getVaultBalance(address);
     vaultBalance = { shares: '0', assets: vb.assets.toString() };
   } catch { /* vault not set up yet */ }
+
+  // 4b. Lend balance (Morpho supply)
+  let lendBalance = null;
+  try {
+    const lb = await lendService.getLendBalance(address);
+    if (lb.supplyShares > 0n) {
+      lendBalance = { supplyShares: lb.supplyShares.toString(), assets: lb.assets.toString() };
+    }
+  } catch { /* lend not set up yet */ }
 
   // 5. STRC + wSTRC balance in smart wallet
   let strcBalance: string | undefined;
@@ -468,6 +478,7 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
       numTrades: gridStrategy.num_trades,
     } : null,
     vaultBalance,
+    lendBalance,
     strcBalance,
     wstrcBalance,
     error: positionError,
