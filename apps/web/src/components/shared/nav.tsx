@@ -5,6 +5,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useMarketRate } from '@/hooks/use-market-rate';
 import { DepositWithdrawModal } from './deposit-withdraw-modal';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 
@@ -17,6 +18,7 @@ export function Nav() {
   const { logout } = usePrivy();
   const { address: smartWalletAddress } = useSmartWallet();
   const pathname = usePathname();
+  const { borrowApy } = useMarketRate();
   const [modalMode, setModalMode] = useState<'deposit' | 'withdraw' | null>(null);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -32,11 +34,16 @@ export function Nav() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [walletMenuOpen]);
 
-  // Listen for deposit trigger from loop form
+  // Listen for deposit/withdraw triggers from other pages
   useEffect(() => {
-    const handler = () => setModalMode('deposit');
-    document.addEventListener('open-deposit-modal', handler);
-    return () => document.removeEventListener('open-deposit-modal', handler);
+    const depositHandler = () => setModalMode('deposit');
+    const withdrawHandler = () => setModalMode('withdraw');
+    document.addEventListener('open-deposit-modal', depositHandler);
+    document.addEventListener('open-withdraw-modal', withdrawHandler);
+    return () => {
+      document.removeEventListener('open-deposit-modal', depositHandler);
+      document.removeEventListener('open-withdraw-modal', withdrawHandler);
+    };
   }, []);
 
   const handleCopyAddress = async () => {
@@ -78,11 +85,24 @@ export function Nav() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* STRC Yield stat — styled like the action buttons */}
+          {/* STRC Yield stat — live from market rate */}
           <div className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 bg-secondary">
             <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">STRC Yield</span>
             <span className="text-xs font-mono font-semibold text-success">+11.5%</span>
           </div>
+          {/* Portfolio link */}
+          <Link
+            href="/dashboard/portfolio"
+            className={cn(
+              'flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+              pathname === '/dashboard/portfolio'
+                ? 'border-foreground/40 bg-secondary text-foreground'
+                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary',
+            )}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            PORTFOLIO
+          </Link>
           <button
             onClick={() => setModalMode('deposit')}
             className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary transition-colors"
