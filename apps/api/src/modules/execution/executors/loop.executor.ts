@@ -352,13 +352,21 @@ export class LoopExecutor {
         sellToken: config.usdc, buyToken: config.strc, sellAmount: maxBorrowUsdc, from: smartAccountAddr,
       });
 
-      const wallet = await signerService.getWalletForUser(privyId);
-      const signature = await signerService.signTypedData(
-        wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order,
-      );
-
-      const orderUid = await cowSwapService.createOrder(quote, signature);
+      // Use presign for smart wallet CoW orders
+      const orderUid = await cowSwapService.createOrder(quote, '');
       await query(`UPDATE loop_iterations SET cow_order_uid = $2 WHERE id = $1`, [iter.id, orderUid]);
+
+      // Pre-sign on-chain
+      const preSignCall = cowSwapService.buildPreSignatureCall(orderUid);
+      const preSignHash = await smartAccountService.sendBatchUserOp(privyId, [preSignCall]);
+      await smartAccountService.waitForReceipt(preSignHash);
+
+      // Wait for presign to be picked up
+      for (let i = 0; i < 20; i++) {
+        const status = await cowSwapService.pollOrderStatus(orderUid);
+        if (status !== 'presignaturePending') break;
+        await new Promise(r => setTimeout(r, 3000));
+      }
 
       const fill = await cowSwapService.waitForFill(orderUid);
 
