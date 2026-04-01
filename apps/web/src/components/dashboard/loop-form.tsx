@@ -5,6 +5,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { cn, formatUsd } from '@/lib/utils';
 import { useStrcxPrice } from '@/hooks/use-strcx-price';
 import { useMarketRate } from '@/hooks/use-market-rate';
+import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { api, ApiError } from '@/lib/api';
 import { LoopStatus } from './loop-status';
 
@@ -20,6 +21,7 @@ export function LoopForm() {
   const { getAccessToken } = usePrivy();
   const { price: strcPrice } = useStrcxPrice();
   const { borrowApy, loading: rateLoading } = useMarketRate();
+  const { balance: usdcBalance, loading: balanceLoading } = useUsdcBalance();
   const [usdcAmount, setUsdcAmount] = useState('');
   const [leverage, setLeverage] = useState<number>(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +71,25 @@ export function LoopForm() {
         <span className="text-[10px] text-muted-foreground font-mono">
           STRC/USD <span className="text-foreground font-medium">{formatUsd(strcPrice)}</span>
         </span>
+      </div>
+
+      {/* USDC balance row */}
+      <div className="flex items-center justify-between rounded-md bg-secondary px-3 py-2">
+        <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">USDC Balance</span>
+        {balanceLoading ? (
+          <div className="h-3 w-16 bg-muted animate-pulse rounded" />
+        ) : usdcBalance > 0 ? (
+          <span className="text-xs font-mono font-semibold text-foreground">
+            ${usdcBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        ) : (
+          <button
+            onClick={() => document.dispatchEvent(new CustomEvent('open-deposit-modal'))}
+            className="text-[10px] font-mono font-medium tracking-widest uppercase text-foreground border border-border rounded px-2 py-0.5 hover:bg-card transition-colors"
+          >
+            + Deposit
+          </button>
+        )}
       </div>
 
       <div className="space-y-2">

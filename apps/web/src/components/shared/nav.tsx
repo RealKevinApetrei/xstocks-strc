@@ -32,6 +32,13 @@ export function Nav() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [walletMenuOpen]);
 
+  // Listen for deposit trigger from loop form
+  useEffect(() => {
+    const handler = () => setModalMode('deposit');
+    document.addEventListener('open-deposit-modal', handler);
+    return () => document.removeEventListener('open-deposit-modal', handler);
+  }, []);
+
   const handleCopyAddress = async () => {
     if (smartWalletAddress) {
       await navigator.clipboard.writeText(smartWalletAddress);
