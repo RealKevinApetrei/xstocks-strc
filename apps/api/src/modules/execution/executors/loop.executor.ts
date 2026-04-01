@@ -248,11 +248,14 @@ export class LoopExecutor {
     await this.updateStage(loopId, 'Waiting for approval confirmation...');
     await smartAccountService.waitForReceipt(approveHash);
 
-    // Verify allowance
-    for (let i = 0; i < 10; i++) {
+    // Verify both balance AND allowance on EOA before CoW
+    await this.updateStage(loopId, 'Verifying EOA balance and allowance...');
+    for (let i = 0; i < 15; i++) {
+      const eoaBal: bigint = await usdc.balanceOf(eoaAddress);
       const allowance: bigint = await usdc.allowance(eoaAddress, config.cowVaultRelayer);
-      if (allowance >= usdcAmount) break;
-      if (i === 9) throw new Error('EOA USDC approval not confirmed after 30s');
+      console.log(`[LOOP ${loopId}] EOA check ${i + 1}: balance=${eoaBal}, allowance=${allowance} (need ${usdcAmount})`);
+      if (eoaBal >= usdcAmount && allowance >= usdcAmount) break;
+      if (i === 14) throw new Error(`EOA not ready after 45s: balance=${Number(eoaBal) / 1e6}, allowance=${Number(allowance) / 1e6}, need=${Number(usdcAmount) / 1e6}`);
       await new Promise(r => setTimeout(r, 3000));
     }
 
