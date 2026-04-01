@@ -13,8 +13,10 @@ export default function StrategyVaults() {
         </p>
       </div>
 
-      <OrangeDotVault />
-      <LendUsdcVault />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <OrangeDotVault />
+        <LendUsdcVault />
+      </div>
     </div>
   );
 }
