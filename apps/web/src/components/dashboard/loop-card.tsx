@@ -155,13 +155,13 @@ function LoopTab() {
         </div>
       )}
 
-      {amountUsdc > usdcBalance && usdcBalance > 0 && (
-        <p className="text-xs text-destructive">Amount exceeds your USDC balance of ${usdcBalance.toFixed(2)}</p>
+      {amountUsdc > Math.floor(usdcBalance * 100) / 100 && usdcBalance > 0 && (
+        <p className="text-xs text-destructive">Amount exceeds your USDC balance of ${Math.floor(usdcBalance * 100) / 100}</p>
       )}
 
       <button
         onClick={handleSubmit}
-        disabled={!usdcAmount || isSubmitting || (usdcBalance > 0 && amountUsdc > usdcBalance)}
+        disabled={!usdcAmount || isSubmitting || (usdcBalance > 0 && amountUsdc > Math.floor(usdcBalance * 100) / 100)}
         className="w-full rounded-md bg-primary py-3.5 text-xs font-medium tracking-widest uppercase text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {isSubmitting ? 'Opening Position...' : `Deposit & Loop ${leverage}×`}
