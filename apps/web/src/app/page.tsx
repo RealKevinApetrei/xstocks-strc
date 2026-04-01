@@ -124,15 +124,15 @@ export default function Home() {
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Bitcoin hand — large, left zone */}
+      {/* Bitcoin hand — right edge of B&W Saylor, ~10% overlap into Saylor */}
       <img
         src="/bitcoin-hand.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          left: '18%',
-          bottom: '12%',
+          left: '23vw',
+          bottom: '15%',
           height: '52vh',
           zIndex: 10,
           ...blend,
@@ -144,17 +144,17 @@ export default function Home() {
 
       {/* ── RIGHT SIDE ── */}
 
-      {/* $100 bill — large, right zone */}
+      {/* $100 bill — left edge of colour Saylor, ~10% overlap into Saylor */}
       <img
         src="/hundred-dollar.png"
         alt=""
         aria-hidden="true"
         className="absolute select-none pointer-events-none"
         style={{
-          right: '22%',
-          top: '22%',
-          width: '28vw',
-          maxWidth: '420px',
+          right: '23vw',
+          top: '30%',
+          width: '22vw',
+          maxWidth: '340px',
           zIndex: 6,
           ...blend,
           transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
