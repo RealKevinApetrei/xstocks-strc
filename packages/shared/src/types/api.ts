@@ -48,12 +48,15 @@ export interface StartUnwindRequest {
 }
 
 export interface CreateGridStrategyRequest {
-  loopExecutionId: string;
-  gridBuyPct: number;
+  triggerPrice?: number;
+  numTrades?: number;
+  tradeIntervalHours?: number;
 }
 
 export interface UpdateGridStrategyRequest {
-  gridBuyPct?: number;
+  triggerPrice?: number;
+  numTrades?: number;
+  tradeIntervalHours?: number;
   enabled?: boolean;
 }
 
@@ -140,15 +143,20 @@ export interface PositionResponse {
   hasPosition: boolean;
   position: MorphoPosition | null;
   activeLoop: { id: string; status: string } | null;
-  gridStrategy: { id: string; enabled: boolean } | null;
+  gridStrategy: { id: string; enabled: boolean; dcaActive?: boolean; tradesExecuted?: number; numTrades?: number } | null;
   vaultBalance: { shares: string; assets: string } | null;
+  strcBalance?: string;
 }
 
 export interface GridStrategy {
   id: string;
-  loopExecutionId: string;
-  threshold: number;
-  gridBuyPct: number;
+  triggerPrice: number;
+  numTrades: number;
+  tradeIntervalHours: number;
+  dcaActive: boolean;
+  tradesExecuted: number;
+  usdcPerTrade: string | null;
+  lastTradeAt: string | null;
   enabled: boolean;
   createdAt: string;
 }
@@ -192,7 +200,7 @@ export interface SimulatedApyResponse {
     '1x': number;
     '2x': number;
     '3x': number;
-    '5x': number;
+    '3.5x': number;
   };
   history: Array<{
     timestamp: string;

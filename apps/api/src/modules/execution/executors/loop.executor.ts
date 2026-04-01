@@ -7,7 +7,7 @@ import { borrowExecutor } from './borrow.executor';
 import { smartAccountService, type Call } from '../smart-account.service';
 import { cowSwapService } from '../../cowswap/cowswap.service';
 import { signerService } from '../signer.service';
-import { MAX_LEVERAGE, STRC_DUST } from '@xstocks/shared';
+import { MAX_LEVERAGE, STRC_DUST, LEVERAGE_TARGET_HF } from '@xstocks/shared';
 import wSTRCABI from '@xstocks/shared/abis/wSTRC.json';
 import { pythPriceService } from '../../pyth/pyth-price.service';
 
@@ -276,7 +276,7 @@ export class LoopExecutor {
     smartAccountAddr: string,
     iterationNumber: number,
     strcAmount: bigint,
-    targetLeverage: number = 5,
+    targetLeverage: number = 3.5,
   ): Promise<{ success: boolean; strcReceived: bigint }> {
     const { rows: [iter] } = await query(
       `INSERT INTO loop_iterations (loop_execution_id, iteration_number, step, strc_deposited, started_at)
@@ -305,8 +305,9 @@ export class LoopExecutor {
 
       // Calculate safe borrow amount, capped by target leverage
       const currentPosition = await borrowExecutor.getPosition(smartAccountAddr);
+      const iterTargetHF = LEVERAGE_TARGET_HF[targetLeverage] ?? config.loopTargetHF;
       let maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
-        wstrcAmount, currentPosition, config.loopTargetHF,
+        wstrcAmount, currentPosition, iterTargetHF,
       );
 
       // Log borrow amount
@@ -434,8 +435,10 @@ export class LoopExecutor {
   private async borrowAndSwap(loopId: string, privyId: string, smartAccountAddr: string, iteration: number, originalDepositUsdc: bigint, targetLeverage: number): Promise<{ success: boolean; strcReceived: bigint }> {
     try {
       const currentPosition = await borrowExecutor.getPosition(smartAccountAddr);
+      // Use per-leverage targetHF (e.g. 1.1 for 3.5x vs 1.2 for 2x/3x)
+      const targetHF = LEVERAGE_TARGET_HF[targetLeverage] ?? config.loopTargetHF;
       let maxBorrowUsdc = await borrowExecutor.calculateSafeBorrowAmount(
-        0n, currentPosition, config.loopTargetHF,
+        0n, currentPosition, targetHF,
       );
 
       // Cap borrow to reach exact target leverage

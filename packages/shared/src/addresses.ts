@@ -1,4 +1,4 @@
-import { computeMinDepositUsd, usdToUsdc6 } from './loop-minimums';
+import { computeMinDepositUsd, usdToUsdc6, LEVERAGE_TARGET_HF } from './loop-minimums';
 
 /**
  * Contract addresses on Ink (chain ID 57073).
@@ -25,15 +25,21 @@ export const ADDRESSES = {
 export const CHAIN_ID = 57073;
 
 // Leverage options (only these are allowed)
-// Note: max achievable leverage with LLTV=0.86, targetHF=1.2 is ~3.53x
-export const LEVERAGE_OPTIONS = [2, 3] as const;
-export const MAX_LEVERAGE = 3;
+// Max achievable: ~3.53x at HF=1.2, ~4.58x at HF=1.1
+export const LEVERAGE_OPTIONS = [2, 3, 3.5] as const;
+export const MAX_LEVERAGE = 3.5;
 
 // Unwind targets (0 = full unwind to USDC, others = target leverage)
-export const UNWIND_TARGETS = [0, 1, 2, 3] as const;
+export const UNWIND_TARGETS = [0, 1, 2, 3, 3.5] as const;
 
-// Grid strategy defaults
-export const DEFAULT_GRID_HF_THRESHOLD = 1.5;
+// Orange Dot Vault / DCA strategy defaults
+export const DEFAULT_TRIGGER_PRICE = 95;
+export const DCA_TRADE_OPTIONS = [2, 4, 6, 10] as const;
+export const DCA_INTERVAL_OPTIONS = [6, 12, 24] as const;
+
+// Aave V3 / Tydro (Ink chain)
+export const AAVE_L2_POOL = '0x7F6036c2A9244E766F9CcD8dE78D8f79F80e5408';
+export const AAVE_AUSDC_TOKEN = '0x70A38B0c90441e991346B7A0Cd98C8528dD1c234';
 
 // CoW Protocol polling
 export const COW_POLL_INTERVAL_MS = 30_000;
@@ -48,8 +54,9 @@ export const COW_MIN_SWAP_USDC = 10_000_000n; // $10 in 6-decimal USDC
 
 // Minimum deposit per leverage level — ensures every iteration borrow >= $10
 // Computed via simulation: borrow_k = D·(LLTV/targetHF)^k, last borrow = min(that, remaining)
-// With LLTV=0.86, targetHF=1.2: max achievable leverage ≈ 3.53x (5x is unreachable)
+// Per-leverage targetHF: 2x/3x → 1.2, 3.5x → 1.1
 export const MIN_DEPOSIT_USDC: Record<number, bigint> = {
-  2: usdToUsdc6(computeMinDepositUsd(2).minDepositUsd),  // $36 (2 iterations)
-  3: usdToUsdc6(computeMinDepositUsd(3).minDepositUsd),  // $73 (5 iterations)
+  2: usdToUsdc6(computeMinDepositUsd(2, 0.86, LEVERAGE_TARGET_HF[2]).minDepositUsd),     // $36 (2 iters, HF=1.2)
+  3: usdToUsdc6(computeMinDepositUsd(3, 0.86, LEVERAGE_TARGET_HF[3]).minDepositUsd),     // $73 (5 iters, HF=1.2)
+  3.5: usdToUsdc6(computeMinDepositUsd(3.5, 0.86, LEVERAGE_TARGET_HF[3.5]).minDepositUsd), // $40 (5 iters, HF=1.1)
 };
