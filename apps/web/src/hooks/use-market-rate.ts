@@ -1,62 +1,88 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-interface MarketRate {
-  borrowApy: number | null;
-  utilization: number | null;
-  loading: boolean;
+// Singleton store — shared across all components
+let borrowApy: number | null = null;
+let utilization: number | null = null;
+let loading = true;
+let listeners = new Set<() => void>();
+let intervalId: ReturnType<typeof setInterval> | null = null;
+let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function notify() {
+  listeners.forEach((l) => l());
 }
 
-export function useMarketRate(): MarketRate {
-  const [borrowApy, setBorrowApy] = useState<number | null>(null);
-  const [utilization, setUtilization] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetch_ = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/execution/market-rate`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.borrowApy !== null && json.borrowApy !== undefined) {
-          setBorrowApy(json.borrowApy);
-          setUtilization(json.utilization);
-          setLoading(false);
-          return true; // success
-        }
+async function fetchRate(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/api/execution/market-rate`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.borrowApy !== null && json.borrowApy !== undefined) {
+        borrowApy = json.borrowApy;
+        utilization = json.utilization;
+        loading = false;
+        notify();
+        return true;
       }
-    } catch {
-      // will retry
     }
-    return false; // failed, need retry
-  }, []);
+  } catch {
+    // will retry
+  }
+  return false;
+}
 
-  useEffect(() => {
-    let mounted = true;
+function startPolling() {
+  if (intervalId) return;
 
-    const attempt = async (retryDelay: number) => {
-      const success = await fetch_();
-      if (!mounted) return;
-      if (!success) {
-        // Retry with backoff (5s, 10s, 15s, then every 15s)
-        const nextDelay = Math.min(retryDelay + 5000, 15000);
-        retryRef.current = setTimeout(() => attempt(nextDelay), retryDelay);
-      } else {
-        // Success — poll every 60s for fresh data
-        retryRef.current = setTimeout(() => attempt(5000), 60000);
-      }
-    };
+  const attempt = async (delay: number) => {
+    const success = await fetchRate();
+    if (listeners.size === 0) return; // no subscribers
+    if (!success) {
+      retryTimeout = setTimeout(() => attempt(Math.min(delay + 5000, 15000)), delay);
+    } else {
+      // Success — poll every 60s
+      intervalId = setInterval(async () => {
+        await fetchRate();
+      }, 60_000);
+    }
+  };
 
-    attempt(5000);
+  attempt(2000);
+}
 
-    return () => {
-      mounted = false;
-      if (retryRef.current) clearTimeout(retryRef.current);
-    };
-  }, [fetch_]);
+function stopPolling() {
+  if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  if (retryTimeout) { clearTimeout(retryTimeout); retryTimeout = null; }
+}
 
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  if (listeners.size === 1) startPolling();
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) stopPolling();
+  };
+}
+
+function getSnapshot() {
   return { borrowApy, utilization, loading };
+}
+
+// Stable reference for useSyncExternalStore
+let cachedSnapshot = getSnapshot();
+function getStableSnapshot() {
+  const next = getSnapshot();
+  if (next.borrowApy !== cachedSnapshot.borrowApy || next.loading !== cachedSnapshot.loading) {
+    cachedSnapshot = next;
+  }
+  return cachedSnapshot;
+}
+
+export function useMarketRate() {
+  const snap = useSyncExternalStore(subscribe, getStableSnapshot, getStableSnapshot);
+  return snap;
 }
