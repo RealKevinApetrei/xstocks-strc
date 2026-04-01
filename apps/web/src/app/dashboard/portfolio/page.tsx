@@ -173,10 +173,14 @@ export default function Portfolio() {
 
   // Looped position
   const position = positionData?.hasPosition ? positionData.position : null;
-  const collateralStrc = position ? parseFloat(formatBigInt(position.collateralStrc)) : 0;
+  const collateralStrcRaw = position ? parseFloat(formatBigInt(position.collateralStrc)) : 0;
+  // Fallback: if collateralStrc is 0 but wSTRC collateral exists, approximate using 1:1 exchange rate
+  const collateralWstrcRaw = position ? parseFloat(formatBigInt(position.collateralWstrc ?? '0')) : 0;
+  const collateralStrc = collateralStrcRaw > 0 ? collateralStrcRaw : collateralWstrcRaw;
   const debtUsd = position ? parseFloat(formatBigInt(position.debtUsdc, 6, 2)) : 0;
   const loopedEquity = Math.max(0, collateralStrc * strcPrice - debtUsd);
   const leverage = position?.effectiveLeverage ?? 1;
+  const hasLoopedPosition = positionData?.hasPosition && position !== null;
 
   // Values
   const unloopedUsd = strcBalance.formatted * strcPrice;
@@ -193,13 +197,13 @@ export default function Portfolio() {
   // Donut segments (only show non-zero)
   const segments: Segment[] = [
     { label: 'USDC', value: usdcBalance, color: ASSET_COLORS.usdc },
-    { label: 'Looped Position', value: loopedEquity, color: ASSET_COLORS.looped },
+    ...(hasLoopedPosition ? [{ label: 'Looped Position', value: loopedEquity, color: ASSET_COLORS.looped }] : []),
     { label: 'STRC', value: unloopedUsd, color: ASSET_COLORS.strc },
     { label: 'T-Bill', value: tbillUsd, color: ASSET_COLORS.tbill },
   ].filter(s => s.value > 0.01);
 
   // Active positions count
-  const activeCount = [usdcBalance > 0, loopedEquity > 0, unloopedUsd > 0, tbillUsd > 0].filter(Boolean).length;
+  const activeCount = [usdcBalance > 0, hasLoopedPosition, unloopedUsd > 0, tbillUsd > 0].filter(Boolean).length;
 
   const openDepositModal = () => document.dispatchEvent(new CustomEvent('open-deposit-modal'));
 
@@ -211,18 +215,18 @@ export default function Portfolio() {
       color: ASSET_COLORS.usdc,
       amount: usdcBalance,
       amountLabel: `${usdcBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USDC`,
-      value: usdcBalance,
+      value: usdcBalance as number | null,
       price: 1,
       change24h: null,
     },
-    ...(loopedEquity > 0 ? [{
+    ...(hasLoopedPosition ? [{
       key: 'looped',
       label: 'Looped Position',
       sublabel: `${leverage.toFixed(1)}× leveraged STRCx`,
       color: ASSET_COLORS.looped,
       amount: collateralStrc,
-      amountLabel: `${collateralStrc.toFixed(4)} STRCx`,
-      value: loopedEquity,
+      amountLabel: collateralStrc > 0 ? `${collateralStrc.toFixed(4)} STRCx` : `${collateralWstrcRaw.toFixed(4)} wSTRCx`,
+      value: loopedEquity > 0 ? loopedEquity : null,
       price: strcPrice,
       change24h: changePct24h !== null ? changePct24h * leverage : null,
     }] : []),
@@ -233,7 +237,7 @@ export default function Portfolio() {
       color: ASSET_COLORS.strc,
       amount: strcBalance.formatted,
       amountLabel: `${strcBalance.formatted.toFixed(4)} STRCx`,
-      value: unloopedUsd,
+      value: unloopedUsd as number | null,
       price: strcPrice,
       change24h: changePct24h,
     }] : []),
@@ -244,7 +248,7 @@ export default function Portfolio() {
       color: ASSET_COLORS.tbill,
       amount: tbillBalance,
       amountLabel: `${tbillBalance.toFixed(4)} TBLL`,
-      value: tbillUsd,
+      value: tbillUsd as number | null,
       price: tbillPrice,
       change24h: null,
     }] : []),
@@ -365,7 +369,9 @@ export default function Portfolio() {
                             </div>
                           </td>
                           <td className="py-4 text-right font-mono text-sm text-muted-foreground">{row.amountLabel}</td>
-                          <td className="py-4 text-right font-mono font-semibold">{formatUsd(row.value)}</td>
+                          <td className="py-4 text-right font-mono font-semibold">
+                            {row.value !== null ? formatUsd(row.value) : <span className="text-muted-foreground text-xs">Updating...</span>}
+                          </td>
                           <td className="py-4 text-right font-mono text-sm text-muted-foreground">{formatUsd(row.price)}</td>
                           <td className="py-4 text-right font-mono text-sm">
                             {row.change24h !== null ? (
