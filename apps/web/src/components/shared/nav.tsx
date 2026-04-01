@@ -10,6 +10,7 @@ import { DepositWithdrawModal } from './deposit-withdraw-modal';
 const navItems = [
   { href: '/dashboard', label: 'Loop' },
   { href: '/dashboard/vaults', label: 'Strategy Vaults' },
+  { href: '/dashboard/savings', label: 'Savings' },
 ];
 
 export function Nav() {

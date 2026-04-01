@@ -84,4 +84,37 @@ export const api = {
   // APY
   getSimulatedApy: () =>
     request<SimulatedApyResponse>('/api/apy/simulated'),
+
+  // Morpho USDC Vault
+  morphoSupply: (token: string, amount: string) =>
+    request<VaultTxResponse>('/api/morpho/supply', { method: 'POST', body: JSON.stringify({ amount }), token }),
+
+  morphoWithdraw: (token: string, amount: string) =>
+    request<VaultTxResponse>('/api/morpho/withdraw', { method: 'POST', body: JSON.stringify({ amount }), token }),
+
+  // Savings Club
+  getSavingsPortfolio: (token: string) =>
+    request<{
+      plan: { strcPct: number; tbillPct: number; totalDepositedUsdc: number } | null;
+      portfolio: { portfolioValueUsd: number; totalDepositedUsd: number; yieldToDateUsd: number; rewardsAvailableUsd: number };
+      recentDeposits: { id: string; usdcAmount: number; strcAllocated: number; tbillAllocated: number; queued: boolean; status: string; createdAt: string }[];
+    }>('/api/savings/portfolio', { token }),
+
+  savingsDeposit: (token: string, usdcAmount: number) =>
+    request<{ depositId: string; queued: boolean; message: string }>('/api/savings/deposit', {
+      method: 'POST', body: JSON.stringify({ usdcAmount }), token,
+    }),
+
+  savingsWithdraw: (token: string, usdcAmount: number) =>
+    request<{ withdrawalId: string; message: string }>('/api/savings/withdraw', {
+      method: 'POST', body: JSON.stringify({ usdcAmount }), token,
+    }),
+
+  getSavingsCatalog: (token: string) =>
+    request<{ products: { id: string; name: string; category: string; minValue: number; logoUrl: string }[] }>('/api/savings/catalog', { token }),
+
+  redeemReward: (token: string, productId: string, valueUsd: number) =>
+    request<{ redemptionCode: string; orderId: string }>('/api/savings/redeem', {
+      method: 'POST', body: JSON.stringify({ productId, valueUsd }), token,
+    }),
 };

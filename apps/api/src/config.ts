@@ -20,23 +20,53 @@ export const config = {
   // Privy
   privyAppId: required('PRIVY_APP_ID'),
   privyAppSecret: required('PRIVY_APP_SECRET'),
+  privyAuthorizationPrivateKey: optional('PRIVY_AUTHORIZATION_PRIVATE_KEY', ''),
+  privyAuthorizationKeyId: optional('PRIVY_AUTHORIZATION_KEY_ID', ''),
 
   // Chain
   rpcUrl: required('RPC_URL'),
   chainId: parseInt(optional('CHAIN_ID', '57073'), 10),
 
-  // Contracts (optional at startup — filled after deploy)
+  // Core contracts
   strc: optional('STRC_ADDRESS', ''),
   wstrc: optional('WSTRC_ADDRESS', ''),
   morpho: optional('MORPHO_ADDRESS', ''),
   morphoMarketId: optional('MORPHO_MARKET_ID', ''),
+  morphoOracle: optional('MORPHO_ORACLE_ADDRESS', ''),
+  morphoIrm: optional('MORPHO_IRM_ADDRESS', ''),
+  morphoLltv: optional('MORPHO_LLTV', '860000000000000000'),
   usdc: optional('USDC_ADDRESS', ''),
   usdcVault: optional('USDC_VAULT_ADDRESS', ''),
   tydroVault: optional('TYDRO_VAULT_ADDRESS', ''),
 
   // CoW Protocol
   cowApiUrl: optional('COW_API_URL', ''),
+  cowSettlement: optional('COW_SETTLEMENT_ADDRESS', '0x9008d19f58aabd9ed0d60971565aa8510560ab41'),
+  cowVaultRelayer: optional('COW_VAULT_RELAYER_ADDRESS', '0xc92e8bdf79f0507f65a392b0ab4667716bfe0110'),
+  cowTimeoutMs: parseInt(optional('COW_TIMEOUT_MS', '600000'), 10),
 
-  // Chainlink
-  pythWebhookSecret: optional('PYTH_WEBHOOK_SECRET', ''),
+  // Pyth
+  pythHermesUrl: optional('PYTH_HERMES_URL', 'https://hermes.pyth.network'),
+  pythPriceFeedId: optional('PYTH_PRICE_FEED_ID', ''),
+  pythContract: optional('PYTH_CONTRACT_ADDRESS', ''),
+  oracleUpdaterKey: optional('ORACLE_UPDATER_PRIVATE_KEY', ''),
+
+  // Execution safety limits
+  maxLoopIterations: parseInt(optional('MAX_LOOP_ITERATIONS', '10'), 10),
+  maxUnwindSteps: parseInt(optional('MAX_UNWIND_STEPS', '20'), 10),
+  loopTargetHF: parseFloat(optional('LOOP_TARGET_HF', '1.2')),
+  unwindMinHF: parseFloat(optional('UNWIND_MIN_HF', '1.3')),
+  emergencyHF: parseFloat(optional('EMERGENCY_HF', '1.05')),
+  txTimeoutMs: parseInt(optional('TX_TIMEOUT_MS', '120000'), 10),
+  maxSingleLoopUsdc: optional('MAX_SINGLE_LOOP_USDC', '1000000000000'),
+
+  // Savings Club
+  tbillXstock: optional('TBILL_XSTOCK_ADDRESS', ''),
+  reloadlyClientId: optional('RELOADLY_CLIENT_ID', ''),
+  reloadlyClientSecret: optional('RELOADLY_CLIENT_SECRET', ''),
 } as const;
+
+export function isExecutionEnabled(): boolean {
+  return !!(config.morpho && config.morphoMarketId && config.morphoOracle &&
+    config.morphoIrm && config.strc && config.wstrc && config.usdc && config.cowApiUrl);
+}

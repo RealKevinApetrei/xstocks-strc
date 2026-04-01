@@ -1,47 +1,113 @@
-import { PrivyClient } from '@privy-io/server-auth';
+import { PrivyClient } from '@privy-io/node';
 import { config } from '../../config';
 
-const privy = new PrivyClient(config.privyAppId, config.privyAppSecret);
+const privy = new PrivyClient({
+  appId: config.privyAppId,
+  appSecret: config.privyAppSecret,
+});
+
+function getAuthContext() {
+  if (!config.privyAuthorizationPrivateKey) {
+    console.error('[SIGNER] No PRIVY_AUTHORIZATION_PRIVATE_KEY configured');
+    return undefined;
+  }
+  return {
+    authorization_private_keys: [config.privyAuthorizationPrivateKey],
+  };
+}
 
 export class SignerService {
   /**
-   * Get or create an embedded wallet for a user.
+   * Get the user's embedded EOA wallet (used for signing).
    */
   async getWalletForUser(privyId: string): Promise<{ address: string; walletId: string }> {
-    const user = await privy.getUser(privyId);
-    const wallet = user.linkedAccounts.find(
-      (a) => a.type === 'wallet' && a.walletClientType === 'privy',
+    const user = await (privy.users() as any)._get(privyId);
+    const wallet = user.linked_accounts.find(
+      (a: any) => a.type === 'wallet' && a.wallet_client_type === 'privy',
     );
-    if (!wallet || wallet.type !== 'wallet') {
+
+    if (!wallet?.address) {
       throw new Error(`No embedded wallet found for user ${privyId}`);
     }
-    return { address: wallet.address, walletId: wallet.address };
+
+    const walletId = wallet.id ?? wallet.address;
+    if (!walletId) throw new Error(`Wallet ID missing for user ${privyId}`);
+    return { address: wallet.address, walletId };
   }
 
   /**
-   * Sign a transaction using Privy's server wallet API (TEE key quorum).
+   * Get the user's smart wallet (Kernel) — used for gas-sponsored transactions.
+   * Falls back to embedded wallet if no smart wallet exists.
    */
-  async signTransaction(
+  async getSmartWalletForUser(privyId: string): Promise<{ address: string; walletId: string }> {
+    const user = await (privy.users() as any)._get(privyId);
+
+    const walletAccounts = user.linked_accounts.filter((a: any) => a.type === 'wallet' || a.type === 'smart_wallet');
+    console.log('[SIGNER] User wallets:', walletAccounts.map((a: any) => ({ type: a.type, address: a.address, id: a.id, walletClientType: a.wallet_client_type })));
+
+    const smartWallet = user.linked_accounts.find(
+      (a: any) => a.type === 'smart_wallet',
+    );
+
+    if (smartWallet?.address) {
+      const walletId = smartWallet.id ?? smartWallet.address;
+      console.log('[SIGNER] Using smart wallet:', { address: smartWallet.address, walletId });
+      return { address: smartWallet.address, walletId };
+    }
+
+    console.warn('[SIGNER] No smart wallet found, falling back to EOA');
+    return this.getWalletForUser(privyId);
+  }
+
+  async sendTransaction(
     walletId: string,
     tx: { to: string; data: string; value?: string; chainId: number },
   ): Promise<string> {
-    // TODO: Implement Privy server wallet signing
-    // Uses privy.walletApi.ethereum.signTransaction(...)
-    throw new Error('Not implemented — wire Privy wallet API');
+    const result = await privy.wallets().rpc(walletId, {
+      method: 'eth_sendTransaction',
+      params: {
+        transaction: {
+          to: tx.to as `0x${string}`,
+          data: tx.data as `0x${string}`,
+          value: tx.value ? parseInt(tx.value, 10) : 0,
+        },
+      },
+      caip2: `eip155:${tx.chainId}`,
+      chain_type: 'ethereum',
+      sponsor: true,
+      authorization_context: getAuthContext(),
+    } as any);
+
+    const data = result.data as any;
+    const hash = data.hash || data.transaction_hash || data.user_operation_hash;
+    if (!hash) throw new Error(`Privy sendTransaction returned no hash: ${JSON.stringify(data)}`);
+    return hash;
   }
 
-  /**
-   * Sign EIP-712 typed data (needed for CoW Protocol orders).
-   */
   async signTypedData(
     walletId: string,
     domain: Record<string, unknown>,
-    types: Record<string, unknown>,
-    value: Record<string, unknown>,
+    types: Record<string, Array<{ name: string; type: string }>>,
+    primaryType: string,
+    message: Record<string, unknown>,
   ): Promise<string> {
-    // TODO: Implement Privy server wallet EIP-712 signing
-    // Uses privy.walletApi.ethereum.signTypedData(...)
-    throw new Error('Not implemented — wire Privy wallet API');
+    const result = await privy.wallets().rpc(walletId, {
+      method: 'eth_signTypedData_v4',
+      params: {
+        typed_data: {
+          domain,
+          types,
+          primary_type: primaryType,
+          message,
+        },
+      },
+      chain_type: 'ethereum',
+      authorization_context: getAuthContext(),
+    });
+
+    const sig = (result.data as any).signature;
+    if (!sig || typeof sig !== 'string') throw new Error('Privy signTypedData returned no signature');
+    return sig;
   }
 }
 
