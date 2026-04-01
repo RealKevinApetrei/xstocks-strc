@@ -3,15 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSmartWallet } from './use-smart-wallet';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '';
 const INK_RPC = process.env.NEXT_PUBLIC_INK_RPC || 'https://rpc-gel.inkonchain.com';
 
-// Minimal ERC20 ABI for balanceOf
 const BALANCE_OF_SIG = '0x70a08231';
 
 async function fetchBalance(address: string): Promise<number> {
-  // Pad address to 32 bytes
   const paddedAddr = address.toLowerCase().replace('0x', '').padStart(64, '0');
   const data = BALANCE_OF_SIG + paddedAddr;
 
@@ -29,18 +26,20 @@ async function fetchBalance(address: string): Promise<number> {
   const json = await res.json();
   if (json.error) return 0;
   const raw = BigInt(json.result || '0x0');
-  return Number(raw) / 1e6; // USDC has 6 decimals
+  return Number(raw) / 1e6;
 }
 
 /**
  * Returns USDC balance of the smart wallet (platform balance).
+ * Call refresh() after transactions — it fetches immediately + again after 5s
+ * to catch UserOp confirmation delays.
  */
 export function useUsdcBalance() {
   const { address } = useSmartWallet();
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const fetchNow = useCallback(async () => {
     if (!address || !USDC_ADDRESS) { setLoading(false); return; }
     try {
       const bal = await fetchBalance(address);
@@ -52,11 +51,19 @@ export function useUsdcBalance() {
     }
   }, [address]);
 
+  // Refresh with delayed re-fetch to catch UserOp mining
+  const refresh = useCallback(() => {
+    fetchNow();
+    // Re-fetch after 3s and 8s to catch UserOp confirmation
+    setTimeout(fetchNow, 3000);
+    setTimeout(fetchNow, 8000);
+  }, [fetchNow]);
+
   useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 15_000);
+    fetchNow();
+    const interval = setInterval(fetchNow, 15_000);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [fetchNow]);
 
   return { balance, loading, refresh };
 }
