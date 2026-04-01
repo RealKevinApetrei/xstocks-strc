@@ -207,46 +207,64 @@ export class LoopExecutor {
    * Initial USDC → STRC swap via CoW before entering the loop.
    */
   private async initialSwap(loopId: string, privyId: string, smartAccountAddr: string, usdcAmount: bigint): Promise<bigint> {
-    // Approve USDC for CoW VaultRelayer
-    await this.updateStage(loopId, 'Approving USDC for CoW Protocol...');
-    const approveCalls = approvalExecutor.buildApproveCalls({
-      token: config.usdc, spender: config.cowVaultRelayer, amount: usdcAmount,
-    });
-    const approveHash = await smartAccountService.sendBatchUserOp(privyId, approveCalls);
-    await this.updateStage(loopId, 'Waiting for USDC approval confirmation...');
-    await smartAccountService.waitForReceipt(approveHash);
+    const wallet = await signerService.getWalletForUser(privyId);
+    const eoaAddress = wallet.address;
 
-    // Verify approval and balance on-chain before proceeding
-    await this.updateStage(loopId, 'Verifying approval and balance on-chain...');
+    // Step 1: Transfer USDC from smart wallet → EOA (so EOA can be CoW order owner)
+    await this.updateStage(loopId, 'Moving USDC to signing wallet...');
+    const transferIface = new ethers.Interface(['function transfer(address to, uint256 amount) returns (bool)']);
+    const transferData = transferIface.encodeFunctionData('transfer', [eoaAddress, usdcAmount]);
+    const transferHash = await smartAccountService.sendBatchUserOp(privyId, [
+      { to: config.usdc, data: transferData },
+    ]);
+    await smartAccountService.waitForReceipt(transferHash);
+
+    // Verify USDC arrived at EOA
+    await this.updateStage(loopId, 'Verifying USDC transfer...');
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
     const usdc = new ethers.Contract(config.usdc, [
       'function allowance(address,address) view returns (uint256)',
       'function balanceOf(address) view returns (uint256)',
     ], provider);
 
-    const balance: bigint = await usdc.balanceOf(smartAccountAddr);
-    console.log(`[LOOP ${loopId}] Smart wallet ${smartAccountAddr} USDC balance: ${balance} (need ${usdcAmount})`);
-
-    if (balance < usdcAmount) {
-      throw new Error(`Smart wallet has insufficient USDC: ${Number(balance) / 1e6} vs ${Number(usdcAmount) / 1e6} needed. Deposit USDC first.`);
-    }
-
     for (let i = 0; i < 10; i++) {
-      const allowance: bigint = await usdc.allowance(smartAccountAddr, config.cowVaultRelayer);
-      console.log(`[LOOP ${loopId}] Allowance check ${i + 1}: ${allowance} (need ${usdcAmount})`);
-      if (allowance >= usdcAmount) break;
-      if (i === 9) throw new Error('USDC approval not confirmed on-chain after 30s');
+      const eoaBalance: bigint = await usdc.balanceOf(eoaAddress);
+      if (eoaBalance >= usdcAmount) break;
+      if (i === 9) throw new Error('USDC transfer to EOA not confirmed after 30s');
       await new Promise(r => setTimeout(r, 3000));
     }
 
-    // CoW swap USDC → STRC
+    // Step 2: Approve USDC on EOA for CoW VaultRelayer
+    await this.updateStage(loopId, 'Approving USDC for CoW Protocol...');
+    const approveCalls = approvalExecutor.buildApproveCalls({
+      token: config.usdc, spender: config.cowVaultRelayer, amount: usdcAmount,
+    });
+    // Send approval from EOA (not smart wallet) — use embedded wallet directly
+    const approveHash = await signerService.sendTransaction(wallet.walletId, {
+      to: approveCalls[0].to,
+      data: approveCalls[0].data,
+      chainId: config.chainId,
+    });
+    await this.updateStage(loopId, 'Waiting for approval confirmation...');
+    await smartAccountService.waitForReceipt(approveHash);
+
+    // Verify allowance
+    for (let i = 0; i < 10; i++) {
+      const allowance: bigint = await usdc.allowance(eoaAddress, config.cowVaultRelayer);
+      if (allowance >= usdcAmount) break;
+      if (i === 9) throw new Error('EOA USDC approval not confirmed after 30s');
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    // Step 3: CoW swap from EOA, receive STRC at smart wallet
     await this.updateStage(loopId, 'Getting CoW swap quote...');
     const quote = await cowSwapService.getQuote({
-      sellToken: config.usdc, buyToken: config.strc, sellAmount: usdcAmount, from: smartAccountAddr,
+      sellToken: config.usdc, buyToken: config.strc, sellAmount: usdcAmount, from: eoaAddress,
     });
+    // Override receiver to smart wallet so STRC goes there
+    (quote.order as any).receiver = smartAccountAddr;
 
     await this.updateStage(loopId, 'Signing CoW swap order...');
-    const wallet = await signerService.getWalletForUser(privyId);
     const signature = await signerService.signTypedData(
       wallet.walletId, quote.domain, quote.types, quote.primaryType, quote.order,
     );
