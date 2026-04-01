@@ -61,24 +61,22 @@ export class SmartAccountService {
     const wallet = await signerService.getWalletForUser(privyId);
     const smartAccountAddr = await this.getSmartAccountAddress(privyId);
 
-    if (calls.length === 1) {
-      return signerService.sendTransaction(wallet.walletId, {
-        to: calls[0].to,
-        data: calls[0].data,
-        value: calls[0].value?.toString(),
+    // Send each call individually — Privy smart wallets handle gas sponsorship
+    // per-call. Batch execution via executeBatch is not supported by all wallet types.
+    let lastHash = '';
+    for (const call of calls) {
+      lastHash = await signerService.sendTransaction(wallet.walletId, {
+        to: call.to,
+        data: call.data,
+        value: call.value?.toString(),
         chainId: config.chainId,
       });
+      // Wait for each call to be confirmed before sending the next
+      if (calls.indexOf(call) < calls.length - 1) {
+        await this.waitForReceipt(lastHash);
+      }
     }
-
-    const batchCalldata = KERNEL_ABI.encodeFunctionData('executeBatch', [
-      calls.map((c) => ({ to: c.to, value: c.value ?? 0n, data: c.data })),
-    ]);
-
-    return signerService.sendTransaction(wallet.walletId, {
-      to: smartAccountAddr,
-      data: batchCalldata,
-      chainId: config.chainId,
-    });
+    return lastHash;
   }
 
   async waitForReceipt(txHash: string): Promise<{ txHash: string; success: boolean }> {
