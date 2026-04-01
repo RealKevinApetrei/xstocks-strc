@@ -988,7 +988,7 @@ export default function PitchPage() {
                 {/* Morpho + Ink logos */}
                 <div className="flex items-center justify-center gap-5 mt-auto pt-6">
                   <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0"><img src="/morpho.jpg" alt="Morpho" className="w-full h-full object-cover" style={{ transform: 'scale(1.8)' }} /></div>
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0"><img src="/ink.png" alt="Ink" className="w-full h-full object-cover" style={{ transform: 'scale(0.85)' }} /></div>
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0"><img src="/ink.png" alt="Ink" className="w-full h-full object-cover" /></div>
                 </div>
               </div>
               <div className="flex flex-col">
