@@ -150,6 +150,12 @@ export class UnwindExecutor {
 
       let safeWithdrawWstrc = this.calculateSafeWithdrawAmount(position);
 
+      // For tiny positions (< $1 debt), just withdraw everything — liquidation risk is negligible
+      if (safeWithdrawWstrc === 0n && position.borrowed > 0n && position.borrowed < 1_000_000n) {
+        console.log(`[UNWIND ${unwindId}] Tiny debt (${Number(position.borrowed) / 1e6} USDC) — withdrawing all collateral`);
+        safeWithdrawWstrc = position.collateral;
+      }
+
       if (safeWithdrawWstrc === 0n && position.borrowed > 0n) {
         // HF too low to withdraw — try repaying with available USDC first
         console.log(`[UNWIND ${unwindId}] HF ${position.healthFactor.toFixed(2)} too low to withdraw, trying to repay USDC first`);
