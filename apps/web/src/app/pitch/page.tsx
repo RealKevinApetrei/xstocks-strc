@@ -1273,33 +1273,19 @@ export default function PitchPage() {
                 <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>Capturing just 1% of STRC AUM into Spreads vaults. A conservative and achievable target.</p>
               </div>
             </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="rounded-lg border bg-white p-5 space-y-4" style={{ borderColor: '#e5e7eb' }}>
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#0a0a0a' }}>Why users come to Spreads</div>
-                  <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>
-                    Stretch by Spreads is the only product that brings all three things users want from finance — in one place. And tokenisation makes each one better than TradFi ever could.
-                  </p>
-                </div>
+            <div className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
+              <h3 className="text-2xl font-bold mb-6" style={{ color: '#0a0a0a' }}>Why users come to Spreads</h3>
+              <div className="grid grid-cols-3 gap-6">
                 {[
-                  { icon: '📈', accent: '#e05c00', title: 'Leverage', desc: 'Up to 5x on STRC — one click, no manual looping, gasless. Impossible in traditional brokerage.' },
-                  { icon: '💰', accent: '#c47a1a', title: 'Investing', desc: 'Deposit USDC, get 50/50 STRC + T-Bill exposure. Diversified RWA portfolio in seconds.' },
-                  { icon: '🏦', accent: '#16a34a', title: 'Savings', desc: 'Yield compounds 24/7. Redeem rewards as real gift cards. Your money works while you sleep.' },
+                  { accent: '#e05c00', title: 'Leverage', desc: 'Up to 5x on STRC. One click, gasless.' },
+                  { accent: '#c47a1a', title: 'Trading', desc: 'Auto buy-the-dip. Generational entries.' },
+                  { accent: '#16a34a', title: 'Savings', desc: 'Yield 24/7. Rewards as gift cards.' },
                 ].map((c) => (
-                  <div key={c.title} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-base" style={{ backgroundColor: c.accent + '12' }}>{c.icon}</div>
-                    <div>
-                      <p className="text-xs font-bold" style={{ color: c.accent }}>{c.title}</p>
-                      <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
-                    </div>
+                  <div key={c.title}>
+                    <div className="text-xl font-mono font-bold mb-2" style={{ color: c.accent }}>{c.title}</div>
+                    <p className="text-sm leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
                   </div>
                 ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <StatCard label="Max APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(6)} /></StatCard>
-                <StatCard label="Leverage" accent="#e05c00"><AnimatedCounter target={5} suffix="x" active={isActive(6)} /></StatCard>
-                <StatCard label="Gas Cost" accent="#16a34a">$0</StatCard>
-                <StatCard label="Time to Loop"><AnimatedCounter target={60} suffix="s" active={isActive(6)} /></StatCard>
               </div>
             </div>
           </div>
