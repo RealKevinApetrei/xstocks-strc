@@ -828,7 +828,7 @@ export default function PitchPage() {
               <StrcPriceChart active={isActive(1)} />
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-10">
+            <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="rounded-lg border bg-white p-5" style={{ borderColor: '#e5e7eb' }}>
                 <div className="text-3xl font-mono font-bold mb-1" style={{ color: '#e05c00' }}>$40B</div>
                 <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#6b6866' }}>Market Cap</div>
@@ -841,6 +841,13 @@ export default function PitchPage() {
                 <div className="text-3xl font-mono font-bold mb-1" style={{ color: '#2d2d2d' }}>$100</div>
                 <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#6b6866' }}>Soft Peg</div>
               </div>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#d93030' }}>The Problem</span>
+              <p className="text-lg font-medium mt-2 leading-relaxed" style={{ color: '#0a0a0a' }}>
+                An incredibly unique instrument with no on-chain products built for it.
+              </p>
             </div>
 
           </div>
