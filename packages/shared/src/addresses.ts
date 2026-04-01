@@ -1,3 +1,5 @@
+import { computeMinDepositUsd, usdToUsdc6 } from './loop-minimums';
+
 /**
  * Contract addresses on Ink (chain ID 57073).
  */
@@ -23,11 +25,12 @@ export const ADDRESSES = {
 export const CHAIN_ID = 57073;
 
 // Leverage options (only these are allowed)
-export const LEVERAGE_OPTIONS = [2, 3, 5] as const;
-export const MAX_LEVERAGE = 5;
+// Note: max achievable leverage with LLTV=0.86, targetHF=1.2 is ~3.53x
+export const LEVERAGE_OPTIONS = [2, 3] as const;
+export const MAX_LEVERAGE = 3;
 
 // Unwind targets (0 = full unwind to USDC, others = target leverage)
-export const UNWIND_TARGETS = [0, 1, 2, 3, 5] as const;
+export const UNWIND_TARGETS = [0, 1, 2, 3] as const;
 
 // Grid strategy defaults
 export const DEFAULT_GRID_HF_THRESHOLD = 1.5;
@@ -44,9 +47,9 @@ export const STRC_DUST = 10n ** 14n; // 0.0001 STRC (18 decimals)
 export const COW_MIN_SWAP_USDC = 10_000_000n; // $10 in 6-decimal USDC
 
 // Minimum deposit per leverage level — ensures every iteration borrow >= $10
-// Computed with 86% LLTV, 0.4% CoW slippage, no overshoot
+// Computed via simulation: borrow_k = D·(LLTV/targetHF)^k, last borrow = min(that, remaining)
+// With LLTV=0.86, targetHF=1.2: max achievable leverage ≈ 3.53x (5x is unreachable)
 export const MIN_DEPOSIT_USDC: Record<number, bigint> = {
-  2: 55_000_000n,  // $55 (2 iterations)
-  3: 21_000_000n,  // $21 (3 iterations)
-  5: 65_000_000n,  // $65 (8 iterations)
+  2: usdToUsdc6(computeMinDepositUsd(2).minDepositUsd),  // $36 (2 iterations)
+  3: usdToUsdc6(computeMinDepositUsd(3).minDepositUsd),  // $73 (5 iterations)
 };

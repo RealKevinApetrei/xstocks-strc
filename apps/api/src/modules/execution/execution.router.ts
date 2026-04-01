@@ -247,6 +247,37 @@ executionRouter.get('/loop/:id/status', privyAuth, async (req: Request, res: Res
   });
 });
 
+// GET /api/execution/unwind/:id/status — Unwind progress
+executionRouter.get('/unwind/:id/status', privyAuth, async (req: Request, res: Response) => {
+  const { privyId } = (req as AuthenticatedRequest).user;
+  const id = req.params.id as string;
+
+  const { rows: [unwind] } = await query(
+    `SELECT * FROM unwind_executions WHERE id = $1 AND privy_id = $2`,
+    [id, privyId],
+  );
+  if (!unwind) {
+    res.status(404).json({ error: 'Unwind not found' });
+    return;
+  }
+
+  const metadata = typeof unwind.metadata === 'string' ? JSON.parse(unwind.metadata) : (unwind.metadata ?? {});
+
+  res.json({
+    id: unwind.id,
+    status: unwind.status,
+    targetLeverage: metadata.targetLeverage ?? 0,
+    currentStep: unwind.current_step ?? 0,
+    initialDebtUsdc: unwind.initial_debt_usdc?.toString() ?? '0',
+    remainingDebtUsdc: unwind.remaining_debt_usdc?.toString() ?? unwind.initial_debt_usdc?.toString() ?? '0',
+    initialCollateralWstrc: unwind.initial_collateral_wstrc?.toString() ?? '0',
+    remainingCollateralWstrc: unwind.remaining_collateral_wstrc?.toString() ?? unwind.initial_collateral_wstrc?.toString() ?? '0',
+    error: unwind.error,
+    createdAt: unwind.created_at.toISOString(),
+    updatedAt: unwind.updated_at.toISOString(),
+  });
+});
+
 // GET /api/positions/:address — Current Morpho position
 executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: Response) => {
   const address = req.params.address as string;
