@@ -19,7 +19,7 @@ export function ContractsPanel({ embedded = false }: { embedded?: boolean }) {
         </h2>
       )}
 
-      <div className="space-y-2 border-t border-border/50">
+      <div className="space-y-2 border-t border-border/50 pt-3">
         {CONTRACTS.map(({ label, address }) => (
           <div key={address} className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{label}</span>
