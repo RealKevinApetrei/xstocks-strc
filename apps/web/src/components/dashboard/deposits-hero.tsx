@@ -76,50 +76,49 @@ export function DepositsHero() {
     );
   }
 
-  if (!hasPosition) {
-    return (
-      <div className="flex items-end justify-between py-2">
-        <div>
-          <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
-            Your Deposits
-          </p>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-5xl font-mono font-bold tracking-tight text-foreground">$0</span>
-            <span className="text-sm font-mono text-muted-foreground">.00</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex items-end justify-between py-2">
       <div className="flex items-end gap-10">
+        {/* Your Deposits */}
         <div>
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
             Your Deposits
           </p>
           <div className="flex items-baseline gap-1.5">
             <span className="text-5xl font-mono font-bold tracking-tight text-foreground">
-              ${displayDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${hasPosition
+                ? displayDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '0.00'}
             </span>
           </div>
         </div>
 
+        {/* Your Yield */}
         <div>
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
-            Net APY
+            Your Yield
           </p>
           <div className="flex items-baseline gap-1">
             <span className="text-5xl font-mono font-bold tracking-tight text-success">
-              +{displayApy.toFixed(1)}
+              {hasPosition ? `+${displayApy.toFixed(1)}` : '0'}
             </span>
             <span className="text-xl font-mono font-semibold text-success/70">%</span>
           </div>
         </div>
+
+        {/* Max Yield — hardcoded 40% */}
+        <div>
+          <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
+            Max Yield
+          </p>
+          <div className="flex items-baseline gap-1">
+            <span className="text-5xl font-mono font-bold tracking-tight" style={{ color: '#e05c00' }}>40</span>
+            <span className="text-xl font-mono font-semibold" style={{ color: '#e05c00', opacity: 0.7 }}>%</span>
+          </div>
+        </div>
       </div>
 
-      {change24hUsd !== null && (
+      {hasPosition && change24hUsd !== null && (
         <div className={cn(
           'text-right text-sm font-mono font-semibold pb-1',
           isPositive ? 'text-success' : 'text-destructive'

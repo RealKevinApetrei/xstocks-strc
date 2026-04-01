@@ -71,6 +71,11 @@ export function Nav() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* STRC Yield stat — styled like the action buttons */}
+          <div className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 bg-secondary">
+            <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">STRC Yield</span>
+            <span className="text-xs font-mono font-semibold text-success">+11.5%</span>
+          </div>
           <button
             onClick={() => setModalMode('deposit')}
             className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary transition-colors"
