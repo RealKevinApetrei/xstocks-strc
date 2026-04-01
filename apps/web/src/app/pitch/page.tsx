@@ -1293,41 +1293,62 @@ export default function PitchPage() {
 
         {/* ═══ SLIDE 7: IMPACT ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
-          <div className="max-w-4xl w-full text-center" style={{ opacity: isActive(7) ? 1 : 0, transform: isActive(7) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
-              What Spreads means<br />for <span style={{ color: '#1a3520' }}>xStocks</span>.
+          <div className="max-w-4xl w-full" style={{ opacity: isActive(7) ? 1 : 0, transform: isActive(7) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
+            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#1a3520' }}>07 — Impact</span>
+            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
+              What Spreads brings<br />to <span style={{ color: '#1a3520' }}>xStocks</span>.
             </h2>
-            <p className="text-base mb-12 max-w-xl mx-auto leading-relaxed" style={{ color: '#6b6866' }}>
-              Spreads demonstrates that leveraged DeFi can be accessible, safe, and automated &mdash;
-              bringing institutional-grade yield strategies to everyday users.
+            <p className="text-sm mb-10 max-w-2xl leading-relaxed" style={{ color: '#6b6866' }}>
+              Spreads is the strategy layer for xStocks. We make STRC better by unlocking what tokenisation uniquely enables — leverage is just the beginning.
             </p>
-            <div className="grid md:grid-cols-3 gap-5 mb-16 text-left">
+            <div className="grid md:grid-cols-3 gap-5 mb-10">
               {[
-                { val: <AnimatedCounter target={3} suffix="x" active={isActive(7)} />, color: '#16a34a', title: 'Yield Multiplication', desc: 'Turn 11.5% base APY into 35-46% effective yield through automated leveraged looping.' },
-                { val: <AnimatedCounter target={0} suffix=" txns" active={isActive(7)} />, color: '#e05c00', title: 'User Friction', desc: 'Gasless smart wallets eliminate every UX hurdle. No ETH for gas. No manual signing. No complexity.' },
-                { val: '24/7', color: '#7c3aed', title: 'Protection', desc: 'Buy the Dip Vault watches prices around the clock. When STRC dips, it buys automatically to protect your position.' },
+                {
+                  num: '01',
+                  accent: '#e05c00',
+                  title: 'New Distribution Channel',
+                  desc: 'Spreads brings a new segment of DeFi-native yield farmers to STRCx — users who would never buy a tokenized stock directly, but will come for 46% APY on leverage.',
+                  tag: 'User Acquisition',
+                },
+                {
+                  num: '02',
+                  accent: '#7c3aed',
+                  title: 'New DeFi Tooling',
+                  desc: 'Morpho Blue market, Pyth oracle adapter, ERC-4626 Buy the Dip Vault, and CoW batch execution — open infrastructure any Ink protocol can build on top of.',
+                  tag: 'Open Infrastructure',
+                },
+                {
+                  num: '03',
+                  accent: '#16a34a',
+                  title: 'New Strategies',
+                  desc: 'Leverage is first. The foundation we\'ve built supports shorting, delta-neutral yield, options-style payoffs — strategies that only exist because STRC is on-chain.',
+                  tag: 'Leverage & Beyond',
+                },
               ].map((c) => (
-                <div key={c.title} className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
-                  <div className="text-4xl font-mono font-bold mb-3" style={{ color: c.color }}>{c.val}</div>
-                  <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#0a0a0a' }}>{c.title}</div>
+                <div key={c.num} className="rounded-lg border bg-white p-6 space-y-3" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-mono tracking-widest uppercase px-2 py-1 rounded-full" style={{ color: c.accent, backgroundColor: c.accent + '12' }}>{c.tag}</span>
+                    <span className="text-2xl font-mono font-bold" style={{ color: c.accent + '30' }}>{c.num}</span>
+                  </div>
+                  <p className="text-sm font-bold" style={{ color: '#0a0a0a' }}>{c.title}</p>
                   <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
                 </div>
               ))}
             </div>
-            <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <SpreadsLogo size={32} />
-                <span className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0a0a0a' }}>Spreads</span>
+                <SpreadsLogo size={28} />
+                <div>
+                  <span className="text-base font-bold tracking-widest uppercase" style={{ color: '#0a0a0a' }}>Spreads</span>
+                  <p className="text-xs font-mono mt-0.5" style={{ color: '#6b6866' }}>Stretch your yield. Protect your position. Sleep at night.</p>
+                </div>
               </div>
-              <p className="text-sm font-mono" style={{ color: '#6b6866' }}>
-                Stretch your yield. Protect your position. Sleep at night.
-              </p>
-              <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-3">
                 <a href="https://x.com/spreads_fi" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-60" style={{ color: '#6b6866' }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                 </a>
                 <a href="https://t.me/spreads_fi" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-60" style={{ color: '#6b6866' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
                 </a>
               </div>
             </div>
