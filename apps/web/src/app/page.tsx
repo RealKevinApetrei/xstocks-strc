@@ -46,7 +46,7 @@ const TICKER_ITEMS = [
 ];
 
 function Ticker() {
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS]; // duplicate for seamless loop
+  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
   return (
     <div className="absolute top-0 left-0 right-0 z-30 border-b border-black/8 bg-white/60 backdrop-blur-sm overflow-hidden">
       <div
@@ -64,7 +64,6 @@ function Ticker() {
     </div>
   );
 }
-
 
 export default function Home() {
   const { login, authenticated, ready } = usePrivy();
@@ -87,6 +86,9 @@ export default function Home() {
     });
   }, []);
 
+  const blend = { mixBlendMode: 'multiply' as const };
+  const ease = { transition: 'transform 0.15s ease-out' };
+
   return (
     <main
       ref={containerRef}
@@ -99,39 +101,84 @@ export default function Home() {
         fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
       }}
     >
-      {/* Scrolling ticker */}
       <Ticker />
 
+      {/* ── LEFT SIDE ── */}
 
-      {/* Michael Saylor cutout — right side */}
+      {/* Saylor colour — large portrait, bottom-left */}
       <img
-        src="/saylor.png"
+        src="/saylor-colour.png"
         alt="Michael Saylor"
-        className="absolute right-0 bottom-0 h-[88vh] object-contain object-bottom select-none pointer-events-none"
+        className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
         style={{
-          filter: 'drop-shadow(-12px 0 40px rgba(0,0,0,0.10))',
-          transform: `translate(${parallax.x * 12}px, ${parallax.y * 6}px)`,
-          transition: 'transform 0.15s ease-out',
+          left: '-2%',
+          height: '88vh',
+          zIndex: 6,
+          ...blend,
+          transform: `translate(${parallax.x * 10}px, ${parallax.y * 5}px)`,
+          ...ease,
         }}
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
-      {/* Bitcoin hand — left side */}
+      {/* Bitcoin hand — mid-left, overlaps Saylor */}
       <img
         src="/bitcoin-hand.png"
         alt=""
         aria-hidden="true"
-        className="absolute -left-[12%] bottom-0 h-[72vh] object-contain object-bottom select-none pointer-events-none"
+        className="absolute select-none pointer-events-none"
         style={{
-          mixBlendMode: 'multiply',
-          transform: `translate(${parallax.x * -16}px, ${parallax.y * 8}px)`,
-          transition: 'transform 0.15s ease-out',
+          left: '14%',
+          bottom: '18%',
+          height: '32vh',
+          zIndex: 10,
+          ...blend,
+          transform: `translate(${parallax.x * -18}px, ${parallax.y * 10}px)`,
+          ...ease,
         }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
+      {/* ── RIGHT SIDE ── */}
 
-      {/* Central card */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-[480px]">
+      {/* $100 bill — floating mid-right, slight tilt */}
+      <img
+        src="/hundred-dollar.png"
+        alt=""
+        aria-hidden="true"
+        className="absolute select-none pointer-events-none"
+        style={{
+          right: '4%',
+          top: '28%',
+          width: '30vw',
+          maxWidth: '420px',
+          zIndex: 6,
+          ...blend,
+          transform: `translate(${parallax.x * 20}px, ${parallax.y * -12}px) rotate(-4deg)`,
+          ...ease,
+          filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.10))',
+        }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
+
+      {/* Saylor B&W — bottom-right, overlaps $100 bill */}
+      <img
+        src="/saylor-bw.png"
+        alt="Michael Saylor"
+        className="absolute bottom-0 object-contain object-bottom select-none pointer-events-none"
+        style={{
+          right: '-2%',
+          height: '70vh',
+          zIndex: 10,
+          ...blend,
+          transform: `translate(${parallax.x * 8}px, ${parallax.y * 4}px)`,
+          ...ease,
+        }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
+
+      {/* ── CENTRAL CONTENT ── */}
+      <div className="relative flex flex-col items-center text-center px-6 max-w-[480px]" style={{ zIndex: 20 }}>
 
         {/* Spreads logo */}
         <div className="flex items-center gap-2 mb-8">
@@ -142,10 +189,8 @@ export default function Home() {
           <span className="text-sm font-semibold tracking-widest uppercase">Spreads</span>
         </div>
 
-        {/* Animated APY counter */}
         <AprCounter />
 
-        {/* Headline */}
         <h1 className="text-[3.8rem] font-bold tracking-tight leading-[1.05] mb-5">
           <span style={{ color: '#e05c00' }}>Stretch</span> Your Yield
         </h1>
@@ -154,7 +199,6 @@ export default function Home() {
           Turn your STRC dividend into up to 5× more — automatically.
         </p>
 
-        {/* CTA */}
         <button
           onClick={login}
           disabled={!ready}
@@ -166,7 +210,7 @@ export default function Home() {
       </div>
 
       {/* Bottom bar */}
-      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white/70 backdrop-blur-sm px-8 py-3 flex items-center justify-between z-20">
+      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white/70 backdrop-blur-sm px-8 py-3 flex items-center justify-between" style={{ zIndex: 30 }}>
         <div className="flex items-center gap-6 text-[10px] text-gray-400 tracking-widest uppercase">
           <a href="https://x.com/spreads_fi" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 transition-colors">X</a>
           <a href="https://t.me/spreads_fi" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 transition-colors">Telegram</a>
