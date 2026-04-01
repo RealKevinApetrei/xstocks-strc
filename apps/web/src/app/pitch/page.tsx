@@ -977,23 +977,45 @@ export default function PitchPage() {
               Watch it <span style={{ color: '#e05c00' }}>work</span>.
             </h2>
             <div key={demoKey} className="grid md:grid-cols-3 gap-4">
-              <div>
+              <div className="flex flex-col">
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   1. Loop &mdash; Open Position
                 </p>
                 <DemoLoop active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
+                {/* Morpho + Ink logos */}
+                <div className="flex items-center justify-center gap-4 mt-3">
+                  <div className="flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="none" stroke="#2d2d2d" strokeWidth="8"/><circle cx="50" cy="30" r="12" fill="#2d2d2d"/><path d="M25 75 Q50 50 75 75" fill="none" stroke="#2d2d2d" strokeWidth="8" strokeLinecap="round"/></svg>
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Morpho</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#7c3aed' }} />
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Ink</span>
+                  </div>
+                </div>
               </div>
-              <div>
+              <div className="flex flex-col">
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   2. Position View
                 </p>
                 <DemoPosition active={isActive(3)} />
               </div>
-              <div>
+              <div className="flex flex-col">
                 <p className="text-[10px] font-mono font-semibold tracking-widest uppercase mb-3" style={{ color: '#6b6866' }}>
                   3. Unwind &mdash; Close Position
                 </p>
                 <DemoUnwind active={isActive(3)} onReset={() => setDemoKey(k => k + 1)} />
+                {/* Privy + Spreads logos */}
+                <div className="flex items-center justify-center gap-4 mt-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: '#7c3aed' }} />
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Privy</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <SpreadsLogo size={10} color="#6b6866" />
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: '#6b6866' }}>Spreads</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
