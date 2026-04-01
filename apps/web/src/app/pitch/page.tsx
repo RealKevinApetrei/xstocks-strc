@@ -1411,8 +1411,8 @@ export default function PitchPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px]" style={{ color: '#6b6866' }}>Monthly cost</div>
-                      <div className="text-lg font-mono font-bold" style={{ color: '#f59e0b' }}>~0.5%</div>
+                      <div className="text-[10px]" style={{ color: '#6b6866' }}>Cost (APY)</div>
+                      <div className="text-lg font-mono font-bold" style={{ color: '#f59e0b' }}>~6% APY</div>
                     </div>
                   </div>
                 </div>
@@ -1473,9 +1473,9 @@ export default function PitchPage() {
             </p>
             <div className="grid md:grid-cols-3 gap-5 mb-10">
               {[
-                { accent: '#e05c00', title: 'New Users', desc: 'DeFi yield farmers who\'d never buy a stock — but will come for 46% APY.' },
-                { accent: '#7c3aed', title: 'New Infra', desc: 'Morpho market, Pyth oracle, Orange Dot Vault, CoW execution — open for all Ink protocols.' },
-                { accent: '#16a34a', title: 'New Strategies', desc: 'Leverage first. Shorting, delta-neutral, options payoffs — all possible because STRC is on-chain.' },
+                { accent: '#e05c00', title: 'New Users', desc: 'DeFi natives chasing 46% APY.' },
+                { accent: '#7c3aed', title: 'New Infra', desc: 'Morpho, Pyth, CoW — open for all Ink protocols.' },
+                { accent: '#16a34a', title: 'New Strategies', desc: 'Leverage, hedging, options — because STRC is on-chain.' },
               ].map((c) => (
                 <div key={c.title} className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
                   <div className="text-xl font-mono font-bold mb-3" style={{ color: c.accent }}>{c.title}</div>

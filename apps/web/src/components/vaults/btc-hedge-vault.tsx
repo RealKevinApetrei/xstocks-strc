@@ -18,8 +18,8 @@ export function BtcHedgeVault() {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-[10px] text-muted-foreground">Monthly cost</div>
-            <div className="text-sm font-mono font-semibold text-amber-500">~0.5%</div>
+            <div className="text-[10px] text-muted-foreground">Cost (APY)</div>
+            <div className="text-sm font-mono font-semibold text-amber-500">~6% APY</div>
           </div>
         </div>
       </div>
