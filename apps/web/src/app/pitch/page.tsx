@@ -1154,48 +1154,45 @@ export default function PitchPage() {
         {/* ═══ SLIDE 6: VIABILITY ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(6) ? 1 : 0, transform: isActive(6) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
-              Real yield. Real <span style={{ color: '#c47a1a' }}>demand</span>.
+            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#c47a1a' }}>06 — Viability &amp; Uptake</span>
+            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-8 leading-tight" style={{ color: '#0a0a0a' }}>
+              A massive market.<br /><span style={{ color: '#c47a1a' }}>1% is enough.</span>
             </h2>
-            <div className="grid md:grid-cols-2 gap-5 mb-8">
-              <div className="rounded-lg border bg-white p-6 space-y-4" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#0a0a0a' }}>Market Opportunity</div>
-                <div className="space-y-3">
-                  {[
-                    ['STRC Market Cap', '$80B+'],
-                    ['Morpho Blue TVL', '$4B+'],
-                    ['CoW Protocol Volume', '$45B+ cumulative'],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between text-xs">
-                      <span style={{ color: '#6b6866' }}>{k}</span>
-                      <span className="font-mono font-semibold">{v}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-xs border-t pt-3" style={{ borderColor: '#e5e7eb' }}>
-                    <span style={{ color: '#6b6866' }}>Ink Chain Status</span>
-                    <span className="font-mono font-semibold" style={{ color: '#16a34a' }}>Live Mainnet</span>
-                  </div>
-                </div>
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div className="rounded-lg border bg-white p-6 space-y-2" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>STRC Monthly Volume</div>
+                <div className="text-4xl font-mono font-bold" style={{ color: '#0a0a0a' }}>$300M</div>
+                <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>Monthly on-chain trading volume. Deep liquidity for looping at any size.</p>
               </div>
-              <div className="rounded-lg border bg-white p-6 space-y-4" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#0a0a0a' }}>Growth Drivers</div>
-                <div className="space-y-3">
-                  {['STRC dividend holders seeking yield amplification', 'DeFi users wanting one-click leverage', 'Risk-aware investors needing liquidation protection', 'Ink ecosystem growth driving new users to L2'].map((item, i) => (
-                    <div key={i} className="flex items-start gap-2.5 text-xs">
-                      <div className="w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5" style={{ borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)' }}>
-                        <span className="text-[8px] font-mono font-bold" style={{ color: '#16a34a' }}>{i + 1}</span>
-                      </div>
-                      <span style={{ color: '#0a0a0a' }}>{item}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-lg border bg-white p-6 space-y-2" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#6b6866' }}>STRC Assets Under Management</div>
+                <div className="text-4xl font-mono font-bold" style={{ color: '#0a0a0a' }}>$40B</div>
+                <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>Total AUM in STRC today. A growing base of holders seeking better yield.</p>
+              </div>
+              <div className="rounded-lg border-2 p-6 space-y-2" style={{ borderColor: '#c47a1a40', backgroundColor: 'rgba(196,122,26,0.04)' }}>
+                <div className="text-[9px] font-mono tracking-widest uppercase" style={{ color: '#c47a1a' }}>1% Capture = Target TVL</div>
+                <div className="text-4xl font-mono font-bold" style={{ color: '#c47a1a' }}>$400M</div>
+                <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>Capturing just 1% of STRC AUM into Spreads vaults. A conservative and achievable target.</p>
               </div>
             </div>
-            <div className="grid md:grid-cols-4 gap-4">
-              <StatCard label="Target Leverage" accent="#e05c00"><AnimatedCounter target={5} suffix="x" active={isActive(6)} /></StatCard>
-              <StatCard label="Max APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(6)} /></StatCard>
-              <StatCard label="Gas Cost" accent="#16a34a">$0</StatCard>
-              <StatCard label="Time to Loop"><AnimatedCounter target={60} suffix="s" active={isActive(6)} /></StatCard>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="rounded-lg border bg-white p-5 space-y-3" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#0a0a0a' }}>Why holders will loop</div>
+                {['STRC pays 11.5% base — holders already want yield', 'Spreads turns that into 30–46% with one click', 'No gas, no complexity, no manual transactions', 'Liquidation protection removes the biggest fear'].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-xs">
+                    <div className="w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5" style={{ borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)' }}>
+                      <span className="text-[8px] font-mono font-bold" style={{ color: '#16a34a' }}>{i + 1}</span>
+                    </div>
+                    <span style={{ color: '#0a0a0a' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard label="Max APY" accent="#16a34a"><AnimatedCounter target={46} suffix="%" active={isActive(6)} /></StatCard>
+                <StatCard label="Leverage" accent="#e05c00"><AnimatedCounter target={5} suffix="x" active={isActive(6)} /></StatCard>
+                <StatCard label="Gas Cost" accent="#16a34a">$0</StatCard>
+                <StatCard label="Time to Loop"><AnimatedCounter target={60} suffix="s" active={isActive(6)} /></StatCard>
+              </div>
             </div>
           </div>
         </section>
