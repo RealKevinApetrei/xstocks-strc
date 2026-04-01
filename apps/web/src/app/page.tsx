@@ -152,7 +152,7 @@ export default function Home() {
         className="absolute select-none pointer-events-none"
         style={{
           right: '14vw',
-          top: 'calc(30% + 130px)',
+          top: 'calc(30% + 143px)',
           width: '28.6vw',
           maxWidth: '442px',
           zIndex: 3,
