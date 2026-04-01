@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
@@ -9,12 +9,11 @@ import { api, ApiError } from '@/lib/api';
 
 const STRC_ADDRESS  = process.env.NEXT_PUBLIC_STRC_ADDRESS  || '';
 const TBILL_ADDRESS = process.env.NEXT_PUBLIC_TBILL_ADDRESS || '';
-const MIN_DEPOSIT = 20;
-const MIN_WITHDRAW = 20;
+const MIN_DEPOSIT   = 20;
 
 // Friday after 20:00 UTC (4PM ET) through Sunday = market closed
 function isMarketClosed(): boolean {
-  const now = new Date();
+  const now  = new Date();
   const day  = now.getUTCDay();
   const hour = now.getUTCHours();
   if (day === 0 || day === 6) return true;
@@ -22,44 +21,26 @@ function isMarketClosed(): boolean {
   return false;
 }
 
-type Portfolio = Awaited<ReturnType<typeof api.getSavingsPortfolio>>;
-type Product   = { id: string; name: string; category: string; minValue: number; logoUrl: string };
+// Demo stats — hardcoded to showcase the product
+const DEMO_BALANCE  = 1247.50;
+const DEMO_YIELD    = 24.80;
+const DEMO_REWARDS  = 24.80;
+
+type Product = { id: string; name: string; category: string; minValue: number; logoUrl: string };
 
 export default function SavingsPage() {
-  const { getAccessToken } = usePrivy();
   const { ready } = useSmartWallet();
   const { balance: usdcBalance, refresh: refreshUsdc } = useUsdcBalance();
   const { balance: strcBalance, refresh: refreshStrc } = useTokenBalance(STRC_ADDRESS);
   const { balance: tbillBalance, refresh: refreshTbill } = useTokenBalance(TBILL_ADDRESS);
 
-  const [portfolio, setPortfolio]           = useState<Portfolio | null>(null);
-  const [loadingPortfolio, setLoading]      = useState(true);
-
-  const fetchPortfolio = useCallback(async () => {
-    const token = await getAccessToken();
-    if (!token) return;
-    try {
-      const data = await api.getSavingsPortfolio(token);
-      setPortfolio(data);
-    } catch {
-      // first-time user — no portfolio yet, that's fine
-    } finally {
-      setLoading(false);
-    }
-  }, [getAccessToken]);
-
-  useEffect(() => {
-    if (ready) fetchPortfolio();
-  }, [ready, fetchPortfolio]);
-
   function refreshAll() {
-    fetchPortfolio();
     refreshUsdc();
     refreshStrc();
     refreshTbill();
   }
 
-  if (loadingPortfolio) {
+  if (!ready) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-3 w-28 bg-muted animate-pulse rounded" />
@@ -68,7 +49,6 @@ export default function SavingsPage() {
   }
 
   const hasHoldings = strcBalance > 0 || tbillBalance > 0;
-  const rewards = portfolio?.portfolio.rewardsAvailableUsd ?? 0;
 
   return (
     <div className="space-y-6">
@@ -80,7 +60,7 @@ export default function SavingsPage() {
             Savings Balance
           </p>
           <span className="text-5xl font-mono font-bold tracking-tight">
-            ${(portfolio?.portfolio.portfolioValueUsd ?? 0).toFixed(2)}
+            ${DEMO_BALANCE.toFixed(2)}
           </span>
         </div>
         <div>
@@ -88,7 +68,7 @@ export default function SavingsPage() {
             Yield Earned
           </p>
           <span className="text-5xl font-mono font-bold tracking-tight text-success">
-            +${(portfolio?.portfolio.yieldToDateUsd ?? 0).toFixed(2)}
+            +${DEMO_YIELD.toFixed(2)}
           </span>
         </div>
         <div>
@@ -96,7 +76,7 @@ export default function SavingsPage() {
             Rewards
           </p>
           <span className="text-5xl font-mono font-bold tracking-tight" style={{ color: '#c47a1a' }}>
-            ${rewards.toFixed(2)}
+            ${DEMO_REWARDS.toFixed(2)}
           </span>
         </div>
       </div>
@@ -111,14 +91,13 @@ export default function SavingsPage() {
             <HoldingsCard
               strcBalance={strcBalance}
               tbillBalance={tbillBalance}
-              portfolioValueUsd={portfolio?.portfolio.portfolioValueUsd ?? 0}
               onWithdrawn={refreshAll}
             />
           )}
         </div>
 
         {/* Right col — rewards */}
-        <RewardsPanel rewards={rewards} onRedeemed={refreshAll} />
+        <RewardsPanel rewards={DEMO_REWARDS} onRedeemed={refreshAll} />
       </div>
 
     </div>
@@ -135,18 +114,18 @@ function DepositSection({
   onDeposited: () => void;
 }) {
   const { getAccessToken } = usePrivy();
-  const [amount, setAmount]     = useState('');
+  const [amount, setAmount]         = useState('');
   const [depositing, setDepositing] = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [success, setSuccess]   = useState<string | null>(null);
+  const [error, setError]           = useState<string | null>(null);
+  const [success, setSuccess]       = useState<string | null>(null);
 
-  const num      = parseFloat(amount) || 0;
-  const strc50   = num / 2;
-  const tbill50  = num / 2;
-  const marketClosed  = isMarketClosed();
-  const tooLow   = num > 0 && num < MIN_DEPOSIT;
-  const tooHigh  = num > usdcBalance;
-  const canDeposit = num >= MIN_DEPOSIT && !tooHigh && !depositing && usdcBalance > 0;
+  const num         = parseFloat(amount) || 0;
+  const strc50      = num / 2;
+  const tbill50     = num / 2;
+  const marketClosed = isMarketClosed();
+  const tooLow      = num > 0 && num < MIN_DEPOSIT;
+  const tooHigh     = num > usdcBalance;
+  const canDeposit  = num >= MIN_DEPOSIT && !tooHigh && !depositing && usdcBalance > 0;
 
   const quickAmounts = [20, 50, 100, 250, 500].filter(q => q <= usdcBalance + 0.01);
 
@@ -264,10 +243,10 @@ function DepositSection({
         </p>
       )}
 
-      {tooLow   && <p className="text-xs text-destructive">Minimum deposit is ${MIN_DEPOSIT}</p>}
-      {tooHigh  && <p className="text-xs text-destructive">Amount exceeds your USDC balance</p>}
-      {error    && <p className="text-xs text-destructive">{error}</p>}
-      {success  && <p className="text-xs text-success">{success}</p>}
+      {tooLow  && <p className="text-xs text-destructive">Minimum deposit is ${MIN_DEPOSIT}</p>}
+      {tooHigh && <p className="text-xs text-destructive">Amount exceeds your USDC balance</p>}
+      {error   && <p className="text-xs text-destructive">{error}</p>}
+      {success && <p className="text-xs text-success">{success}</p>}
 
       <button
         onClick={deposit}
@@ -289,12 +268,10 @@ function DepositSection({
 function HoldingsCard({
   strcBalance,
   tbillBalance,
-  portfolioValueUsd,
   onWithdrawn,
 }: {
   strcBalance: number;
   tbillBalance: number;
-  portfolioValueUsd: number;
   onWithdrawn: () => void;
 }) {
   const { getAccessToken } = usePrivy();
@@ -302,17 +279,17 @@ function HoldingsCard({
   const [error, setError]   = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
-  const canWithdraw = portfolioValueUsd >= MIN_WITHDRAW && !withdrawing;
+  const hasBalance = strcBalance > 0 || tbillBalance > 0;
 
   async function withdraw() {
-    if (!canWithdraw) return;
+    if (!hasBalance || withdrawing) return;
     setWithdrawing(true);
     setError(null);
     setStatus(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      const result = await api.savingsWithdraw(token, portfolioValueUsd);
+      const result = await api.savingsWithdraw(token);
       setStatus(result.message);
       onWithdrawn();
     } catch (err) {
@@ -330,7 +307,7 @@ function HoldingsCard({
         </h2>
         <button
           onClick={withdraw}
-          disabled={!canWithdraw}
+          disabled={!hasBalance || withdrawing}
           className="text-[10px] font-medium uppercase tracking-wider border border-border rounded px-2.5 py-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           {withdrawing ? 'Withdrawing…' : 'Withdraw All'}
@@ -345,7 +322,7 @@ function HoldingsCard({
           </div>
           <div>
             <p className="text-sm font-medium">STRC</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tokenized S&P 500 · 50%</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tokenized S&amp;P 500 · 50%</p>
           </div>
         </div>
         <div className="text-right">
@@ -371,17 +348,11 @@ function HoldingsCard({
         </div>
       </div>
 
-      {/* Bar */}
+      {/* Split bar */}
       <div className="h-1 rounded-full bg-secondary overflow-hidden flex">
         <div className="bg-primary w-1/2" />
         <div className="bg-success/60 w-1/2" />
       </div>
-
-      {portfolioValueUsd > 0 && portfolioValueUsd < MIN_WITHDRAW && (
-        <p className="text-[10px] text-muted-foreground">
-          Minimum withdrawal is ${MIN_WITHDRAW}. Deposit more to unlock withdrawals.
-        </p>
-      )}
 
       {status && <p className="text-xs text-success">{status}</p>}
       {error  && <p className="text-xs text-destructive">{error}</p>}

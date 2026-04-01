@@ -2,7 +2,6 @@ import { Router, type Request, type Response } from 'express';
 import { privyAuth, type AuthenticatedRequest } from '../../middleware/privyAuth';
 import { savingsService } from './savings.service';
 import { bitrefillService } from './bitrefill.service';
-import { processQueuedDeposits } from './basket.executor';
 
 export const savingsRouter = Router();
 
@@ -34,15 +33,8 @@ savingsRouter.post('/deposit', privyAuth, async (req: Request, res: Response) =>
 // POST /api/savings/withdraw
 savingsRouter.post('/withdraw', privyAuth, async (req: Request, res: Response) => {
   const { privyId } = (req as AuthenticatedRequest).user;
-  const { usdcAmount } = req.body as { usdcAmount: number };
-
-  if (!usdcAmount || usdcAmount < 20) {
-    res.status(400).json({ error: 'Minimum withdrawal is $20 ($10 per asset)' });
-    return;
-  }
-
   try {
-    const result = await savingsService.withdraw({ privyId, usdcAmount });
+    const result = await savingsService.withdraw({ privyId });
     res.status(202).json({
       withdrawalId: result.withdrawalId,
       message: 'Withdrawal initiated. Selling STRC and T-Bill back to USDC via CoW Protocol.',
@@ -88,17 +80,4 @@ savingsRouter.post('/redeem', privyAuth, async (req: Request, res: Response) => 
     const msg = err instanceof Error ? err.message : 'Redemption failed';
     res.status(400).json({ error: msg });
   }
-});
-
-// POST /api/savings/process-queue — Monday cron trigger
-savingsRouter.post('/process-queue', async (req: Request, res: Response) => {
-  const secret = req.headers['x-cron-secret'];
-  if (!secret || secret !== process.env.CRON_SECRET) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-  processQueuedDeposits().catch(err =>
-    console.error('[Savings] process-queue error:', err),
-  );
-  res.json({ ok: true, message: 'Queue processing started' });
 });

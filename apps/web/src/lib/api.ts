@@ -105,9 +105,9 @@ export const api = {
       method: 'POST', body: JSON.stringify({ usdcAmount }), token,
     }),
 
-  savingsWithdraw: (token: string, usdcAmount: number) =>
+  savingsWithdraw: (token: string) =>
     request<{ withdrawalId: string; message: string }>('/api/savings/withdraw', {
-      method: 'POST', body: JSON.stringify({ usdcAmount }), token,
+      method: 'POST', body: JSON.stringify({}), token,
     }),
 
   getSavingsCatalog: (token: string) =>
