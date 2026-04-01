@@ -1,64 +1,54 @@
 import { ethers } from 'ethers';
 import type { Call } from '../execution/smart-account.service';
 import { config } from '../../config';
-import USDCVaultABI from '@xstocks/shared/abis/USDCVault.json';
+import AaveL2PoolABI from '@xstocks/shared/abis/AaveL2Pool.json';
 import ERC20ABI from '@xstocks/shared/abis/ERC20.json';
 
 export class VaultService {
-  private vaultIface = new ethers.Interface(USDCVaultABI);
+  private poolIface = new ethers.Interface(AaveL2PoolABI);
   private erc20Iface = new ethers.Interface(ERC20ABI);
 
   /**
-   * Build calls to deposit USDC into the vault (→ Tydro for yield).
-   * Includes USDC approval + vault deposit.
+   * Build calls to deposit USDC into Aave V3 / Tydro for yield.
+   * Approval goes to the L2Pool (not the aToken).
    */
-  buildDepositCalls(usdcAmount: bigint, receiver: string): Call[] {
+  buildDepositCalls(usdcAmount: bigint, onBehalfOf: string): Call[] {
     return [
-      // Approve USDC → vault
+      // Approve USDC → L2Pool
       {
         to: config.usdc,
-        data: this.erc20Iface.encodeFunctionData('approve', [config.usdcVault, usdcAmount]),
+        data: this.erc20Iface.encodeFunctionData('approve', [config.aaveL2Pool, usdcAmount]),
       },
-      // Deposit into vault
+      // Supply USDC into Aave V3 pool
       {
-        to: config.usdcVault,
-        data: this.vaultIface.encodeFunctionData('deposit', [usdcAmount, receiver]),
+        to: config.aaveL2Pool,
+        data: this.poolIface.encodeFunctionData('supply', [config.usdc, usdcAmount, onBehalfOf, 0]),
       },
     ];
   }
 
   /**
-   * Build calls to withdraw USDC from vault (← Tydro).
+   * Build calls to withdraw USDC from Aave V3 / Tydro.
+   * Pass ethers.MaxUint256 for full withdrawal.
    */
-  buildWithdrawCalls(usdcAmount: bigint, receiver: string, owner: string): Call[] {
+  buildWithdrawCalls(usdcAmount: bigint, to: string): Call[] {
     return [
       {
-        to: config.usdcVault,
-        data: this.vaultIface.encodeFunctionData('withdraw', [usdcAmount, receiver, owner]),
+        to: config.aaveL2Pool,
+        data: this.poolIface.encodeFunctionData('withdraw', [config.usdc, usdcAmount, to]),
       },
     ];
   }
 
   /**
-   * Read vault balance for a user (shares + equivalent assets).
+   * Read vault balance for a user via aToken balanceOf.
+   * aToken is 1:1 with USDC and includes accrued yield.
    */
   async getVaultBalance(user: string): Promise<{ shares: bigint; assets: bigint }> {
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    const vault = new ethers.Contract(config.usdcVault, USDCVaultABI, provider);
-
-    const shares: bigint = await vault.balanceOf(user);
-    const assets: bigint = shares > 0n ? await vault.convertToAssets(shares) : 0n;
-
-    return { shares, assets };
-  }
-
-  /**
-   * Get total assets in the vault (all users combined).
-   */
-  async getTotalAssets(): Promise<bigint> {
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    const vault = new ethers.Contract(config.usdcVault, USDCVaultABI, provider);
-    return vault.totalAssets();
+    const aToken = new ethers.Contract(config.aaveAUsdcToken, ERC20ABI, provider);
+    const balance: bigint = await aToken.balanceOf(user);
+    return { shares: 0n, assets: balance };
   }
 }
 

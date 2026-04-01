@@ -83,13 +83,33 @@ export class SmartAccountService {
     if (!txHash) throw new Error('No transaction hash provided');
 
     const provider = getProvider();
+    const timeoutMs = config.txTimeoutMs;
+    const start = Date.now();
 
-    // Privy bundler accepted the UserOp. Ink blocks are ~1-2s.
-    // UserOp hashes can't be looked up via getTransactionReceipt,
-    // so just wait 3s for block inclusion and assume success.
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... accepted, waiting 3s for block...`);
-    await new Promise(resolve => setTimeout(resolve, 3_000));
-    console.log(`[TX] UserOp ${txHash.slice(0, 10)}... confirmed`);
+    console.log(`[TX] Waiting for receipt: ${txHash.slice(0, 10)}...`);
+
+    // Poll with increasing intervals: 1s, 2s, 3s, then 3s thereafter
+    let delay = 1000;
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const receipt = await provider.getTransactionReceipt(txHash);
+        if (receipt) {
+          const success = receipt.status === 1;
+          console.log(`[TX] ${txHash.slice(0, 10)}... ${success ? 'confirmed' : 'reverted'} (block ${receipt.blockNumber})`);
+          if (!success) throw new Error(`Transaction reverted: ${txHash}`);
+          return { txHash, success };
+        }
+      } catch (err) {
+        // getTransactionReceipt may throw for UserOp hashes that aren't
+        // standard tx hashes — fall through to retry
+        if (err instanceof Error && err.message.includes('reverted')) throw err;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay + 1000, 3000);
+    }
+
+    // Timeout — log warning but don't fail (UserOp may still land)
+    console.warn(`[TX] ${txHash.slice(0, 10)}... receipt timeout after ${timeoutMs / 1000}s — assuming success`);
     return { txHash, success: true };
   }
 }

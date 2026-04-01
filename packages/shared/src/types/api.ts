@@ -143,6 +143,7 @@ export interface PositionResponse {
   hasPosition: boolean;
   position: MorphoPosition | null;
   activeLoop: { id: string; status: string } | null;
+  activeUnwind: { id: string; status: string } | null;
   gridStrategy: { id: string; enabled: boolean; dcaActive?: boolean; tradesExecuted?: number; numTrades?: number } | null;
   vaultBalance: { shares: string; assets: string } | null;
   strcBalance?: string;
