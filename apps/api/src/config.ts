@@ -72,6 +72,9 @@ export const config = {
   txTimeoutMs: parseInt(optional('TX_TIMEOUT_MS', '120000'), 10),
   cowTimeoutMs: parseInt(optional('COW_TIMEOUT_MS', '600000'), 10),
   maxSingleLoopUsdc: optional('MAX_SINGLE_LOOP_USDC', '1000000000000'), // 1M USDC (6 decimals)
+
+  // Savings Club
+  tbillXstock: optional('TBILL_XSTOCK_ADDRESS', ''),
 } as const;
 
 /**
