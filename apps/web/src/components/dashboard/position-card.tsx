@@ -174,7 +174,7 @@ export function PositionCard() {
     <div className="rounded-lg border border-border bg-card p-6 space-y-5">
       <h2 className="text-sm font-medium text-muted-foreground">Position</h2>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-3">
         <div>
           <div className="text-xs text-muted-foreground mb-1">Collateral</div>
           <div className="text-lg font-mono font-semibold">{formatUsd(collateralUsd)}</div>
@@ -189,6 +189,15 @@ export function PositionCard() {
           <div className="text-xs text-muted-foreground mb-1">Equity</div>
           <div className="text-lg font-mono font-semibold text-success">{formatUsd(equityUsd)}</div>
           <div className="text-[10px] text-muted-foreground font-mono">{(equityUsd / strcPrice).toFixed(2)} STRCx eq.</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Borrow Rate</div>
+          {rateLoading || borrowApy === null ? (
+            <div className="h-7 w-12 bg-secondary animate-pulse rounded" />
+          ) : (
+            <div className="text-lg font-mono font-semibold text-destructive/70">-{borrowApy.toFixed(1)}%</div>
+          )}
+          <div className="text-[10px] text-muted-foreground font-mono">Morpho APY</div>
         </div>
       </div>
 
@@ -210,14 +219,6 @@ export function PositionCard() {
       </div>
 
       <div className="rounded-md border border-border bg-background p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Morpho Borrow Rate</span>
-          {rateLoading || borrowApy === null ? (
-            <span className="inline-block h-4 w-10 bg-secondary animate-pulse rounded" />
-          ) : (
-            <span className="text-xs font-mono text-destructive/70">-{borrowApy.toFixed(2)}%</span>
-          )}
-        </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">STRCx Yield ({leverage.toFixed(1)}x leveraged)</span>
           <span className="text-xs font-mono text-success">+{(STRC_STAKING_APY * leverage).toFixed(2)}%</span>
