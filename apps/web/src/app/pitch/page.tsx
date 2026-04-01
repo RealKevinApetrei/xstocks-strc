@@ -977,7 +977,7 @@ export default function PitchPage() {
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-6xl w-full" style={{ opacity: isActive(3) ? 1 : 0, transform: isActive(3) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
-              Watch it <span style={{ color: '#e05c00' }}>work</span>.
+              The Highest RWA Yield <span style={{ color: '#e05c00' }}>In DeFi</span> today.
             </h2>
             <div key={demoKey} className="grid md:grid-cols-3 gap-4">
               <div className="flex flex-col">
@@ -1022,7 +1022,7 @@ export default function PitchPage() {
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
             <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
-              The Highest RWA Yield <span style={{ color: '#7c3aed' }}>In DeFi</span> today.
+              Not just another <span style={{ color: '#7c3aed' }}>yield farm</span>.
             </h2>
             <div className="grid md:grid-cols-2 gap-5">
               {[
