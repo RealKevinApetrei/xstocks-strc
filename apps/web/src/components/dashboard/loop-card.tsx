@@ -450,19 +450,30 @@ function UnwindTab() {
       const strcValueUsd = strcBalance.formatted * strcPrice;
       return (
         <div className="space-y-5">
+          {/* Position summary — matches leveraged unwind card style */}
           <div className="rounded-md border border-border bg-secondary p-4 space-y-2">
             <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-3">
-              1x STRC Position
+              Position Summary
             </p>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">STRC held</span>
-              <span className="font-mono">{strcBalance.formatted.toFixed(4)} STRC</span>
+              <span className="text-muted-foreground">STRCx held</span>
+              <span className="font-mono">{strcBalance.formatted.toFixed(4)} STRCx</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Value</span>
-              <span className="font-mono">{formatUsd(strcValueUsd)}</span>
+              <span className="text-muted-foreground">Leverage</span>
+              <span className="font-mono">1×</span>
+            </div>
+            <div className="flex justify-between text-xs border-t border-border pt-2 mt-1">
+              <span className="text-muted-foreground font-medium">You receive</span>
+              <span className="font-mono font-semibold text-success">~{formatUsd(strcValueUsd)} USDC</span>
             </div>
           </div>
+
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-xs text-destructive">{error}</p>
+            </div>
+          )}
 
           <button
             onClick={async () => {
@@ -481,16 +492,14 @@ function UnwindTab() {
               }
             }}
             disabled={isSubmitting}
-            className="w-full rounded-md border border-destructive/40 bg-destructive/5 py-3.5 text-xs font-medium tracking-widest uppercase text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full rounded-md bg-primary py-3.5 text-xs font-medium tracking-widest uppercase text-primary-foreground transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Closing Position...' : 'Close Position → USDC'}
+            {isSubmitting ? 'Selling...' : 'Sell STRCx → USDC'}
           </button>
 
-          {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-xs text-destructive">{error}</p>
-            </div>
-          )}
+          <p className="text-[9px] text-muted-foreground text-center">
+            Swaps STRCx to USDC via CoW Protocol
+          </p>
         </div>
       );
     }
