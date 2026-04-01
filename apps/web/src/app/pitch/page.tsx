@@ -927,8 +927,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 2: SOLUTION ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(2) ? 1 : 0, transform: isActive(2) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#16a34a' }}>The Solution</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-4 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight" style={{ color: '#0a0a0a' }}>
               An <span style={{ color: '#16a34a' }}>ecosystem</span> of products<br />enriching what you can do with STRC.
             </h2>
             <div className="grid grid-cols-3 gap-4 mt-10">
@@ -974,8 +973,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 3: HOW IT WORKS — LIVE DEMO ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-6xl w-full" style={{ opacity: isActive(3) ? 1 : 0, transform: isActive(3) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#2d2d2d' }}>Live Demo</span>
-            <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
               Watch it <span style={{ color: '#e05c00' }}>work</span>.
             </h2>
             <div key={demoKey} className="grid md:grid-cols-3 gap-4">
@@ -1010,8 +1008,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 4: WHAT'S UNIQUE ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(4) ? 1 : 0, transform: isActive(4) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#7c3aed' }}>What&apos;s Unique</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
               Not just another <span style={{ color: '#7c3aed' }}>yield farm</span>.
             </h2>
             <div className="grid md:grid-cols-2 gap-5">
@@ -1036,8 +1033,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 5: ARCHITECTURE ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-5xl w-full" style={{ opacity: isActive(5) ? 1 : 0, transform: isActive(5) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#e05c00' }}>Implementation</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
               Built on <span style={{ color: '#e05c00' }}>production-grade</span><br />infrastructure.
             </h2>
             <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -1075,8 +1071,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 6: VIABILITY ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full" style={{ opacity: isActive(6) ? 1 : 0, transform: isActive(6) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#c47a1a' }}>Viability &amp; Uptake</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-10 leading-tight" style={{ color: '#0a0a0a' }}>
               Real yield. Real <span style={{ color: '#c47a1a' }}>demand</span>.
             </h2>
             <div className="grid md:grid-cols-2 gap-5 mb-8">
@@ -1125,8 +1120,7 @@ export default function PitchPage() {
         {/* ═══ SLIDE 7: IMPACT ═══ */}
         <section className="h-screen w-screen flex items-center justify-center px-6">
           <div className="max-w-4xl w-full text-center" style={{ opacity: isActive(7) ? 1 : 0, transform: isActive(7) ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.6s ease-out' }}>
-            <span className="text-[10px] font-mono font-semibold tracking-widest uppercase" style={{ color: '#1a3520' }}>Impact</span>
-            <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ color: '#0a0a0a' }}>
               What Spreads means<br />for <span style={{ color: '#1a3520' }}>xStocks</span>.
             </h2>
             <p className="text-base mb-12 max-w-xl mx-auto leading-relaxed" style={{ color: '#6b6866' }}>
