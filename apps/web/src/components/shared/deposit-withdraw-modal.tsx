@@ -250,7 +250,6 @@ export function DepositWithdrawModal({
                   <SwapWidget
                     key={depositAddress}
                     supportedWalletVMs={['evm']}
-                    wallet={relayWallet}
                     toToken={toToken}
                     setToToken={setToToken}
                     fromToken={fromToken}
@@ -258,6 +257,7 @@ export function DepositWithdrawModal({
                     lockToToken={true}
                     defaultToAddress={depositAddress as `0x${string}`}
                     disablePasteWalletAddressOption={true}
+                    popularChainIds={[1, 8453, 42161, 10, 137, 57073]}
                     defaultAmount="100"
                     onSwapSuccess={() => {
                       setSuccess('Deposit complete — USDC received in your trading account');

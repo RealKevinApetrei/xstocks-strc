@@ -3,7 +3,7 @@
 import { PrivyProvider } from '@privy-io/react-auth';
 import { type ReactNode } from 'react';
 import { defineChain, http } from 'viem';
-import { mainnet, base, arbitrum, optimism } from 'viem/chains';
+import { mainnet, base, arbitrum, optimism, polygon, bsc, avalanche, zora } from 'viem/chains';
 import { createConfig, WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RelayKitProvider } from '@relayprotocol/relay-kit-ui';
