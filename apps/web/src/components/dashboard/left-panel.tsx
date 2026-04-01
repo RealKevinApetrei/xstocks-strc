@@ -176,7 +176,7 @@ function PositionTab() {
           </div>
         </div>
         <div className="rounded-md border border-border bg-secondary p-3">
-          <div className="text-[10px] text-muted-foreground tracking-widest uppercase mb-1">Current APR</div>
+          <div className="text-[10px] text-muted-foreground tracking-widest uppercase mb-1">Current APY</div>
           <div className={cn('text-xl font-mono font-bold', hasPosition ? 'text-success' : 'text-muted-foreground')}>
             {hasPosition ? `+${netYield.toFixed(1)}%` : '—'}
           </div>

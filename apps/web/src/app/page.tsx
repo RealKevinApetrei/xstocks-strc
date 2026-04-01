@@ -28,7 +28,7 @@ function AprCounter() {
       <div className="text-[8rem] font-mono font-bold leading-none" style={{ color: '#16a34a' }}>
         {display}%
       </div>
-      <div className="text-xs font-mono text-gray-400 tracking-widest uppercase mt-2">APR</div>
+      <div className="text-xs font-mono text-gray-400 tracking-widest uppercase mt-2">APY</div>
     </div>
   );
 }
@@ -142,7 +142,7 @@ export default function Home() {
           <span className="text-sm font-semibold tracking-widest uppercase">Spreads</span>
         </div>
 
-        {/* Animated APR counter */}
+        {/* Animated APY counter */}
         <AprCounter />
 
         {/* Headline */}

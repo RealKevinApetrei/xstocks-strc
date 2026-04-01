@@ -8,6 +8,7 @@ import { adaptViemWallet } from '@relayprotocol/relay-sdk';
 import { createWalletClient, custom } from 'viem';
 import { useSendTransaction as useWagmiSendTransaction } from 'wagmi';
 import { cn } from '@/lib/utils';
+import { SpreadsSpinner } from '@/components/shared/spreads-spinner';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { api, ApiError } from '@/lib/api';
@@ -303,8 +304,8 @@ export function DepositWithdrawModal({
                     onSwapError={(err: any) => setError(err?.message ?? 'Bridge failed')}
                   />
                 ) : (
-                  <div className="p-8 text-center space-y-2">
-                    <div className="h-4 w-32 mx-auto bg-secondary animate-pulse rounded" />
+                  <div className="p-8 flex flex-col items-center gap-3">
+                    <SpreadsSpinner size={28} />
                     <p className="text-xs text-muted-foreground">Setting up your trading account...</p>
                   </div>
                 )
