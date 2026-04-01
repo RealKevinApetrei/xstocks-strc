@@ -270,18 +270,45 @@ body {
   --relay-colors-blue-light-5: #9ca3af !important;
 }
 
-/* Remove all-caps and force font */
-.relay-widget-container button,
-.relay-widget-container span,
-.relay-widget-container div,
-.relay-widget-container p {
+/* Force IBM Plex Mono on every element inside the Relay widget */
+.relay-widget-container,
+.relay-widget-container * {
+  font-family: 'IBM Plex Mono', monospace !important;
   text-transform: none !important;
+}
+
+/* Inputs — match xStocks input styling */
+.relay-widget-container input,
+.relay-widget-container input[type="text"],
+.relay-widget-container input[type="number"] {
+  background-color: #f5f4f0 !important;
+  border-color: #e5e7eb !important;
+  color: #0a0a0a !important;
+  border-radius: 0.375rem !important;
   font-family: 'IBM Plex Mono', monospace !important;
 }
 
-/* Force all nested backgrounds to light */
-.relay-widget-container [style*="background"] {
-  background-color: inherit !important;
+.relay-widget-container input:focus,
+.relay-widget-container input:focus-visible {
+  border-color: #2d2d2d !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px #2d2d2d !important;
+}
+
+.relay-widget-container input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Links — charcoal, not blue/purple */
+.relay-widget-container a {
+  color: #2d2d2d !important;
+  text-decoration: underline !important;
+  text-decoration-color: #d1d5db !important;
+}
+
+.relay-widget-container a:hover {
+  color: #0a0a0a !important;
+  text-decoration-color: #0a0a0a !important;
 }
 
 /* Error banner — light red background with our destructive red */
@@ -293,10 +320,131 @@ body {
   border-radius: 0.375rem !important;
 }
 
-/* Address badge — neutral instead of purple/lavender */
+/* Success / completed states — our success green */
+.relay-widget-container [class*="success"],
+.relay-widget-container [class*="Success"],
+.relay-widget-container [class*="complete"],
+.relay-widget-container [class*="Complete"] {
+  color: #16a34a !important;
+}
+
+/* Override green color scale for success indicators */
+.relay-widget-container {
+  --relay-colors-green-9: #16a34a !important;
+  --relay-colors-green-11: #16a34a !important;
+}
+
+/* Spinners / loading indicators — charcoal instead of default */
+.relay-widget-container [class*="spinner"],
+.relay-widget-container [class*="Spinner"],
+.relay-widget-container [class*="loading"],
+.relay-widget-container [class*="Loading"] {
+  color: #2d2d2d !important;
+  border-color: #e5e7eb !important;
+  border-top-color: #2d2d2d !important;
+}
+
+/* SVG loading animations — force our charcoal */
+.relay-widget-container svg[class*="animate"] circle,
+.relay-widget-container svg[class*="animate"] path {
+  stroke: #2d2d2d !important;
+}
+
+/* Address badge — neutral warm gray, not purple/lavender */
 .relay-widget-container [class*="truncated"],
 .relay-widget-container [class*="address"] {
   background-color: #f0eeea !important;
   color: #0a0a0a !important;
   border: 1px solid #e5e7eb !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Token selector chips / badges */
+.relay-widget-container [class*="badge"],
+.relay-widget-container [class*="Badge"],
+.relay-widget-container [class*="chip"],
+.relay-widget-container [class*="Chip"] {
+  background-color: #f0eeea !important;
+  color: #0a0a0a !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 9999px !important;
+}
+
+/* Dropdown / select menus */
+.relay-widget-container [class*="dropdown"],
+.relay-widget-container [class*="Dropdown"],
+.relay-widget-container [class*="menu"],
+.relay-widget-container [class*="Menu"],
+.relay-widget-container [class*="popover"],
+.relay-widget-container [class*="Popover"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.625rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Modal / overlay backgrounds */
+.relay-widget-container [class*="modal"],
+.relay-widget-container [class*="Modal"],
+.relay-widget-container [class*="overlay"],
+.relay-widget-container [class*="Overlay"] {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Modal content panels */
+.relay-widget-container [class*="modalContent"],
+.relay-widget-container [class*="ModalContent"],
+.relay-widget-container [class*="dialog"],
+.relay-widget-container [class*="Dialog"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.625rem !important;
+}
+
+/* Tooltip styling */
+.relay-widget-container [class*="tooltip"],
+.relay-widget-container [class*="Tooltip"] {
+  background-color: #0a0a0a !important;
+  color: #ffffff !important;
+  border-radius: 0.375rem !important;
+  font-size: 10px !important;
+}
+
+/* Chain selector items — hover matches our secondary */
+.relay-widget-container [class*="chain"] [class*="item"]:hover,
+.relay-widget-container [class*="token"] [class*="item"]:hover,
+.relay-widget-container [role="option"]:hover {
+  background-color: #f0eeea !important;
+}
+
+/* Scrollbar theming for token/chain lists */
+.relay-widget-container ::-webkit-scrollbar {
+  width: 4px;
+}
+
+.relay-widget-container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.relay-widget-container ::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
+/* Progress bars / step indicators */
+.relay-widget-container [class*="progress"],
+.relay-widget-container [class*="Progress"],
+.relay-widget-container [class*="step"],
+.relay-widget-container [class*="Step"] {
+  --relay-colors-primary9: #2d2d2d !important;
+}
+
+/* Ensure no purple leaks through on any accent element */
+.relay-widget-container [style*="purple"],
+.relay-widget-container [style*="violet"],
+.relay-widget-container [style*="#7c3aed"],
+.relay-widget-container [style*="#8b5cf6"],
+.relay-widget-container [style*="#a78bfa"] {
+  color: #2d2d2d !important;
 }
