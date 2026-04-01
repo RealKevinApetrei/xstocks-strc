@@ -330,117 +330,124 @@ executionRouter.get('/positions/:address', privyAuth, async (req: Request, res: 
   const address = req.params.address as string;
   const { privyId } = (req as AuthenticatedRequest).user;
 
-  try {
-    const position = await borrowExecutor.getPosition(address);
-    const hasPosition = position.collateral > 0n || position.borrowed > 0n;
+  // Each section is independent — one failure shouldn't hide all other data
 
-    // Check for active loop
-    const { rows: [activeLoop] } = await query(
+  // 1. Morpho position (may fail if RPC is down)
+  let position: Awaited<ReturnType<typeof borrowExecutor.getPosition>> | null = null;
+  let positionError: string | undefined;
+  try {
+    position = await borrowExecutor.getPosition(address);
+  } catch (err) {
+    positionError = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[POSITION] Morpho read failed for ${address}:`, positionError);
+  }
+
+  const hasPosition = position ? (position.collateral > 0n || position.borrowed > 0n) : false;
+
+  // 2. Active loop/unwind (DB queries — reliable)
+  let activeLoop: any = null;
+  let activeUnwind: any = null;
+  try {
+    const { rows: [al] } = await query(
       `SELECT id, status FROM loop_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') LIMIT 1`,
       [privyId],
     );
-
-    // Check for active unwind
-    const { rows: [activeUnwind] } = await query(
+    activeLoop = al;
+    const { rows: [au] } = await query(
       `SELECT id, status FROM unwind_executions WHERE privy_id = $1 AND status IN ('PENDING', 'IN_PROGRESS') LIMIT 1`,
       [privyId],
     );
+    activeUnwind = au;
+  } catch { /* ignore */ }
 
-    // Check for grid strategy (DCA columns may not exist if migration 003 hasn't run)
-    let gridStrategy: any = null;
+  // 3. Grid strategy
+  let gridStrategy: any = null;
+  try {
+    const { rows: [gs] } = await query(
+      `SELECT id, enabled, dca_active, trades_executed, num_trades FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
+      [privyId],
+    );
+    gridStrategy = gs;
+  } catch {
     try {
-      const { rows: [gs] } = await query(
-        `SELECT id, enabled, dca_active, trades_executed, num_trades FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
-        [privyId],
-      );
-      gridStrategy = gs;
-    } catch {
-      // Fallback: query without DCA columns (pre-migration 003)
       const { rows: [gs] } = await query(
         `SELECT id, enabled FROM grid_strategies WHERE privy_id = $1 LIMIT 1`,
         [privyId],
       );
       gridStrategy = gs;
-    }
+    } catch { /* ignore */ }
+  }
 
-    // Vault balance (Aave aToken)
-    let vaultBalance = null;
-    try {
-      const vb = await vaultService.getVaultBalance(address);
-      vaultBalance = { shares: '0', assets: vb.assets.toString() };
-    } catch { /* vault not set up yet */ }
+  // 4. Vault balance
+  let vaultBalance = null;
+  try {
+    const vb = await vaultService.getVaultBalance(address);
+    vaultBalance = { shares: '0', assets: vb.assets.toString() };
+  } catch { /* vault not set up yet */ }
 
-    // STRC balance in smart wallet (for claim button)
-    let strcBalance: string | undefined;
+  // 5. STRC balance in smart wallet
+  let strcBalance: string | undefined;
+  try {
+    const provider = getProvider();
+    const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
+    const bal: bigint = await strc.balanceOf(address);
+    if (bal > 0n) strcBalance = bal.toString();
+  } catch { /* ignore */ }
+
+  // 6. Position details (exchange rate, leverage, liq price)
+  let collateralStrc = '0';
+  let exchangeRate = '0';
+  let effectiveLeverage = 1;
+  let liquidationPrice = 0;
+
+  if (hasPosition && position) {
     try {
       const provider = getProvider();
-      const strc = new ethers.Contract(config.strc, ['function balanceOf(address) view returns (uint256)'], provider);
-      const bal: bigint = await strc.balanceOf(address);
-      if (bal > 0n) strcBalance = bal.toString();
-    } catch { /* ignore */ }
+      const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
+      const rate: bigint = await wstrcContract.strcPerWstrc();
+      const strcVal: bigint = await wstrcContract.wstrcToStrc(position.collateral);
+      exchangeRate = rate.toString();
+      collateralStrc = strcVal.toString();
 
-    // Read wSTRC exchange rate + convert collateral to STRC value
-    let collateralStrc = '0';
-    let exchangeRate = '0';
-    let effectiveLeverage = 1;
-    let liquidationPrice = 0;
+      if (position.healthFactor > 1) {
+        effectiveLeverage = borrowExecutor.calculateLeverage(position.healthFactor);
+      }
 
-    if (hasPosition) {
-      try {
-        const provider = getProvider();
-        const wstrcContract = new ethers.Contract(config.wstrc, wSTRCABI, provider);
-        const rate: bigint = await wstrcContract.strcPerWstrc();
-        const strcVal: bigint = await wstrcContract.wstrcToStrc(position.collateral);
-        exchangeRate = rate.toString();
-        collateralStrc = strcVal.toString();
-
-        // Leverage from health factor using same formula as borrow executor (includes LLTV)
-        if (position.healthFactor > 1) {
-          effectiveLeverage = borrowExecutor.calculateLeverage(position.healthFactor);
+      if (position.collateral > 0n && position.borrowed > 0n && strcVal > 0n) {
+        const debtUsd = Number(position.borrowed) / 1e6;
+        const collStrc = Number(strcVal) / 1e18;
+        if (collStrc > 0) {
+          liquidationPrice = debtUsd / (collStrc * 0.86);
         }
-
-        // Liquidation price: price at which HF = 1
-        // liqPrice = debt_usd / (collateral_strc * lltv)
-        // borrowed is USDC (6 dec), collateralStrc is STRC (18 dec)
-        if (position.collateral > 0n && position.borrowed > 0n && strcVal > 0n) {
-          const debtUsd = Number(position.borrowed) / 1e6;
-          const collStrc = Number(strcVal) / 1e18;
-          if (collStrc > 0) {
-            liquidationPrice = debtUsd / (collStrc * 0.86);
-          }
-        }
-      } catch { /* contracts not deployed yet — use defaults */ }
-    }
-
-    res.json({
-      address,
-      hasPosition,
-      position: hasPosition ? {
-        collateralWstrc: position.collateral.toString(),
-        collateralStrc,
-        debtUsdc: position.borrowed.toString(),
-        healthFactor: position.healthFactor,
-        effectiveLeverage,
-        liquidationPrice,
-        exchangeRate,
-      } : null,
-      activeLoop: activeLoop ? { id: activeLoop.id, status: activeLoop.status } : null,
-      activeUnwind: activeUnwind ? { id: activeUnwind.id, status: activeUnwind.status } : null,
-      gridStrategy: gridStrategy ? {
-        id: gridStrategy.id,
-        enabled: gridStrategy.enabled,
-        dcaActive: gridStrategy.dca_active,
-        tradesExecuted: gridStrategy.trades_executed,
-        numTrades: gridStrategy.num_trades,
-      } : null,
-      vaultBalance,
-      strcBalance,
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[POSITION] Error fetching position for ${address}:`, msg);
-    res.json({ address, hasPosition: false, position: null, activeLoop: null, activeUnwind: null, gridStrategy: null, vaultBalance: null, strcBalance: undefined, error: msg });
+      }
+    } catch { /* contracts not deployed yet — use defaults */ }
   }
+
+  res.json({
+    address,
+    hasPosition,
+    position: hasPosition && position ? {
+      collateralWstrc: position.collateral.toString(),
+      collateralStrc,
+      debtUsdc: position.borrowed.toString(),
+      healthFactor: position.healthFactor,
+      effectiveLeverage,
+      liquidationPrice,
+      exchangeRate,
+    } : null,
+    activeLoop: activeLoop ? { id: activeLoop.id, status: activeLoop.status } : null,
+    activeUnwind: activeUnwind ? { id: activeUnwind.id, status: activeUnwind.status } : null,
+    gridStrategy: gridStrategy ? {
+      id: gridStrategy.id,
+      enabled: gridStrategy.enabled,
+      dcaActive: gridStrategy.dca_active,
+      tradesExecuted: gridStrategy.trades_executed,
+      numTrades: gridStrategy.num_trades,
+    } : null,
+    vaultBalance,
+    strcBalance,
+    error: positionError,
+  });
 });
 
 // GET /api/execution/market-rate — Live Morpho borrow rate (cached 60s)
