@@ -90,7 +90,7 @@ function LoopTab() {
               ${usdcBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             <button
-              onClick={() => setUsdcAmount(usdcBalance.toFixed(2))}
+              onClick={() => setUsdcAmount((Math.floor(usdcBalance * 100) / 100).toFixed(2))}
               className="text-[10px] font-mono font-semibold tracking-widest uppercase text-primary border border-primary/30 rounded px-1.5 py-0.5 hover:bg-primary/10 transition-colors"
             >
               MAX
