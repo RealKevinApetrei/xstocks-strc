@@ -166,8 +166,7 @@ executionRouter.post('/unwind', privyAuth, async (req: Request, res: Response) =
   // Clear stale IN_PROGRESS unwinds that may be stuck from server restarts
   await query(
     `UPDATE unwind_executions SET status = 'FAILED', error = 'Server restarted — marked stale'
-     WHERE privy_id = $1 AND status = 'IN_PROGRESS'
-     AND updated_at < NOW() - INTERVAL '5 minutes'`,
+     WHERE privy_id = $1 AND status = 'IN_PROGRESS'`,
     [privyId],
   );
 

@@ -370,16 +370,22 @@ function UnwindTab() {
           Position Summary
         </p>
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">Collateral</span>
+          <span className="text-muted-foreground">Collateral (Morpho)</span>
           <span className="font-mono">{formatUsd(collateralUsd)} <span className="text-muted-foreground">({collateralStrc.toFixed(2)} STRCx)</span></span>
         </div>
+        {strcBalance.formatted > 0.001 && (
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">STRC in wallet</span>
+            <span className="font-mono">{formatUsd(strcBalance.formatted * strcPrice)} <span className="text-muted-foreground">({strcBalance.formatted.toFixed(4)} STRCx)</span></span>
+          </div>
+        )}
         <div className="flex justify-between text-xs">
           <span className="text-muted-foreground">Debt to repay</span>
           <span className="font-mono text-destructive/80">−{formatUsd(debtUsd)} USDC</span>
         </div>
         <div className="flex justify-between text-xs border-t border-border pt-2 mt-1">
           <span className="text-muted-foreground font-medium">You receive</span>
-          <span className="font-mono font-semibold text-success">~{formatUsd(equityUsd)} USDC</span>
+          <span className="font-mono font-semibold text-success">~{formatUsd(equityUsd + (strcBalance.formatted * strcPrice))} USDC</span>
         </div>
       </div>
 
