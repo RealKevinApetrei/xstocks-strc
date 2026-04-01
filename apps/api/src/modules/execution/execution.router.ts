@@ -67,10 +67,10 @@ executionRouter.post('/close-strc', privyAuth, async (req: Request, res: Respons
       return;
     }
 
-    // CoW requires minimum ~$10 per swap
+    // CoW requires minimum ~$10 per swap for solvers to pick up
     const strcValueUsd = Number(strcBalance) / 1e18 * 100; // rough estimate at $100/STRC
-    if (strcValueUsd < 1) {
-      res.status(400).json({ error: `STRC balance too small to swap (~$${strcValueUsd.toFixed(2)}). Dust amounts cannot be traded on CoW.` });
+    if (strcValueUsd < 10) {
+      res.status(400).json({ error: `STRC balance too small to swap (~$${strcValueUsd.toFixed(2)}). CoW Protocol requires at least ~$10 per trade.` });
       return;
     }
 
