@@ -1093,6 +1093,20 @@ export default function PitchPage() {
                 <div className="text-[9px] font-mono font-semibold mt-4 tracking-widest uppercase" style={{ color: '#6b6866' }}>Paid from yield</div>
               </div>
             </div>
+
+            {/* Live on Ink Mainnet */}
+            <div className="flex items-center justify-center gap-3 mt-10">
+              <div className="h-8 w-8 rounded-full overflow-hidden border" style={{ borderColor: '#e5e7eb' }}>
+                <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" r="50" fill="#7C5CFC"/>
+                  <path d="M30 35h40v6H30zM30 47h40v6H30zM30 59h40v6H30z" fill="white"/>
+                </svg>
+              </div>
+              <span className="text-lg font-mono font-bold tracking-wider" style={{ color: '#0a0a0a' }}>
+                Live on <span style={{ color: '#7C5CFC' }}>Ink</span> Mainnet
+              </span>
+              <span className="h-2.5 w-2.5 rounded-full animate-pulse" style={{ backgroundColor: '#16a34a' }} />
+            </div>
           </div>
         </section>
 
