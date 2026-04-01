@@ -930,41 +930,41 @@ export default function PitchPage() {
             <h2 className="text-4xl md:text-5xl font-bold mb-4 leading-tight" style={{ color: '#0a0a0a' }}>
               An <span style={{ color: '#16a34a' }}>ecosystem</span> of products<br />enriching what you can do with STRC.
             </h2>
-            <div className="grid grid-cols-3 gap-4 mt-10">
+            <div className="grid grid-cols-3 gap-5 mt-8">
               {/* Leverage */}
-              <div className="rounded-lg border bg-white px-6 py-10 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-base font-mono font-bold tracking-widest uppercase mb-3" style={{ color: '#e05c00' }}>Leverage</div>
-                <div className="text-5xl font-mono font-bold" style={{ color: '#16a34a' }}>
+              <div className="rounded-lg border bg-white px-8 py-16 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-lg font-mono font-bold tracking-widest uppercase mb-4" style={{ color: '#e05c00' }}>Leverage</div>
+                <div className="text-7xl font-mono font-bold" style={{ color: '#16a34a' }}>
                   <AnimatedCounter target={46} suffix="%" active={isActive(2)} />
                 </div>
-                <div className="text-xs font-mono font-semibold mt-1 tracking-widest uppercase" style={{ color: '#6b6866' }}>APY</div>
+                <div className="text-sm font-mono font-semibold mt-2 tracking-widest uppercase" style={{ color: '#6b6866' }}>APY</div>
               </div>
               {/* Trading */}
-              <div className="rounded-lg border bg-white px-6 py-6 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-base font-mono font-bold tracking-widest uppercase mb-3" style={{ color: '#2d2d2d' }}>Trading</div>
+              <div className="rounded-lg border bg-white px-8 py-10 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-lg font-mono font-bold tracking-widest uppercase mb-4" style={{ color: '#2d2d2d' }}>Trading</div>
                 <MiniDipChart active={isActive(2)} />
               </div>
               {/* Savings */}
-              <div className="rounded-lg border bg-white px-6 py-6 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
-                <div className="text-base font-mono font-bold tracking-widest uppercase mb-4" style={{ color: '#16a34a' }}>Savings</div>
-                <div className="flex items-center justify-center gap-2">
+              <div className="rounded-lg border bg-white px-8 py-10 flex flex-col items-center justify-center" style={{ borderColor: '#e5e7eb' }}>
+                <div className="text-lg font-mono font-bold tracking-widest uppercase mb-5" style={{ color: '#16a34a' }}>Savings</div>
+                <div className="flex items-center justify-center gap-3">
                   {/* Netflix */}
-                  <div className="w-14 h-[72px] rounded-md border flex flex-col items-center justify-center shadow-sm" style={{ borderColor: '#e5e7eb', background: 'linear-gradient(135deg, #e50914 0%, #b20710 100%)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M5.398 0v.006c3.028 8.556 5.37 15.175 8.348 23.596 2.344.058 4.85.398 4.854.398-2.8-7.924-5.923-16.747-8.487-24h-4.715zm8.489 0v9.63L18.6 22.951c-.043-7.86-.004-15.913.002-22.95zM5.398 1.05V24c1.873-.225 2.81-.312 4.715-.398v-9.22z"/></svg>
-                    <span className="text-[6px] font-mono font-bold text-white mt-1">$15.99</span>
+                  <div className="w-[72px] h-24 rounded-lg border flex flex-col items-center justify-center shadow-sm" style={{ borderColor: '#e5e7eb', background: 'linear-gradient(135deg, #e50914 0%, #b20710 100%)' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M5.398 0v.006c3.028 8.556 5.37 15.175 8.348 23.596 2.344.058 4.85.398 4.854.398-2.8-7.924-5.923-16.747-8.487-24h-4.715zm8.489 0v9.63L18.6 22.951c-.043-7.86-.004-15.913.002-22.95zM5.398 1.05V24c1.873-.225 2.81-.312 4.715-.398v-9.22z"/></svg>
+                    <span className="text-[7px] font-mono font-bold text-white mt-1.5">$15.99</span>
                   </div>
                   {/* Spotify */}
-                  <div className="w-14 h-[72px] rounded-md border flex flex-col items-center justify-center shadow-sm" style={{ borderColor: '#e5e7eb', background: 'linear-gradient(135deg, #1DB954 0%, #158a3d 100%)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-                    <span className="text-[6px] font-mono font-bold text-white mt-1">$11.99</span>
+                  <div className="w-[72px] h-24 rounded-lg border flex flex-col items-center justify-center shadow-sm" style={{ borderColor: '#e5e7eb', background: 'linear-gradient(135deg, #1DB954 0%, #158a3d 100%)' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                    <span className="text-[7px] font-mono font-bold text-white mt-1.5">$11.99</span>
                   </div>
                   {/* ChatGPT */}
-                  <div className="w-14 h-[72px] rounded-md border flex flex-col items-center justify-center shadow-sm" style={{ borderColor: '#e5e7eb', background: 'linear-gradient(135deg, #10a37f 0%, #0d8c6d 100%)' }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>
-                    <span className="text-[6px] font-mono font-bold text-white mt-1">$20.00</span>
+                  <div className="w-[72px] h-24 rounded-lg border flex flex-col items-center justify-center shadow-sm" style={{ borderColor: '#e5e7eb', background: 'linear-gradient(135deg, #10a37f 0%, #0d8c6d 100%)' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>
+                    <span className="text-[7px] font-mono font-bold text-white mt-1.5">$20.00</span>
                   </div>
                 </div>
-                <div className="text-[8px] font-mono font-semibold mt-3 tracking-widest uppercase" style={{ color: '#6b6866' }}>Paid from yield</div>
+                <div className="text-[9px] font-mono font-semibold mt-4 tracking-widest uppercase" style={{ color: '#6b6866' }}>Paid from yield</div>
               </div>
             </div>
           </div>
