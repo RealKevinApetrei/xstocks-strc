@@ -90,6 +90,19 @@ export const api = {
   getVaultBalance: (token: string, address: string) =>
     request<VaultBalanceResponse>(`/api/grid/vault/balance/${address}`, { token }),
 
+  // Lend USDC Vault (Morpho supply side)
+  depositToLend: (token: string, amount: string) =>
+    request<{ txHash: string }>('/api/grid/lend/deposit', { method: 'POST', body: JSON.stringify({ amount }), token }),
+
+  withdrawFromLend: (token: string, amount: string) =>
+    request<{ txHash: string }>('/api/grid/lend/withdraw', { method: 'POST', body: JSON.stringify({ amount }), token }),
+
+  getLendBalance: (token: string, address: string) =>
+    request<{ supplyShares: string; assets: string }>(`/api/grid/lend/balance/${address}`, { token }),
+
+  getLendApy: () =>
+    request<{ supplyApy: number | null; borrowApy: number | null; utilization: number; totalSupply: string; totalBorrow: string }>('/api/grid/lend/apy'),
+
   // APY
   getSimulatedApy: () =>
     request<SimulatedApyResponse>('/api/apy/simulated'),
