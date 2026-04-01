@@ -60,6 +60,7 @@ export function DepositsHero() {
 
   const displayDeposits = useCountUp(equityUsd, 1600, 2);
   const displayApy = useCountUp(netApy, 1400, 1);
+  const displayMaxYield = useCountUp(40, 1800, 0);
 
   const isPositive = (change24hUsd ?? 0) >= 0;
 
@@ -111,7 +112,7 @@ export function DepositsHero() {
             Max Yield
           </p>
           <div className="flex items-baseline gap-1">
-            <span className="text-5xl font-mono font-bold tracking-tight" style={{ color: '#e05c00' }}>40</span>
+            <span className="text-5xl font-mono font-bold tracking-tight" style={{ color: '#e05c00' }}>{displayMaxYield}</span>
             <span className="text-xl font-mono font-semibold" style={{ color: '#e05c00', opacity: 0.7 }}>%</span>
           </div>
         </div>
