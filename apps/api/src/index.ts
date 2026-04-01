@@ -5,7 +5,6 @@ import { errorHandler } from './middleware/errorHandler';
 import { executionRouter } from './modules/execution/execution.router';
 import { gridRouter } from './modules/grid/grid.router';
 import { savingsRouter } from './modules/savings/savings.router';
-import { morphoRouter } from './modules/morpho/morpho.router';
 import { pythPriceService } from './modules/pyth/pyth-price.service';
 import { loopExecutor } from './modules/execution/executors/loop.executor';
 import { unwindExecutor } from './modules/execution/executors/unwind.executor';
@@ -25,7 +24,6 @@ app.get('/health', (_req, res) => {
 app.use('/api/execution', executionRouter);
 app.use('/api/grid', gridRouter);
 app.use('/api/savings', savingsRouter);
-app.use('/api/morpho', morphoRouter);
 
 // Positions route is on execution router
 app.use('/api', executionRouter);

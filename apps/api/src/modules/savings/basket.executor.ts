@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { getProvider } from '../../lib/provider';
+import { getProvider, retryCall } from '../../lib/provider';
 import { cowSwapService } from '../cowswap/cowswap.service';
 import { smartAccountService } from '../execution/smart-account.service';
 import { approvalExecutor } from '../execution/executors/approval.executor';
@@ -17,12 +17,12 @@ function toUsdc(amount: number): bigint {
 
 async function getAllowance(token: string, owner: string, spender: string): Promise<bigint> {
   const contract = new ethers.Contract(token, ERC20_ABI, getProvider());
-  return contract.allowance(owner, spender) as Promise<bigint>;
+  return retryCall(() => contract.allowance(owner, spender) as Promise<bigint>, 3, 'allowance');
 }
 
 async function getTokenBalance(token: string, owner: string): Promise<bigint> {
   const contract = new ethers.Contract(token, ERC20_ABI, getProvider());
-  return contract.balanceOf(owner) as Promise<bigint>;
+  return retryCall(() => contract.balanceOf(owner) as Promise<bigint>, 3, 'balanceOf');
 }
 
 /**

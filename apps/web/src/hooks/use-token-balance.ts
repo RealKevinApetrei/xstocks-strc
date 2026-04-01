@@ -23,8 +23,9 @@ async function fetchTokenBalance(walletAddress: string, tokenAddress: string): P
   });
 
   const json = await res.json();
-  if (json.error) return 0;
-  const raw = BigInt(json.result || '0x0');
+  const hex = json.result;
+  if (json.error || !hex || hex === '0x' || hex === '0x0') return 0;
+  const raw = BigInt(hex);
   // Both STRC and T-Bill use 18 decimals
   return Number(raw) / 1e18;
 }

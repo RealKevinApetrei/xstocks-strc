@@ -75,6 +75,7 @@ export const config = {
 
   // Savings Club
   tbillXstock: optional('TBILL_XSTOCK_ADDRESS', ''),
+  bitrefillApiKey: optional('BITREFILL_API_KEY', ''),
 } as const;
 
 /**

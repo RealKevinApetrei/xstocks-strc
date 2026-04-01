@@ -18,8 +18,9 @@ async function fetchTbillBalance(walletAddress: string): Promise<number> {
     }),
   });
   const json = await res.json();
-  if (json.error) return 0;
-  return Number(BigInt(json.result || '0x0')) / 1e18;
+  const hex = json.result;
+  if (json.error || !hex || hex === '0x' || hex === '0x0') return 0;
+  return Number(BigInt(hex)) / 1e18;
 }
 
 async function fetchTbillPrice(): Promise<number> {
@@ -57,5 +58,5 @@ export function useTbill() {
     return () => clearInterval(iv);
   }, [refresh]);
 
-  return { balance, price, usdValue: balance * price, loading };
+  return { balance, price, usdValue: balance * price, loading, refresh };
 }

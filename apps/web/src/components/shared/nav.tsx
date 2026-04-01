@@ -12,7 +12,7 @@ import { useSmartWallet } from '@/hooks/use-smart-wallet';
 const navItems = [
   { href: '/dashboard', label: 'Loop' },
   { href: '/dashboard/vaults', label: 'Strategy Vaults' },
-  { href: '/dashboard/savings', label: 'Savings' },
+  { href: '/dashboard/savings', label: 'Stretch Your Savings' },
 ];
 
 export function Nav() {

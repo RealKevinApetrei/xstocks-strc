@@ -155,9 +155,9 @@ export const api = {
   // Savings Club
   getSavingsPortfolio: (token: string) =>
     request<{
-      plan: { strcPct: number; tbillPct: number; totalDepositedUsdc: number } | null;
-      portfolio: { portfolioValueUsd: number; totalDepositedUsd: number; yieldToDateUsd: number; rewardsAvailableUsd: number };
-      recentDeposits: { id: string; usdcAmount: number; strcAllocated: number; tbillAllocated: number; queued: boolean; status: string; createdAt: string }[];
+      plan: { strcPct: number; tbillPct: number };
+      portfolio: { strcBalance: string; tbillBalance: string; strcFormatted: number; tbillFormatted: number };
+      recentDeposits: unknown[];
     }>('/api/savings/portfolio', { token }),
 
   savingsDeposit: (token: string, usdcAmount: number) =>

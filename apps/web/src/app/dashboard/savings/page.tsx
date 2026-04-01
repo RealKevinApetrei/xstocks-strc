@@ -5,57 +5,33 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useSmartWallet } from '@/hooks/use-smart-wallet';
 import { useUsdcBalance } from '@/hooks/use-usdc-balance';
 import { useTokenBalance } from '@/hooks/use-token-balance';
+import { useStrcxPrice } from '@/hooks/use-strcx-price';
+import { useTbill } from '@/hooks/use-tbill';
 import { api, ApiError } from '@/lib/api';
+import { formatUsd } from '@/lib/utils';
 
-const STRC_ADDRESS  = process.env.NEXT_PUBLIC_STRC_ADDRESS  || '';
-const TBILL_ADDRESS = process.env.NEXT_PUBLIC_TBILL_ADDRESS || '';
+const STRC_ADDRESS  = process.env.NEXT_PUBLIC_STRC_ADDRESS || '0x1aad217b8f78dba5e6693460e8470f8b1a3977f3';
+const TBILL_ADDRESS = process.env.NEXT_PUBLIC_TBILL_ADDRESS || '0x4cbf89ED7Bb30b8a860fa86d3c96E9c72931299b';
 const MIN_DEPOSIT   = 20;
 
-// Friday after 20:00 UTC (4PM ET) through Sunday = market closed
 function isMarketClosed(): boolean {
-  const now  = new Date();
-  const day  = now.getUTCDay();
+  const now = new Date();
+  const day = now.getUTCDay();
   const hour = now.getUTCHours();
   if (day === 0 || day === 6) return true;
   if (day === 5 && hour >= 20) return true;
   return false;
 }
 
-// Demo stats — hardcoded to showcase the product
-const DEMO_BALANCE  = 1247.50;
-const DEMO_YIELD    = 24.80;
-const DEMO_REWARDS  = 24.80;
-
 type Product = { id: string; name: string; category: string; minValue: number; logoUrl: string };
-
-export type Portfolio = {
-  plan: {
-    strcPct: number;
-    tbillPct: number;
-    tier: 'BRONZE' | 'SILVER' | 'GOLD';
-    streakMonths: number;
-    monthlyTargetUsdc: number;
-  } | null;
-  portfolio: {
-    portfolioValueUsd: number;
-    totalDepositedUsd: number;
-    yieldToDateUsd: number;
-    rewardsAvailableUsd: number;
-    rewardMultiplier: number;
-  };
-  thisMonth: {
-    depositedUsdc: number;
-    targetUsdc: number;
-    goalMet: boolean;
-    progressPct: number;
-  } | null;
-};
 
 export default function SavingsPage() {
   const { ready } = useSmartWallet();
   const { balance: usdcBalance, refresh: refreshUsdc } = useUsdcBalance();
   const { balance: strcBalance, refresh: refreshStrc } = useTokenBalance(STRC_ADDRESS);
   const { balance: tbillBalance, refresh: refreshTbill } = useTokenBalance(TBILL_ADDRESS);
+  const { price: strcPrice } = useStrcxPrice();
+  const { price: tbillPrice } = useTbill();
 
   function refreshAll() {
     refreshUsdc();
@@ -72,6 +48,9 @@ export default function SavingsPage() {
   }
 
   const hasHoldings = strcBalance > 0 || tbillBalance > 0;
+  const savingsValue = strcBalance * strcPrice + tbillBalance * tbillPrice;
+  // Rewards placeholder — real rewards tracking requires DB integration
+  const rewardsAvailable = 0;
 
   return (
     <div className="space-y-6">
@@ -83,23 +62,23 @@ export default function SavingsPage() {
             Savings Balance
           </p>
           <span className="text-5xl font-mono font-bold tracking-tight">
-            ${DEMO_BALANCE.toFixed(2)}
+            {formatUsd(savingsValue)}
           </span>
         </div>
         <div>
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
-            Yield Earned
+            STRC Value
           </p>
           <span className="text-5xl font-mono font-bold tracking-tight text-success">
-            +${DEMO_YIELD.toFixed(2)}
+            {formatUsd(strcBalance * strcPrice)}
           </span>
         </div>
         <div>
           <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground mb-2">
-            Rewards
+            T-Bill Value
           </p>
           <span className="text-5xl font-mono font-bold tracking-tight" style={{ color: '#c47a1a' }}>
-            ${DEMO_REWARDS.toFixed(2)}
+            {formatUsd(tbillBalance * tbillPrice)}
           </span>
         </div>
       </div>
@@ -120,7 +99,7 @@ export default function SavingsPage() {
         </div>
 
         {/* Right col — rewards */}
-        <RewardsPanel rewards={DEMO_REWARDS} onRedeemed={refreshAll} />
+        <RewardsPanel rewards={rewardsAvailable} onRedeemed={refreshAll} />
       </div>
 
     </div>
