@@ -388,6 +388,7 @@ function UnwindTab() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeUnwindId, setActiveUnwindId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [originalDeposit, setOriginalDeposit] = useState<number | null>(null);
 
   // Auto-detect active unwind on mount/refresh
   useEffect(() => {
@@ -395,6 +396,21 @@ function UnwindTab() {
       setActiveUnwindId((positionData as any).activeUnwind.id);
     }
   }, [(positionData as any)?.activeUnwind]);
+
+  // Fetch original deposit from most recent loop
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        const history = await api.getLoopHistory(token, 1, 0);
+        const loop = history.loops[0];
+        if (loop?.strcAmount) {
+          setOriginalDeposit(parseFloat(loop.strcAmount) / 1e6);
+        }
+      } catch {}
+    })();
+  }, [getAccessToken]);
 
   const position = positionData?.position;
   const collateralStrc_ = position ? parseFloat(formatBigInt(position.collateralStrc)) : 0;
@@ -406,6 +422,10 @@ function UnwindTab() {
   const debtUsd = hasPosition ? debtUsd_ : 0;
   const equityUsd = collateralUsd - debtUsd;
   const currentLeverage = hasPosition ? position.effectiveLeverage : 0;
+
+  // P&L: current equity vs original deposit
+  const pnlUsd = originalDeposit !== null ? equityUsd - originalDeposit : null;
+  const pnlPct = originalDeposit !== null && originalDeposit > 0 ? (pnlUsd! / originalDeposit) * 100 : null;
 
   const availableOptions = UNWIND_OPTIONS.filter(
     (opt) => !currentLeverage || opt.value < currentLeverage,
@@ -539,6 +559,14 @@ function UnwindTab() {
           <span className="text-muted-foreground">Debt to repay</span>
           <span className="font-mono text-destructive/80">−{formatUsd(debtUsd)} USDC</span>
         </div>
+        {pnlUsd !== null && originalDeposit !== null && originalDeposit > 0 && (
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">P&L (vs ${originalDeposit.toFixed(0)} deposit)</span>
+            <span className={cn('font-mono font-semibold', pnlUsd >= 0 ? 'text-success' : 'text-destructive')}>
+              {pnlUsd >= 0 ? '+' : ''}{formatUsd(pnlUsd)} ({pnlPct!.toFixed(2)}%)
+            </span>
+          </div>
+        )}
         <div className="flex justify-between text-xs border-t border-border pt-2 mt-1">
           <span className="text-muted-foreground font-medium">You receive</span>
           <span className="font-mono font-semibold text-success">~{formatUsd(equityUsd + (strcBalance.formatted * strcPrice))} USDC</span>

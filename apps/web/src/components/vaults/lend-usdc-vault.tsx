@@ -156,7 +156,12 @@ export function LendUsdcVault() {
         {/* Balance */}
         <div>
           <div className="text-[10px] text-muted-foreground mb-0.5">Lending Balance</div>
-          <div className="text-xl font-mono font-semibold">{formatUsd(LEND_BALANCE)}</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-mono font-semibold">{formatUsd(LEND_BALANCE)}</span>
+            {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && SUPPLY_APY > 0 && (
+              <span className="text-[10px] font-mono text-success">+{SUPPLY_APY < 0.01 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}% APY</span>
+            )}
+          </div>
           {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && SUPPLY_APY > 0 && (
             <div className="text-[10px] text-muted-foreground mt-0.5">
               ~{formatUsd(LEND_BALANCE * SUPPLY_APY / 100)}/yr

@@ -164,7 +164,12 @@ export function OrangeDotVault() {
         {/* Vault Balance */}
         <div>
           <div className="text-[10px] text-muted-foreground mb-0.5">Vault Balance</div>
-          <div className="text-xl font-mono font-semibold">{formatUsd(VAULT_BALANCE)}</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-mono font-semibold">{formatUsd(VAULT_BALANCE)}</span>
+            {VAULT_BALANCE > 0 && tydroApy !== null && (
+              <span className="text-[10px] font-mono text-success">+{tydroApy.toFixed(1)}% APY</span>
+            )}
+          </div>
         </div>
 
         {/* DCA Progress */}
