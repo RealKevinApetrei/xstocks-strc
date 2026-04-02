@@ -1483,7 +1483,7 @@ export default function PitchPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
               {[
                 { accent: '#e05c00', big: '46%', title: 'Highest RWA Yield', desc: 'Scalable strategy on a real equity. First DeFi product for STRC.' },
-                { accent: '#16a34a', big: '$450+', title: 'Live on Mainnet', desc: 'USDC supplied to Morpho. Real money, real yield.' },
+                { accent: '#16a34a', big: 'Live', title: 'On Ink Mainnet', desc: 'A new ecosystem of products live on mainnet.' },
                 { accent: '#7c3aed', big: 'DeFi', title: 'New Audience', desc: 'Yield farmers attracted by 46% APY on a real equity.' },
                 { accent: '#c47a1a', big: '5', title: 'Open Rails', desc: 'Morpho, Pyth, CoW, Tydro, Privy — reusable for every xStock.' },
               ].map((c) => (
