@@ -140,7 +140,7 @@ function PositionTab() {
   const { data: positionData, loading } = usePosition();
   const { price: strcPrice, stale, source } = useStrcxPrice();
   const { borrowApy } = useMarketRate();
-  const effectiveBorrowApy = borrowApy ?? 4.2;
+  const effectiveBorrowApy = borrowApy ?? 0;
 
   // Track active loop step
   const activeLoop = positionData?.activeLoop;

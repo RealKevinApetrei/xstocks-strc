@@ -63,8 +63,10 @@ export function DepositsHero() {
   const displayDeposits = useCountUp(equityUsd, 1600, 2);
   const displayApy = useCountUp(netApy, 1400, 1);
   const maxLev = 3.5;
-  const effBorrow = borrowApy ?? 0.89;
-  const maxApr = STRC_BASE_APY * maxLev - effBorrow * (maxLev - 1);
+  const liveBorrow = borrowApy !== null ? borrowApy : null;
+  const maxApr = liveBorrow !== null
+    ? STRC_BASE_APY * maxLev - liveBorrow * (maxLev - 1)
+    : STRC_BASE_APY * maxLev; // Show max possible if borrow rate unknown (0 borrows = 0 cost)
   const maxYield = Math.round(aprToApy(maxApr));
   const displayMaxYield = useCountUp(maxYield, 1800, 0);
 

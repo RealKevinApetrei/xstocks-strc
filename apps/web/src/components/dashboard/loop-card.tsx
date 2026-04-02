@@ -70,7 +70,7 @@ function LoopTab() {
   const strcEquivalent = strcPrice > 0 ? amountUsdc / strcPrice : 0;
   const totalExposureUsdc = amountUsdc * leverage;
   const debtUsdc = totalExposureUsdc - amountUsdc;
-  const effectiveBorrow = borrowApy ?? 4.2;
+  const effectiveBorrow = borrowApy ?? 0;
   const netApr = STRC_BASE_APY * leverage - effectiveBorrow * (leverage - 1);
   const netApy = aprToApy(netApr).toFixed(1);
 

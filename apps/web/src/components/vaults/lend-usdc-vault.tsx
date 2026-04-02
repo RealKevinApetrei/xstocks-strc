@@ -158,8 +158,10 @@ export function LendUsdcVault() {
           <div className="text-[10px] text-muted-foreground mb-0.5">Lending Balance</div>
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-mono font-semibold">{formatUsd(LEND_BALANCE)}</span>
-            {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && SUPPLY_APY > 0 && (
-              <span className="text-[10px] font-mono text-success">+{SUPPLY_APY < 0.01 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}% APY</span>
+            {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && (
+              <span className={`text-[10px] font-mono ${SUPPLY_APY > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                {SUPPLY_APY > 0 ? `+${SUPPLY_APY < 0.01 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}% APY` : '0% APY (no borrows)'}
+              </span>
             )}
           </div>
           {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && SUPPLY_APY > 0 && (
