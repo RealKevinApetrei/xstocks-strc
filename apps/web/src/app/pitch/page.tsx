@@ -1484,7 +1484,7 @@ export default function PitchPage() {
               {[
                 { accent: '#e05c00', big: '46%', title: 'Highest RWA Yield', desc: 'Scalable strategy on a real equity. First DeFi product for STRC.' },
                 { accent: '#16a34a', big: 'Live', title: 'On Ink Mainnet', desc: 'A new ecosystem of products live on mainnet.' },
-                { accent: '#7c3aed', big: 'DeFi', title: 'New Audience', desc: 'Yield farmers attracted by 46% APY on a real equity.' },
+                { accent: '#7c3aed', big: 'DeFi', title: 'New Audience', desc: 'Onboarding Saylor BTC maxis to DeFi rails.' },
                 { accent: '#c47a1a', big: '5', title: 'Open Rails', desc: 'Morpho, Pyth, CoW, Tydro, Privy — reusable for every xStock.' },
               ].map((c) => (
                 <div key={c.title} className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
