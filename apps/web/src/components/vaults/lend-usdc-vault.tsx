@@ -160,7 +160,7 @@ export function LendUsdcVault() {
             <span className="text-xl font-mono font-semibold">{formatUsd(LEND_BALANCE)}</span>
             {LEND_BALANCE > 0 && SUPPLY_APY !== null && SUPPLY_APY !== undefined && (
               <span className={`text-[10px] font-mono ${SUPPLY_APY > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                {SUPPLY_APY > 0 ? `+${SUPPLY_APY < 0.01 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}% APY` : '0% APY (no borrows)'}
+                {SUPPLY_APY > 0 ? `+${SUPPLY_APY < 0.01 ? SUPPLY_APY.toFixed(4) : SUPPLY_APY.toFixed(2)}% APY` : '0% APY'}
               </span>
             )}
           </div>
