@@ -1477,18 +1477,20 @@ export default function PitchPage() {
             <h2 className="text-4xl md:text-5xl font-bold mb-3 leading-tight" style={{ color: '#0a0a0a' }}>
               What Spreads brings<br />to <span style={{ color: '#1a3520' }}>xStocks</span>.
             </h2>
-            <p className="text-sm mb-10 max-w-2xl leading-relaxed" style={{ color: '#6b6866' }}>
-              Spreads is the strategy layer for xStocks. We make STRC better by unlocking what tokenisation uniquely enables — leverage is just the beginning.
+            <p className="text-lg mb-10 max-w-2xl" style={{ color: '#6b6866' }}>
+              DeFi infrastructure for dividend-focused RWAs. STRC is first. Every xStock is next.
             </p>
-            <div className="grid md:grid-cols-3 gap-5 mb-10">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
               {[
-                { accent: '#e05c00', title: 'New Users', desc: 'DeFi natives chasing 46% APY.' },
-                { accent: '#7c3aed', title: 'New Infra', desc: 'Morpho, Pyth, CoW — open for all Ink protocols.' },
-                { accent: '#16a34a', title: 'New Strategies', desc: 'Leverage, hedging, options — because STRC is on-chain.' },
+                { accent: '#e05c00', big: '46%', title: 'Highest RWA Yield', desc: 'Scalable strategy on a real equity. First DeFi product for STRC.' },
+                { accent: '#16a34a', big: '$450+', title: 'Live on Mainnet', desc: 'USDC supplied to Morpho. Real money, real yield.' },
+                { accent: '#7c3aed', big: 'DeFi', title: 'New Audience', desc: 'Yield farmers attracted by 46% APY on a real equity.' },
+                { accent: '#c47a1a', big: '5', title: 'Open Rails', desc: 'Morpho, Pyth, CoW, Tydro, Privy — reusable for every xStock.' },
               ].map((c) => (
-                <div key={c.title} className="rounded-lg border bg-white p-8" style={{ borderColor: '#e5e7eb' }}>
-                  <div className="text-xl font-mono font-bold mb-3" style={{ color: c.accent }}>{c.title}</div>
-                  <p className="text-base leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
+                <div key={c.title} className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
+                  <div className="text-3xl font-mono font-bold mb-1" style={{ color: c.accent }}>{c.big}</div>
+                  <div className="text-sm font-bold mb-2" style={{ color: '#0a0a0a' }}>{c.title}</div>
+                  <p className="text-xs leading-relaxed" style={{ color: '#6b6866' }}>{c.desc}</p>
                 </div>
               ))}
             </div>
