@@ -1484,7 +1484,7 @@ export default function PitchPage() {
               {[
                 { accent: '#e05c00', big: '46%', title: 'Highest RWA Yield', desc: 'Scalable strategy on a real equity. First DeFi product for STRC.' },
                 { accent: '#16a34a', big: 'Live', title: 'On Ink Mainnet', desc: 'A new ecosystem of products live on mainnet.' },
-                { accent: '#7c3aed', big: 'DeFi', title: 'New Audience', desc: 'Bringing institutional STRC demand on-chain by attracting Saylor maxis to Ink.' },
+                { accent: '#7c3aed', big: 'DeFi', title: 'New Audience', desc: 'Bringing institutional STRC demand on-chain by attracting Saylor maxis to products on xStocks.' },
               ].map((c) => (
                 <div key={c.title} className="rounded-lg border bg-white p-6" style={{ borderColor: '#e5e7eb' }}>
                   <div className="text-3xl font-mono font-bold mb-1" style={{ color: c.accent }}>{c.big}</div>
